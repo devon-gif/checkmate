@@ -21,7 +21,7 @@ export type CaseCategory = (typeof caseCategories)[number]
 export type RiskLevel = (typeof riskLevels)[number]
 
 export const ANALYSIS_DISCLAIMER =
-  'CheckMate can be wrong. Results are informational only and not legal, financial, medical, or professional advice. Verify important decisions through official sources.'
+  'Ray can be wrong. Results are informational only and not legal, financial, medical, or professional advice. Verify important decisions through official sources.'
 
 export function humanizeCategory(cat: string): string {
   const map: Record<string, string> = {
