@@ -23,21 +23,47 @@ const LEGAL_CACHE_MAX_AGE = 60 * 5 // 5 minutes
 
 const CURRENT_VERSIONS_KEY = `${TERMS_VERSION}|${PRIVACY_VERSION}|${AI_DISCLOSURE_VERSION}`
 
-// Public paths that skip the legal acceptance check
+/**
+ * Routes that are always public — no auth or legal check required.
+ * The homepage `/` is intentionally public.
+ */
 const PUBLIC_PATHS = [
+  '/',
   '/sign-in',
   '/sign-up',
+  '/create-account',
+  '/reset-password',
   '/terms',
   '/privacy',
   '/disclaimer',
   '/ai-disclosure',
   '/acceptable-use',
   '/contact',
-  '/legal-update'
+  '/legal-update',
+  '/try',
+  '/demo'
+]
+
+/**
+ * Routes that require an authenticated session.
+ * Everything else is public unless added here.
+ */
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/cases',
+  '/settings',
+  '/account',
+  '/billing'
 ]
 
 function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.some(p => pathname.startsWith(p))
+  // Exact match for "/" to avoid catching everything
+  if (pathname === '/') return true
+  return PUBLIC_PATHS.some(p => p !== '/' && pathname.startsWith(p))
+}
+
+function isProtectedPath(pathname: string) {
+  return PROTECTED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))
 }
 
 // ---------------------------------------------------------------------------
@@ -53,20 +79,18 @@ export async function middleware(req: NextRequest) {
     data: { session }
   } = await supabase.auth.getSession()
 
-  // Redirect unauthenticated users to sign-in
-  if (
-    !session &&
-    !req.url.includes('/sign-in') &&
-    !req.url.includes('/sign-up')
-  ) {
+  const { pathname } = req.nextUrl
+
+  // Redirect unauthenticated users ONLY when they try to access protected routes
+  if (!session && isProtectedPath(pathname)) {
     const redirectUrl = req.nextUrl.clone()
     redirectUrl.pathname = '/sign-in'
-    redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname)
+    redirectUrl.searchParams.set('redirectedFrom', pathname)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // For authenticated users on protected paths, verify legal acceptance
-  if (session?.user && !isPublicPath(req.nextUrl.pathname)) {
+  // For authenticated users on non-public paths, verify legal acceptance
+  if (session?.user && !isPublicPath(pathname)) {
     // Fast path: cache cookie present and matches current versions → skip DB
     const cached = req.cookies.get(LEGAL_CACHE_COOKIE)?.value
     if (cached === CURRENT_VERSIONS_KEY) {
