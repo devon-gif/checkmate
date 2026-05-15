@@ -17,6 +17,12 @@ module.exports = {
         sans: ['var(--font-sans)', ...fontFamily.sans]
       },
       colors: {
+        /* CheckMate dark-theme design tokens */
+        'cm-bg': '#050d15',
+        'cm-surface': '#0c1825',
+        'cm-card': '#0f2030',
+        'cm-green': '#7ae2cf',
+        'cm-green-dark': '#3baa97',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -57,6 +63,10 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       keyframes: {
+        'pulse-glow': {
+          '0%, 100%': { opacity: '0.6' },
+          '50%': { opacity: '1' }
+        },
         'accordion-down': {
           from: { height: 0 },
           to: { height: 'var(--radix-accordion-content-height)' }
@@ -83,6 +93,7 @@ module.exports = {
         }
       },
       animation: {
+        'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
         'slide-from-left':
           'slide-from-left 0.3s cubic-bezier(0.82, 0.085, 0.395, 0.895)',
         'slide-to-left':

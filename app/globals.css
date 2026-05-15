@@ -76,3 +76,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── CheckMate marketing page utilities ───────────────────────────────────── */
+@layer utilities {
+  .cm-glass {
+    background: rgba(12, 24, 37, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .cm-glow-green {
+    box-shadow: 0 0 60px rgba(122, 226, 207, 0.25);
+  }
+
+  .cm-text-gradient {
+    background: linear-gradient(135deg, #fff 40%, #7ae2cf 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .cm-border-subtle {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
