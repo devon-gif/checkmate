@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { IconSpinner } from '@/components/ui/icons'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
+import { ConsentCheckbox } from './consent-checkbox'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
@@ -33,6 +34,8 @@ export function LoginForm({
     password: ''
   })
 
+  const [consentChecked, setConsentChecked] = React.useState(false)
+
   const signIn = async () => {
     const { email, password } = formState
     const { error } = await supabase.auth.signInWithPassword({
@@ -52,11 +55,27 @@ export function LoginForm({
 
     if (!error && !data.session)
       toast.success('Check your inbox to confirm your email address!')
+
+    // Record legal acceptance after successful sign-up (best-effort)
+    if (!error && data.session) {
+      try {
+        await fetch('/api/legal/accept', { method: 'POST' })
+      } catch {
+        // Non-fatal: acceptance will be re-prompted on next login if missing
+      }
+    }
+
     return error
   }
 
   const handleOnSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
     e.preventDefault()
+
+    if (action === 'sign-up' && !consentChecked) {
+      toast.error('You must agree to the Terms of Service, Privacy Policy, and AI Disclosure to sign up.')
+      return
+    }
+
     setIsLoading(true)
 
     const error = action === 'sign-in' ? await signIn() : await signUp()
@@ -105,8 +124,18 @@ export function LoginForm({
           </div>
         </fieldset>
 
+        {action === 'sign-up' && (
+          <div className="mt-4">
+            <ConsentCheckbox
+              checked={consentChecked}
+              onCheckedChange={setConsentChecked}
+              disabled={isLoading}
+            />
+          </div>
+        )}
+
         <div className="mt-4 flex items-center">
-          <Button disabled={isLoading}>
+          <Button disabled={isLoading || (action === 'sign-up' && !consentChecked)}>
             {isLoading && <IconSpinner className="mr-2 animate-spin" />}
             {action === 'sign-in' ? 'Sign In' : 'Sign Up'}
           </Button>

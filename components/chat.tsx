@@ -7,6 +7,7 @@ import { ChatList } from '@/components/chat-list'
 import { ChatPanel } from '@/components/chat-panel'
 import { EmptyScreen } from '@/components/empty-screen'
 import { ChatScrollAnchor } from '@/components/chat-scroll-anchor'
+import { LegalDisclaimer } from '@/components/legal-disclaimer'
 import { useLocalStorage } from '@/lib/hooks/use-local-storage'
 import {
   Dialog,
@@ -55,6 +56,9 @@ export function Chat({ id, initialMessages, className }: ChatProps) {
           <>
             <ChatList messages={messages} />
             <ChatScrollAnchor trackVisibility={isLoading} />
+            <div className="mx-auto max-w-2xl px-4 py-2">
+              <LegalDisclaimer variant="compact" />
+            </div>
           </>
         ) : (
           <EmptyScreen setInput={setInput} />

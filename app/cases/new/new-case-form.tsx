@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { LegalDisclaimer } from '@/components/legal-disclaimer'
 import { IconArrowRight, IconSpinner } from '@/components/ui/icons'
 
 export function NewCaseForm() {
@@ -86,6 +87,7 @@ export function NewCaseForm() {
           Analyze case
         </Button>
       </div>
+      <LegalDisclaimer variant="default" className="mt-2" />
     </form>
   )
 }
