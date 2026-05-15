@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 import { auth } from '@/auth'
-import { analyzeCaseStub } from '@/lib/checkmate'
+import { analyzeCase } from '@/lib/checkmate'
 import { type Database } from '@/lib/db_types'
 
 export async function POST(req: Request) {
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     })
     .throwOnError()
 
-  const analysis = analyzeCaseStub({ text, url })
+  const analysis = await analyzeCase({ text, url })
   const titleSource =
     text || url?.replace(/^https?:\/\//, '') || 'New risk check'
   const title = titleSource.slice(0, 72)
@@ -86,7 +86,10 @@ export async function POST(req: Request) {
       recommended_actions: analysis.recommended_actions,
       safe_reply: analysis.safe_reply,
       disclaimer: analysis.disclaimer,
-      sources: analysis.sources
+      sources: [
+        ...(text ? [{ type: 'text', value: text }] : []),
+        ...analysis.detected_urls.map(value => ({ type: 'url', value }))
+      ]
     })
     .select('*')
     .single()

@@ -1,20 +1,14 @@
 import 'server-only'
-import { OpenAIStream, StreamingTextResponse } from 'ai'
-import { Configuration, OpenAIApi } from 'openai-edge'
+import { createOpenAI, openai } from '@ai-sdk/openai'
+import { streamText } from 'ai'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { Database } from '@/lib/db_types'
 
 import { auth } from '@/auth'
+import { type Database } from '@/lib/db_types'
 import { nanoid } from '@/lib/utils'
 
 export const runtime = 'edge'
-
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY
-})
-
-const openai = new OpenAIApi(configuration)
 
 export async function POST(req: Request) {
   const cookieStore = cookies()
@@ -31,19 +25,15 @@ export async function POST(req: Request) {
     })
   }
 
-  if (previewToken) {
-    configuration.apiKey = previewToken
-  }
+  const provider = previewToken
+    ? createOpenAI({ apiKey: previewToken })
+    : openai
 
-  const res = await openai.createChatCompletion({
-    model: 'gpt-3.5-turbo',
+  const result = streamText({
+    model: provider(process.env.CHECKMATE_CHAT_MODEL ?? 'gpt-4o-mini'),
     messages,
     temperature: 0.7,
-    stream: true
-  })
-
-  const stream = OpenAIStream(res, {
-    async onCompletion(completion) {
+    async onFinish(event) {
       const title = json.messages[0].content.substring(0, 100)
       const id = json.id ?? nanoid()
       const createdAt = Date.now()
@@ -57,7 +47,7 @@ export async function POST(req: Request) {
         messages: [
           ...messages,
           {
-            content: completion,
+            content: event.text,
             role: 'assistant'
           }
         ]
@@ -67,5 +57,5 @@ export async function POST(req: Request) {
     }
   })
 
-  return new StreamingTextResponse(stream)
+  return result.toDataStreamResponse()
 }

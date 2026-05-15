@@ -3,10 +3,9 @@
 CheckMate is a text, email, and web-first personal risk assistant for suspicious
 messages, links, bills, job offers, rental listings, and marketplace conversations.
 
-The current MVP uses a free stub analyzer. It creates cases, messages, risk
-reports, and usage events without making a paid AI call. Vercel AI SDK, Stripe,
-Twilio inbound SMS/MMS, and Resend inbound email can plug into the same data
-model later.
+The current MVP uses a server-side Vercel AI SDK risk router with structured
+JSON output. Stripe, Twilio inbound SMS/MMS, and Resend inbound email can plug
+into the same data model later.
 
 ## Stack
 
@@ -21,7 +20,7 @@ model later.
 
 - `/dashboard` - authenticated case dashboard
 - `/cases/new` - paste text or enter a URL for analysis
-- `/api/analyze-case` - authenticated stub analyzer API
+- `/api/analyze-case` - authenticated risk analyzer API
 
 ## Data Model
 
@@ -52,10 +51,11 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
-Optional for the legacy chat route:
+Required for `/api/analyze-case` and optional for the legacy chat route:
 
 ```bash
 OPENAI_API_KEY=
+CHECKMATE_ANALYZER_MODEL=gpt-4o-mini
 ```
 
 Install dependencies:
@@ -86,8 +86,9 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Analyzer Behavior
 
-`/api/analyze-case` currently calls `analyzeCaseStub` in
-`lib/checkmate.ts`. The stub classifies cases into:
+`/api/analyze-case` calls `analyzeCase` in `lib/checkmate.ts`. It detects URLs
+in the submitted text, then uses Vercel AI SDK `generateObject` with a Zod
+schema to classify cases into:
 
 - `scam_text`
 - `job_scam_or_ghost_job`
@@ -107,5 +108,7 @@ Each report includes:
 - disclaimer
 - sources
 
-Replace the stub with a Vercel AI SDK structured-output call when paid analysis
-is ready.
+The analyzer prompt is intentionally conservative: it avoids certainty, avoids
+legal/medical/financial advice, warns users not to share sensitive information
+when risk is high, and uses domain-specific checks for job scams and bills or
+fees.
