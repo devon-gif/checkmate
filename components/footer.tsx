@@ -3,6 +3,8 @@ import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
 
+const CURRENT_YEAR = 2026
+
 const LEGAL_LINKS = [
   { href: '/terms', label: 'Terms' },
   { href: '/privacy', label: 'Privacy' },
@@ -58,7 +60,7 @@ export function Footer({ className }: { className?: string }) {
         <FooterText />
         <FooterLegal />
         <p className="text-center text-xs text-muted-foreground/60">
-          &copy; {new Date().getFullYear()} CheckMate. All rights reserved.
+          &copy; {CURRENT_YEAR} CheckMate. All rights reserved.
         </p>
       </div>
     </footer>
