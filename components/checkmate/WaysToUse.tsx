@@ -37,7 +37,7 @@ export function WaysToUse() {
       {/* Background glow */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center"
+        className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center"
       >
         <div className="h-96 w-96 rounded-full bg-cm-green/8 blur-[120px]" />
       </div>
@@ -62,7 +62,7 @@ export function WaysToUse() {
               glow
             >
               {channel.badge && (
-                <span className="absolute right-4 top-4 rounded-full bg-cm-green/15 px-2 py-0.5 text-[10px] font-medium text-cm-green">
+                <span className="absolute right-4 top-4 rounded-full bg-cm-green/15 px-2 py-0.5 font-medium text-[10px] text-cm-green">
                   {channel.badge}
                 </span>
               )}

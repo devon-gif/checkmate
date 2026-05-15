@@ -54,7 +54,7 @@ export function HeroPhoneDemo() {
                 ].join(' ')}
               >
                 {msg.isCheckMate && (
-                  <span className="mb-1 block text-[9px] font-medium uppercase tracking-widest text-cm-green">
+                  <span className="mb-1 block font-medium uppercase tracking-widest text-[9px] text-cm-green">
                     CheckMate
                   </span>
                 )}

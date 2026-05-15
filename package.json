@@ -1,5 +1,5 @@
 {
-  "name": "@supabase-community/vercel-ai-chatbot",
+  "name": "checkmate",
   "version": "0.0.2",
   "private": true,
   "scripts": {

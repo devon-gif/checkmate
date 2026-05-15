@@ -30,13 +30,13 @@ export function HowItWorks() {
       <div className="mx-auto max-w-5xl">
         {/* Heading */}
         <div className="mb-14 text-center">
-          <p className="mb-3 text-sm font-medium text-cm-green uppercase tracking-widest">
+          <p className="mb-3 text-sm font-medium uppercase tracking-widest text-cm-green">
             How it works
           </p>
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             Three steps. No tech skills required.
           </h2>
-          <p className="mt-4 mx-auto max-w-xl text-white/50 text-base leading-relaxed">
+          <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/50">
             CheckMate is designed to be as simple as sending a text — because
             that&apos;s often exactly what it is.
           </p>
@@ -47,7 +47,7 @@ export function HowItWorks() {
           {/* Connector line (desktop) */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute top-10 left-[calc(33.33%-1px)] right-[calc(33.33%-1px)] hidden h-px bg-gradient-to-r from-transparent via-cm-green/30 to-transparent md:block"
+            className="pointer-events-none absolute inset-x-[calc(33.33%-1px)] top-10 hidden h-px bg-gradient-to-r from-transparent via-cm-green/30 to-transparent md:block"
           />
 
           {steps.map(step => (
@@ -61,7 +61,7 @@ export function HowItWorks() {
                 <span className="text-3xl" role="img" aria-label={step.title}>
                   {step.icon}
                 </span>
-                <span className="text-xs font-mono text-cm-green/50">
+                <span className="font-mono text-xs text-cm-green/50">
                   {step.number}
                 </span>
               </div>

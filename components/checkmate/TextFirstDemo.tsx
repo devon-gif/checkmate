@@ -124,7 +124,7 @@ export function TextFirstDemo() {
 
             {/* Recommended action */}
             <div className="rounded-xl border border-cm-green/20 bg-cm-green/8 p-4">
-              <p className="mb-1 text-xs font-medium uppercase tracking-widest text-cm-green">
+              <p className="mb-1 font-medium uppercase tracking-widest text-xs text-cm-green">
                 Suggested next step
               </p>
               <p className="text-sm leading-relaxed text-white/70">

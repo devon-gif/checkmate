@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { cookies } from 'next/headers'
 
 import { auth } from '@/auth'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { GlassCard } from '@/components/checkmate/GlassCard'
+import { GradientButton } from '@/components/checkmate/GradientButton'
 import { NewCaseForm } from './new-case-form'
 
 export default async function NewCasePage() {
@@ -13,49 +13,50 @@ export default async function NewCasePage() {
   if (!session?.user?.id) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-1 items-center px-6 py-16">
-        <section className="w-full rounded-lg border bg-background p-8 shadow-sm">
-          <Badge variant="outline" className="mb-5 shadow-none">
+        <GlassCard className="w-full p-10">
+          <span className="mb-5 inline-block rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 font-medium text-xs text-amber-300">
             Sign in required
-          </Badge>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          </span>
+          <h1 className="text-3xl font-semibold tracking-tight text-white">
             Create an account to analyze cases.
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            CheckMate stores your cases privately with row-level security, so
-            only your signed-in account can read them.
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
+            CheckMate stores your cases privately — only your signed-in account
+            can read them.
           </p>
-          <div className="mt-8 flex gap-3">
-            <Button asChild>
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/sign-up">Create account</Link>
-            </Button>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <GradientButton href="/sign-in" variant="primary">
+              Sign in
+            </GradientButton>
+            <GradientButton href="/sign-up" variant="secondary">
+              Create account
+            </GradientButton>
           </div>
-        </section>
+        </GlassCard>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-      <section className="rounded-lg border bg-background p-6 shadow-sm">
-        <Badge variant="outline" className="mb-4 shadow-none">
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
+      {/* Page header */}
+      <div>
+        <span className="mb-3 inline-block rounded-full border border-cm-green/30 bg-cm-green/10 px-3 py-1 font-medium text-xs text-cm-green">
           New risk check
-        </Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        </span>
+        <h1 className="text-2xl font-semibold tracking-tight text-white">
           Analyze a suspicious message or link
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Paste the exact wording and add a URL if one was included.
-          Screenshots, PDFs, forwarded SMS, and inbound email will plug into the
-          same case model later.
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-white/40">
+          Paste the exact wording and add a URL if one was included. CheckMate
+          will look for possible risk signals and common red flags.
         </p>
-      </section>
+      </div>
 
-      <section className="rounded-lg border bg-background p-6 shadow-sm">
+      {/* Form card */}
+      <GlassCard className="p-6">
         <NewCaseForm />
-      </section>
+      </GlassCard>
     </div>
   )
 }

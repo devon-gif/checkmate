@@ -2,15 +2,15 @@ import { GradientButton } from './GradientButton'
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden px-6 pt-28 pb-24 text-center lg:pt-36 lg:pb-32">
+    <section className="relative overflow-hidden px-6 pb-24 pt-28 text-center lg:pb-32 lg:pt-36">
       {/* Decorative gradient glows */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-16 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-cm-green/10 blur-[100px] animate-pulse-glow"
+        className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 h-[500px] w-[500px] animate-pulse-glow rounded-full bg-cm-green/10 blur-[100px]"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -left-40 top-40 h-80 w-80 rounded-full bg-cm-green/8 blur-[80px]"
+        className="pointer-events-none absolute top-40 -left-40 h-80 w-80 rounded-full bg-cm-green/8 blur-[80px]"
       />
       <div
         aria-hidden="true"
@@ -20,13 +20,13 @@ export function HeroSection() {
       {/* Content */}
       <div className="relative z-10 mx-auto max-w-3xl">
         {/* Badge */}
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cm-green/30 bg-cm-green/10 px-4 py-1.5 text-xs font-medium text-cm-green">
-          <span className="h-1.5 w-1.5 rounded-full bg-cm-green animate-pulse" />
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cm-green/30 bg-cm-green/10 px-4 py-1.5 font-medium text-xs text-cm-green">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cm-green" />
           Free risk checks — no account required
         </div>
 
         {/* Headline */}
-        <h1 className="mb-6 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl cm-text-gradient">
+        <h1 className="cm-text-gradient mb-6 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
           Not sure if it&apos;s real?{' '}
           <span className="block text-cm-green">Send it to CheckMate.</span>
         </h1>
