@@ -10,7 +10,7 @@ export function GlassCard({ children, className, glow }: GlassCardProps) {
   return (
     <div
       className={cn(
-        'relative rounded-2xl cm-glass transition-all duration-300',
+        'cm-glass relative rounded-2xl transition-all duration-300',
         glow && 'hover:cm-glow-green hover:border-cm-green/20',
         className
       )}

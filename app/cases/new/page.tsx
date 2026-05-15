@@ -14,7 +14,7 @@ export default async function NewCasePage() {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-1 items-center px-6 py-16">
         <GlassCard className="w-full p-10">
-          <span className="mb-5 inline-block rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 font-medium text-xs text-amber-300">
+          <span className="mb-5 inline-block rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
             Sign in required
           </span>
           <h1 className="text-3xl font-semibold tracking-tight text-white">
@@ -41,7 +41,7 @@ export default async function NewCasePage() {
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
       {/* Page header */}
       <div>
-        <span className="mb-3 inline-block rounded-full border border-cm-green/30 bg-cm-green/10 px-3 py-1 font-medium text-xs text-cm-green">
+        <span className="mb-3 inline-block rounded-full border border-cm-green/30 bg-cm-green/10 px-3 py-1 text-xs font-medium text-cm-green">
           New risk check
         </span>
         <h1 className="text-2xl font-semibold tracking-tight text-white">

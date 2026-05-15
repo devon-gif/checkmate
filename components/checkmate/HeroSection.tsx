@@ -6,11 +6,11 @@ export function HeroSection() {
       {/* Decorative gradient glows */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 h-[500px] w-[500px] animate-pulse-glow rounded-full bg-cm-green/10 blur-[100px]"
+        className="pointer-events-none absolute left-1/2 top-16 h-[500px] w-[500px] -translate-x-1/2 animate-pulse-glow rounded-full bg-cm-green/10 blur-[100px]"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute top-40 -left-40 h-80 w-80 rounded-full bg-cm-green/8 blur-[80px]"
+        className="bg-cm-green/8 pointer-events-none absolute -left-40 top-40 h-80 w-80 rounded-full blur-[80px]"
       />
       <div
         aria-hidden="true"
@@ -20,7 +20,7 @@ export function HeroSection() {
       {/* Content */}
       <div className="relative z-10 mx-auto max-w-3xl">
         {/* Badge */}
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cm-green/30 bg-cm-green/10 px-4 py-1.5 font-medium text-xs text-cm-green">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cm-green/30 bg-cm-green/10 px-4 py-1.5 text-xs font-medium text-cm-green">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cm-green" />
           Free risk checks — no account required
         </div>

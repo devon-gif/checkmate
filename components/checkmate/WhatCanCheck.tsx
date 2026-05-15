@@ -4,12 +4,20 @@ const categories = [
   {
     icon: '📱',
     label: 'Suspicious texts',
-    examples: ['Fake prize notices', 'Delivery scam SMS', '"Your account is locked"']
+    examples: [
+      'Fake prize notices',
+      'Delivery scam SMS',
+      '"Your account is locked"'
+    ]
   },
   {
     icon: '💼',
     label: 'Job offers',
-    examples: ['Work-from-home listings', 'Upfront payment requests', 'Vague role descriptions']
+    examples: [
+      'Work-from-home listings',
+      'Upfront payment requests',
+      'Vague role descriptions'
+    ]
   },
   {
     icon: '🔗',
@@ -19,22 +27,38 @@ const categories = [
   {
     icon: '🧾',
     label: 'Bills & invoices',
-    examples: ['Unexpected charges', 'Unfamiliar vendor names', 'Pressure to pay quickly']
+    examples: [
+      'Unexpected charges',
+      'Unfamiliar vendor names',
+      'Pressure to pay quickly'
+    ]
   },
   {
     icon: '📧',
     label: 'Emails',
-    examples: ['Impersonation emails', 'Urgent wire requests', 'Fake login alerts']
+    examples: [
+      'Impersonation emails',
+      'Urgent wire requests',
+      'Fake login alerts'
+    ]
   },
   {
     icon: '🏠',
     label: 'Rental listings',
-    examples: ['Too-good-to-be-true rent', 'Overseas landlord stories', 'No in-person showing']
+    examples: [
+      'Too-good-to-be-true rent',
+      'Overseas landlord stories',
+      'No in-person showing'
+    ]
   },
   {
     icon: '🛒',
     label: 'Marketplace messages',
-    examples: ['Overpayment scams', 'Unusual payment methods', 'Shipping fee tricks']
+    examples: [
+      'Overpayment scams',
+      'Unusual payment methods',
+      'Shipping fee tricks'
+    ]
   },
   {
     icon: '📄',
@@ -74,7 +98,10 @@ export function WhatCanCheck() {
               <h3 className="text-sm font-medium text-white">{cat.label}</h3>
               <ul className="space-y-1">
                 {cat.examples.map(ex => (
-                  <li key={ex} className="flex items-start gap-1.5 text-xs text-white/45">
+                  <li
+                    key={ex}
+                    className="text-white/45 flex items-start gap-1.5 text-xs"
+                  >
                     <span className="mt-0.5 text-cm-green/60">›</span>
                     {ex}
                   </li>

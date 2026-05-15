@@ -76,7 +76,10 @@ export function RiskPreviewCard({
       {flags.length > 0 && (
         <ul className="space-y-1.5">
           {flags.slice(0, 3).map(flag => (
-            <li key={flag} className="flex items-start gap-2 text-xs text-white/50">
+            <li
+              key={flag}
+              className="flex items-start gap-2 text-xs text-white/50"
+            >
               <span className="mt-0.5 text-red-400/70">⚑</span>
               {flag}
             </li>

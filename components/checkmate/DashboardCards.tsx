@@ -17,9 +17,7 @@ function StatCard({ label, value, accent }: StatCardProps) {
     <div
       className={cn(
         'rounded-2xl border p-6 transition-all duration-200',
-        accent
-          ? 'border-red-500/20 bg-red-500/5'
-          : 'border-white/8 bg-white/3'
+        accent ? 'border-red-500/20 bg-red-500/5' : 'border-white/8 bg-white/3'
       )}
     >
       <p className="text-xs font-medium uppercase tracking-widest text-white/40">
@@ -37,7 +35,11 @@ function StatCard({ label, value, accent }: StatCardProps) {
   )
 }
 
-export function DashboardCards({ total, highRisk, averageScore }: DashboardCardsProps) {
+export function DashboardCards({
+  total,
+  highRisk,
+  averageScore
+}: DashboardCardsProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-3">
       <StatCard label="Total cases" value={total} />

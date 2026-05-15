@@ -39,7 +39,7 @@ export function WaysToUse() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center"
       >
-        <div className="h-96 w-96 rounded-full bg-cm-green/8 blur-[120px]" />
+        <div className="bg-cm-green/8 h-96 w-96 rounded-full blur-[120px]" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-5xl">
@@ -48,8 +48,7 @@ export function WaysToUse() {
             Ways to use CheckMate
           </p>
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            However you got the message,{' '}
-            <br className="hidden sm:block" />
+            However you got the message, <br className="hidden sm:block" />
             CheckMate can help.
           </h2>
         </div>
@@ -62,7 +61,7 @@ export function WaysToUse() {
               glow
             >
               {channel.badge && (
-                <span className="absolute right-4 top-4 rounded-full bg-cm-green/15 px-2 py-0.5 font-medium text-[10px] text-cm-green">
+                <span className="bg-cm-green/15 absolute right-4 top-4 rounded-full px-2 py-0.5 text-[10px] font-medium text-cm-green">
                   {channel.badge}
                 </span>
               )}

@@ -5,7 +5,10 @@ interface LegalDisclaimerProps {
   className?: string
 }
 
-export function LegalDisclaimerBanner({ variant = 'default', className }: LegalDisclaimerProps) {
+export function LegalDisclaimerBanner({
+  variant = 'default',
+  className
+}: LegalDisclaimerProps) {
   if (variant === 'compact') {
     return (
       <p className={cn('text-center text-xs text-white/30', className)}>

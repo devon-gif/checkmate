@@ -42,10 +42,7 @@ export function NewCaseForm() {
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       {/* Paste area */}
       <div className="flex flex-col gap-2">
-        <label
-          htmlFor="cm-text"
-          className="text-sm font-medium text-white/80"
-        >
+        <label htmlFor="cm-text" className="text-sm font-medium text-white/80">
           Paste suspicious text
         </label>
         <textarea
@@ -54,15 +51,14 @@ export function NewCaseForm() {
           onChange={e => setText(e.target.value)}
           placeholder="Paste a text message, email, invoice notice, job offer, rental listing, marketplace message, or URL…"
           rows={8}
-          className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
+          className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
         />
       </div>
 
       {/* URL input */}
       <div className="flex flex-col gap-2">
         <label htmlFor="cm-url" className="text-sm font-medium text-white/80">
-          URL{' '}
-          <span className="text-white/30 font-normal">(optional)</span>
+          URL <span className="font-normal text-white/30">(optional)</span>
         </label>
         <input
           id="cm-url"
@@ -70,12 +66,12 @@ export function NewCaseForm() {
           value={url}
           onChange={e => setUrl(e.target.value)}
           placeholder="https://suspicious-link.example.com"
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
         />
       </div>
 
       {/* Submit row */}
-      <div className="flex flex-col gap-3 border-t border-white/8 pt-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-white/8 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-white/30">
           CheckMate may be wrong. Results are informational only — not advice.
         </p>

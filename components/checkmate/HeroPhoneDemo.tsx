@@ -25,7 +25,7 @@ export function HeroPhoneDemo() {
   return (
     <div className="relative mx-auto w-full max-w-[280px]">
       {/* Phone frame */}
-      <div className="relative rounded-[2.5rem] border border-white/15 bg-[#0a1520] px-3 py-8 shadow-[0_0_60px_rgba(122,226,207,0.15)]">
+      <div className="border-white/15 relative rounded-[2.5rem] border bg-[#0a1520] px-3 py-8 shadow-[0_0_60px_rgba(122,226,207,0.15)]">
         {/* Notch */}
         <div className="mx-auto mb-4 h-5 w-24 rounded-full bg-white/10" />
 
@@ -41,20 +41,22 @@ export function HeroPhoneDemo() {
           {messages.map(msg => (
             <div
               key={msg.id}
-              className={`flex ${msg.direction === 'out' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${
+                msg.direction === 'out' ? 'justify-end' : 'justify-start'
+              }`}
             >
               <div
                 className={[
-                  'max-w-[85%] rounded-2xl px-3 py-2 text-[11px] leading-relaxed whitespace-pre-line',
+                  'max-w-[85%] whitespace-pre-line rounded-2xl px-3 py-2 text-[11px] leading-relaxed',
                   msg.direction === 'out'
                     ? 'rounded-br-sm bg-white/10 text-white/50'
                     : msg.isCheckMate
-                      ? 'rounded-bl-sm border border-cm-green/30 bg-cm-green/10 text-white/80'
-                      : 'rounded-bl-sm bg-white/5 text-white/60'
+                    ? 'rounded-bl-sm border border-cm-green/30 bg-cm-green/10 text-white/80'
+                    : 'rounded-bl-sm bg-white/5 text-white/60'
                 ].join(' ')}
               >
                 {msg.isCheckMate && (
-                  <span className="mb-1 block font-medium uppercase tracking-widest text-[9px] text-cm-green">
+                  <span className="mb-1 block text-[9px] font-medium uppercase tracking-widest text-cm-green">
                     CheckMate
                   </span>
                 )}
@@ -74,7 +76,7 @@ export function HeroPhoneDemo() {
       {/* Glow under phone */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-10 left-1/2 h-32 w-56 -translate-x-1/2 rounded-full bg-cm-green/15 blur-[40px]"
+        className="bg-cm-green/15 pointer-events-none absolute -bottom-10 left-1/2 h-32 w-56 -translate-x-1/2 rounded-full blur-[40px]"
       />
     </div>
   )

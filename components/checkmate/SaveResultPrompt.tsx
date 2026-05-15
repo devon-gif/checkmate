@@ -7,7 +7,9 @@ interface SaveResultPromptProps {
   returnPath?: string
 }
 
-export function SaveResultPrompt({ returnPath = '/cases/new' }: SaveResultPromptProps) {
+export function SaveResultPrompt({
+  returnPath = '/cases/new'
+}: SaveResultPromptProps) {
   const signUpHref = `/sign-up?next=${encodeURIComponent(returnPath)}`
   const signInHref = `/sign-in?next=${encodeURIComponent(returnPath)}`
 

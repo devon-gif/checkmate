@@ -32,8 +32,7 @@ const RESULT = {
 }
 
 function ScoreMeter({ score }: { score: number }) {
-  const color =
-    score >= 75 ? '#f87171' : score >= 50 ? '#fbbf24' : '#34d399'
+  const color = score >= 75 ? '#f87171' : score >= 50 ? '#fbbf24' : '#34d399'
   return (
     <div className="flex flex-col items-center gap-1">
       <div
@@ -76,7 +75,9 @@ export function TextFirstDemo() {
             {DEMO_LINES.map(line => (
               <div
                 key={line.id}
-                className={`flex ${line.side === 'out' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${
+                  line.side === 'out' ? 'justify-end' : 'justify-start'
+                }`}
               >
                 <div
                   className={[
@@ -114,7 +115,10 @@ export function TextFirstDemo() {
               </p>
               <ul className="space-y-2">
                 {RESULT.flags.map(flag => (
-                  <li key={flag} className="flex items-start gap-2 text-sm text-white/60">
+                  <li
+                    key={flag}
+                    className="flex items-start gap-2 text-sm text-white/60"
+                  >
                     <span className="mt-0.5 text-red-400/80">⚑</span>
                     {flag}
                   </li>
@@ -123,8 +127,8 @@ export function TextFirstDemo() {
             </div>
 
             {/* Recommended action */}
-            <div className="rounded-xl border border-cm-green/20 bg-cm-green/8 p-4">
-              <p className="mb-1 font-medium uppercase tracking-widest text-xs text-cm-green">
+            <div className="bg-cm-green/8 rounded-xl border border-cm-green/20 p-4">
+              <p className="mb-1 text-xs font-medium uppercase tracking-widest text-cm-green">
                 Suggested next step
               </p>
               <p className="text-sm leading-relaxed text-white/70">
@@ -133,7 +137,8 @@ export function TextFirstDemo() {
             </div>
 
             <p className="text-center text-[11px] text-white/25">
-              CheckMate can be wrong. Verify through official channels before acting.
+              CheckMate can be wrong. Verify through official channels before
+              acting.
             </p>
           </GlassCard>
         </div>
