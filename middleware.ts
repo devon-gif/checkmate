@@ -31,8 +31,6 @@ const PUBLIC_PATHS = [
   '/',
   '/sign-in',
   '/sign-up',
-  '/create-account',
-  '/reset-password',
   '/terms',
   '/privacy',
   '/disclaimer',
@@ -40,8 +38,7 @@ const PUBLIC_PATHS = [
   '/acceptable-use',
   '/contact',
   '/legal-update',
-  '/try',
-  '/demo'
+  '/try'
 ]
 
 /**

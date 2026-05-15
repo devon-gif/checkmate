@@ -12,22 +12,25 @@ import { CheckMateLogo } from '@/components/checkmate/CheckMateLogo'
 export async function Header() {
   const cookieStore = cookies()
   const session = await auth({ cookieStore })
+  const isLoggedIn = !!session?.user
   return (
     <header className="sticky top-0 z-50 flex h-16 w-full shrink-0 items-center justify-between border-b border-white/8 bg-cm-bg/90 px-4 backdrop-blur-xl">
       <div className="flex items-center gap-6">
-        <CheckMateLogo href="/dashboard" />
-        <nav className="hidden items-center gap-1 md:flex">
-          <Button asChild variant="ghost" className="text-white/70 hover:text-white">
-            <Link href="/dashboard">Dashboard</Link>
-          </Button>
-          <Button asChild variant="ghost" className="text-white/70 hover:text-white">
-            <Link href="/cases/new">New case</Link>
-          </Button>
-        </nav>
+        <CheckMateLogo href="/" />
+        {isLoggedIn && (
+          <nav className="hidden items-center gap-1 md:flex">
+            <Button asChild variant="ghost" className="text-white/70 hover:text-white">
+              <Link href="/dashboard">Dashboard</Link>
+            </Button>
+            <Button asChild variant="ghost" className="text-white/70 hover:text-white">
+              <Link href="/cases/new">New case</Link>
+            </Button>
+          </nav>
+        )}
       </div>
       <div className="flex items-center justify-end gap-2">
         <ThemeToggle />
-        {session?.user ? (
+        {isLoggedIn ? (
           <>
             <Button
               asChild

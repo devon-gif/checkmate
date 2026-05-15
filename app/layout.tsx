@@ -11,6 +11,9 @@ import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  ),
   title: {
     default: 'CheckMate',
     template: `%s - CheckMate`
@@ -49,6 +52,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             {/* @ts-ignore */}
             <Header />
             <main className="flex flex-1 flex-col bg-muted/30">{children}</main>
+            <main className="flex flex-1 flex-col">{children}</main>
             <Footer />
           </div>
           <TailwindIndicator />
