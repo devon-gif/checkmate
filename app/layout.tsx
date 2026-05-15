@@ -51,7 +51,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <div className="flex min-h-screen flex-col">
             {/* @ts-ignore */}
             <Header />
-            <main className="flex flex-1 flex-col bg-muted/30">{children}</main>
             <main className="flex flex-1 flex-col">{children}</main>
             <Footer />
           </div>
