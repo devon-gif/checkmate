@@ -11,7 +11,7 @@ import { LegalDisclaimer } from '@/components/legal-disclaimer'
 import { RiskReport, type RiskReportData } from '@/components/risk-report'
 import { SaveResultPrompt } from '@/components/checkmate/SaveResultPrompt'
 import { IconArrowRight, IconSpinner } from '@/components/ui/icons'
-import type { CaseCategory, RiskLevel } from '@/lib/checkmate'
+import type { CaseCategory, RiskLevel } from '@/lib/checkmate-shared'
 
 const CATEGORIES: { value: CaseCategory | ''; label: string }[] = [
   { value: '', label: 'Not sure — let CheckMate decide' },

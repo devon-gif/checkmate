@@ -19,6 +19,8 @@ export {
 import {
   caseCategories,
   riskLevels,
+  type CaseCategory,
+  type RiskLevel,
   ANALYSIS_DISCLAIMER,
   getRiskLevel
 } from '@/lib/checkmate-shared'
@@ -50,25 +52,6 @@ export function detectUrls(input: string): string[] {
   return Array.from(
     new Set(matches.map(m => m.replace(/[.,;:!?]+$/, '')))
   )
-}
-
-export function getRiskLevel(score: number): RiskLevel {
-  if (score >= 85) return 'very_high'
-  if (score >= 65) return 'high'
-  if (score >= 35) return 'medium'
-  return 'low'
-}
-
-export function humanizeCategory(cat: string): string {
-  const map: Record<string, string> = {
-    scam_text: 'Scam text',
-    job_scam_or_ghost_job: 'Job scam / ghost job',
-    bill_or_fee: 'Bill or fee',
-    phishing_url: 'Phishing URL',
-    rental_or_marketplace: 'Rental / marketplace',
-    unknown: 'Unknown'
-  }
-  return map[cat] ?? cat.replace(/_/g, ' ')
 }
 
 // ─── Deterministic fallback ───────────────────────────────────────────────────

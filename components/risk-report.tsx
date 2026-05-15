@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { type CaseCategory, type RiskLevel, humanizeCategory } from '@/lib/checkmate'
+import { type CaseCategory, type RiskLevel, humanizeCategory } from '@/lib/checkmate-shared'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

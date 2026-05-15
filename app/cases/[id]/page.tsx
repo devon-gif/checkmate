@@ -9,10 +9,10 @@ import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
 import { CaseRiskBadge } from '@/components/case-risk-badge'
 import { IconArrowRight } from '@/components/ui/icons'
-import { humanizeCategory } from '@/lib/checkmate'
+import { humanizeCategory } from '@/lib/checkmate-shared'
 import { type Database, type Json } from '@/lib/db_types'
 import type { RiskReportData } from '@/components/risk-report'
-import type { CaseCategory, RiskLevel } from '@/lib/checkmate'
+import type { CaseCategory, RiskLevel } from '@/lib/checkmate-shared'
 
 function asStringArray(v: Json): string[] {
   return Array.isArray(v)
