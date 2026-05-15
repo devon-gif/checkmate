@@ -28,14 +28,14 @@ export function HeroSection() {
         {/* Headline */}
         <h1 className="cm-text-gradient mb-6 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
           Not sure if it&apos;s real?{' '}
-          <span className="block text-cm-green">Send it to CheckMate.</span>
+          <span className="block text-cm-green">Ask Ray.</span>
         </h1>
 
         {/* Subheadline */}
         <p className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg">
-          Text, forward, paste, or upload suspicious messages, job posts, links,
-          bills, and emails. CheckMate gives you a risk score, common red flags,
-          and what to do next.
+          Ray is your risk-check assistant inside CheckMate. Text, forward,
+          paste, or upload suspicious messages, job posts, links, bills, and
+          emails to get a risk score, common red flags, and what to do next.
         </p>
 
         {/* CTAs */}
@@ -44,14 +44,14 @@ export function HeroSection() {
             Try a free check
           </GradientButton>
           <GradientButton href="#text-demo" variant="secondary">
-            See how texting works
+            See how Ray works
           </GradientButton>
         </div>
 
         {/* Supporting line */}
         <p className="mt-8 text-xs text-white/40">
-          Works by text, email, or web. Save it to your home screen when
-          you&apos;re ready.
+          Works by text, email, or web. Save CheckMate to your home screen
+          when you&apos;re ready.
         </p>
       </div>
     </section>

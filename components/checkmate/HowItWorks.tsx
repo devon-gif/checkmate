@@ -3,23 +3,23 @@ import { GlassCard } from './GlassCard'
 const steps = [
   {
     number: '01',
-    title: 'Send it to CheckMate',
+    title: 'Send it to Ray',
     description:
-      'Text a suspicious message to our number, forward an email, paste it on the web, or upload a screenshot. Any channel works.',
+      'Text, forward, paste, or upload a suspicious message, link, job post, bill, or email.',
     icon: '📨'
   },
   {
     number: '02',
-    title: 'We scan for risk signals',
+    title: 'Ray checks for red flags',
     description:
-      'CheckMate checks for common red flags — unusual links, urgency tactics, impersonation patterns, and other signals that may be suspicious.',
+      'Ray looks for common risk signals, suspicious language, unsafe links, and confusing payment requests.',
     icon: '🔍'
   },
   {
     number: '03',
-    title: 'Get a plain-English readout',
+    title: 'Know what to do next',
     description:
-      'You receive a risk score, a list of red flags we noticed, and suggested next steps — so you can decide what to do without the guesswork.',
+      'Get a simple risk score, clear red flags, recommended next steps, and a safer reply you can copy.',
     icon: '✅'
   }
 ]
@@ -37,7 +37,7 @@ export function HowItWorks() {
             Three steps. No tech skills required.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/50">
-            CheckMate is designed to be as simple as sending a text — because
+            Ray is designed to be as simple as sending a text — because
             that&apos;s often exactly what it is.
           </p>
         </div>
