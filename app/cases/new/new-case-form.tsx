@@ -14,7 +14,7 @@ import { IconArrowRight, IconSpinner } from '@/components/ui/icons'
 import type { CaseCategory, RiskLevel } from '@/lib/checkmate-shared'
 
 const CATEGORIES: { value: CaseCategory | ''; label: string }[] = [
-  { value: '', label: 'Not sure — let CheckMate decide' },
+  { value: '', label: 'Not sure — let CheckRay decide' },
   { value: 'scam_text', label: 'Scam text / suspicious message' },
   { value: 'job_scam_or_ghost_job', label: 'Job offer / recruiter message' },
   { value: 'bill_or_fee', label: 'Bill, fee, or debt notice' },

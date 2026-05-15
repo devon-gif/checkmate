@@ -8,8 +8,8 @@ import {
 } from '@/components/legal-page-layout'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy – CheckMate',
-  description: 'CheckMate Privacy Policy'
+  title: 'Privacy Policy – CheckRay',
+  description: 'CheckRay Privacy Policy'
 }
 
 export default function PrivacyPage() {
@@ -21,9 +21,9 @@ export default function PrivacyPage() {
     >
       <LegalSection title="1. Overview">
         <p>
-          This Privacy Policy explains how CheckMate collects, uses, stores, and
+          This Privacy Policy explains how CheckRay collects, uses, stores, and
           shares information about you when you use our services. By using
-          CheckMate, you agree to this policy.
+          CheckRay, you agree to this policy.
         </p>
         <LawyerNote>
           [LAWYER REVIEW: privacy compliance including CCPA, CPRA, Virginia
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
 
       <LegalSection title="3. How We Use Your Information">
         <ul className="list-inside list-disc space-y-2">
-          <li>To provide, operate, and improve the CheckMate service.</li>
+          <li>To provide, operate, and improve the CheckRay service.</li>
           <li>To analyze submitted Items and generate risk assessments.</li>
           <li>To authenticate you and keep your account secure.</li>
           <li>
@@ -83,14 +83,14 @@ export default function PrivacyPage() {
       <LegalSection title="4. SMS / Email Communications">
         <p>
           If you use SMS or email features (e.g., forwarding suspicious messages
-          to CheckMate), you consent to receive service-related messages from
+          to CheckRay), you consent to receive service-related messages from
           us. Standard messaging rates may apply.
         </p>
         <p className="font-medium">
           Important: SMS, MMS, and email may not be fully secure in transit. Do
           not send full Social Security numbers, full bank account numbers, full
           card numbers, passwords, verification codes, medical records, or other
-          highly sensitive data via SMS/email to CheckMate unless absolutely
+          highly sensitive data via SMS/email to CheckRay unless absolutely
           necessary.
         </p>
         <LawyerNote>
@@ -152,7 +152,7 @@ export default function PrivacyPage() {
 
       <LegalSection title="9. Children's Privacy">
         <p>
-          CheckMate is not directed to children under 13. We do not knowingly
+          CheckRay is not directed to children under 13. We do not knowingly
           collect personal information from children. If you believe a child has
           provided us personal data, please{' '}
           <Link href="/contact" className="underline underline-offset-4">

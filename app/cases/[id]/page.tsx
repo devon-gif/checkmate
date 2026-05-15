@@ -35,7 +35,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props) {
-  return { title: `Case ${params.id.slice(0, 8)}… — CheckMate` }
+  return { title: `Case ${params.id.slice(0, 8)}… — CheckRay` }
 }
 
 export default async function CaseDetailPage({ params }: Props) {

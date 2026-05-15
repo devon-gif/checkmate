@@ -23,7 +23,7 @@ export function FooterText({ className, ...props }: React.ComponentProps<'p'>) {
       )}
       {...props}
     >
-      CheckMate provides informational risk analysis only — not legal,
+      CheckRay provides informational risk analysis only — not legal,
       financial, or medical advice. Results may be wrong. Verify before acting.
     </p>
   )
@@ -60,7 +60,7 @@ export function Footer({ className }: { className?: string }) {
         <FooterText />
         <FooterLegal />
         <p className="text-center text-xs text-muted-foreground/60">
-          &copy; {CURRENT_YEAR} CheckMate. All rights reserved.
+          &copy; {CURRENT_YEAR} CheckRay. All rights reserved.
         </p>
       </div>
     </footer>

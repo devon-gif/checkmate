@@ -9,8 +9,8 @@ import {
 } from '@/components/legal-page-layout'
 
 export const metadata: Metadata = {
-  title: 'AI Disclosure – CheckMate',
-  description: 'How CheckMate uses artificial intelligence'
+  title: 'AI Disclosure – CheckRay',
+  description: 'How CheckRay uses artificial intelligence'
 }
 
 export default function AiDisclosurePage() {
@@ -20,15 +20,15 @@ export default function AiDisclosurePage() {
       version={AI_DISCLOSURE_VERSION}
       effectiveDate="May 15, 2026"
     >
-      <LegalSection title="1. How CheckMate Uses AI">
+      <LegalSection title="1. How CheckRay Uses AI">
         <p>
-          CheckMate uses large language models (LLMs) and automated heuristics
+          CheckRay uses large language models (LLMs) and automated heuristics
           to analyze content you submit and generate risk assessments, red
           flags, and suggested next steps. The AI component is provided by a
           third-party AI model provider (currently OpenAI).
         </p>
         <p>
-          CheckMate is designed to help you identify possible risks and organize
+          CheckRay is designed to help you identify possible risks and organize
           next steps — not to replace professional judgment.
         </p>
       </LegalSection>
@@ -37,7 +37,7 @@ export default function AiDisclosurePage() {
         <p>
           Artificial intelligence is probabilistic. Results are based on
           patterns in training data and the content you submit.
-          CheckMate&rsquo;s AI analysis:
+          CheckRay&rsquo;s AI analysis:
         </p>
         <ul className="list-inside list-disc space-y-1">
           <li>
@@ -57,19 +57,19 @@ export default function AiDisclosurePage() {
           </li>
         </ul>
         <p className="font-medium">
-          Never rely solely on CheckMate&rsquo;s output when making financial,
+          Never rely solely on CheckRay&rsquo;s output when making financial,
           legal, health, safety, or other high-stakes decisions.
         </p>
       </LegalSection>
 
       <LegalSection title="3. What AI Analysis Is — and Is Not">
-        <p>CheckMate&rsquo;s AI outputs are:</p>
+        <p>CheckRay&rsquo;s AI outputs are:</p>
         <ul className="list-inside list-disc space-y-1">
           <li>Informational risk signals, not determinations of fact</li>
           <li>Probabilistic assessments, not guarantees</li>
           <li>Starting points for your own investigation, not final answers</li>
         </ul>
-        <p>CheckMate&rsquo;s AI outputs are NOT:</p>
+        <p>CheckRay&rsquo;s AI outputs are NOT:</p>
         <ul className="list-inside list-disc space-y-1">
           <li>Legal advice or legal opinions</li>
           <li>Financial or investment advice</li>
@@ -99,7 +99,7 @@ export default function AiDisclosurePage() {
       <LegalSection title="5. Third-Party AI Provider">
         <p>
           Submitted content is processed by a third-party AI model provider. By
-          using CheckMate, you acknowledge that content you submit may be sent
+          using CheckRay, you acknowledge that content you submit may be sent
           to that provider&rsquo;s API for processing, subject to their privacy
           and data-use policies. We do not use your submitted content to train
           AI models for resale or third-party use.
@@ -138,7 +138,7 @@ export default function AiDisclosurePage() {
           We do not claim that our AI is &ldquo;100% accurate,&rdquo; provides
           &ldquo;guaranteed protection,&rdquo; &ldquo;prevents scams,&rdquo; or
           &ldquo;verifies everything.&rdquo; These claims would be false.
-          CheckMate provides an extra layer of caution — not certainty.
+          CheckRay provides an extra layer of caution — not certainty.
         </p>
       </LegalSection>
 

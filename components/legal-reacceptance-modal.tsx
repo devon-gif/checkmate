@@ -54,12 +54,12 @@ export function LegalReacceptanceModal({ open }: LegalReacceptanceModalProps) {
           <DialogDescription>
             We&apos;ve updated our Terms of Service, Privacy Policy, and/or AI
             Disclosure. Please review and accept the updated documents to
-            continue using CheckMate.
+            continue using CheckRay.
           </DialogDescription>
         </DialogHeader>
 
         <p className="rounded-md border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-          CheckMate is not a law firm. Results are informational only — not
+          CheckRay is not a law firm. Results are informational only — not
           legal, financial, or medical advice. AI analysis can be wrong. Verify
           before acting.
         </p>

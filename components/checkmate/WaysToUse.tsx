@@ -30,7 +30,7 @@ const channels = [
     icon: '📱',
     label: 'Save to Home Screen',
     description:
-      'Use CheckMate like an app without an app store download.',
+      'Use CheckRay like an app without an app store download.',
     badge: 'Coming soon'
   }
 ]
@@ -49,7 +49,7 @@ export function WaysToUse() {
       <div className="relative z-10 mx-auto max-w-5xl">
         <div className="mb-14 text-center">
           <p className="mb-3 text-sm font-medium uppercase tracking-widest text-cm-green">
-            Ways to use CheckMate
+            Ways to use CheckRay
           </p>
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             However the message arrived,{' '}

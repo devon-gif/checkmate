@@ -33,7 +33,7 @@ export function HeroSection() {
 
         {/* Subheadline */}
         <p className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg">
-          Ray is your risk-check assistant inside CheckMate. Text, forward,
+          Ray is your risk-check assistant inside CheckRay. Text, forward,
           paste, or upload suspicious messages, job posts, links, bills, and
           emails to get a risk score, common red flags, and what to do next.
         </p>
@@ -50,7 +50,7 @@ export function HeroSection() {
 
         {/* Supporting line */}
         <p className="mt-8 text-xs text-white/40">
-          Works by text, email, or web. Save CheckMate to your home screen
+          Works by text, email, or web. Save CheckRay to your home screen
           when you&apos;re ready.
         </p>
       </div>

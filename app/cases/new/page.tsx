@@ -21,7 +21,7 @@ export default async function NewCasePage() {
             Create an account to analyze cases.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
-            CheckMate stores your cases privately — only your signed-in account
+            CheckRay stores your cases privately — only your signed-in account
             can read them.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -48,7 +48,7 @@ export default async function NewCasePage() {
           Analyze a suspicious message or link
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-white/40">
-          Paste the exact wording and add a URL if one was included. CheckMate
+          Paste the exact wording and add a URL if one was included. CheckRay
           will look for possible risk signals and common red flags.
         </p>
       </div>

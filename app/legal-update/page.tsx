@@ -5,7 +5,7 @@ import { auth } from '@/auth'
 import { LegalReacceptanceModal } from '@/components/legal-reacceptance-modal'
 
 export const metadata: Metadata = {
-  title: 'Updated Terms – CheckMate'
+  title: 'Updated Terms – CheckRay'
 }
 
 export default async function LegalUpdatePage() {

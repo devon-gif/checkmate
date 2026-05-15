@@ -4,8 +4,8 @@ import { ACCEPTABLE_USE_VERSION } from '@/lib/legalCopy'
 import { LegalPage, LegalSection } from '@/components/legal-page-layout'
 
 export const metadata: Metadata = {
-  title: 'Acceptable Use Policy – CheckMate',
-  description: 'CheckMate Acceptable Use Policy'
+  title: 'Acceptable Use Policy – CheckRay',
+  description: 'CheckRay Acceptable Use Policy'
 }
 
 export default function AcceptableUsePage() {
@@ -18,14 +18,14 @@ export default function AcceptableUsePage() {
       <LegalSection title="Overview">
         <p>
           This Acceptable Use Policy (&ldquo;AUP&rdquo;) describes what you may
-          and may not do when using CheckMate. By using our service, you agree
+          and may not do when using CheckRay. By using our service, you agree
           to this policy. Violations may result in suspension or termination of
           your account.
         </p>
       </LegalSection>
 
       <LegalSection title="Permitted Uses">
-        <p>CheckMate is designed for personal, non-commercial use to:</p>
+        <p>CheckRay is designed for personal, non-commercial use to:</p>
         <ul className="list-inside list-disc space-y-1">
           <li>
             Submit suspicious messages, emails, bills, links, job listings, or
@@ -42,12 +42,12 @@ export default function AcceptableUsePage() {
         </ul>
         <p>
           Commercial or enterprise use requires a separate written agreement
-          with CheckMate.
+          with CheckRay.
         </p>
       </LegalSection>
 
       <LegalSection title="Prohibited Uses">
-        <p>You may NOT use CheckMate to:</p>
+        <p>You may NOT use CheckRay to:</p>
         <ul className="list-inside list-disc space-y-1">
           <li>
             Submit content on behalf of others without their knowledge or
@@ -67,7 +67,7 @@ export default function AcceptableUsePage() {
             Facilitate, plan, or assist in any fraud, scam, or criminal activity
           </li>
           <li>
-            Attempt to probe, scan, or test the vulnerability of CheckMate
+            Attempt to probe, scan, or test the vulnerability of CheckRay
             systems
           </li>
           <li>
@@ -79,7 +79,7 @@ export default function AcceptableUsePage() {
             code or underlying models
           </li>
           <li>
-            Use outputs or data from CheckMate to train competing AI models or
+            Use outputs or data from CheckRay to train competing AI models or
             services without written consent
           </li>
           <li>Impersonate another person or entity</li>
@@ -93,7 +93,7 @@ export default function AcceptableUsePage() {
 
       <LegalSection title="Sensitive Data Caution">
         <p>
-          While CheckMate uses encryption in transit and at rest, no system is
+          While CheckRay uses encryption in transit and at rest, no system is
           completely secure. We strongly advise:
         </p>
         <ul className="list-inside list-disc space-y-1">
@@ -119,7 +119,7 @@ export default function AcceptableUsePage() {
 
       <LegalSection title="Reporting Violations">
         <p>
-          If you encounter content or behavior on CheckMate that violates this
+          If you encounter content or behavior on CheckRay that violates this
           AUP, please{' '}
           <Link href="/contact" className="underline underline-offset-4">
             contact us

@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { LegalPage, LegalSection } from '@/components/legal-page-layout'
 
 export const metadata: Metadata = {
-  title: 'Contact – CheckMate',
-  description: 'Contact the CheckMate team'
+  title: 'Contact – CheckRay',
+  description: 'Contact the CheckRay team'
 }
 
 export default function ContactPage() {
@@ -12,7 +12,7 @@ export default function ContactPage() {
     <LegalPage title="Contact Us" version="1.0.0" effectiveDate="May 15, 2026">
       <LegalSection title="General Inquiries">
         <p>
-          For general questions about CheckMate, feedback, or feature requests,
+          For general questions about CheckRay, feedback, or feature requests,
           please email us at:
         </p>
         <p className="font-medium text-foreground">

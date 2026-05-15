@@ -7,8 +7,8 @@ import {
 } from '@/components/legal-page-layout'
 
 export const metadata: Metadata = {
-  title: 'General Disclaimer – CheckMate',
-  description: 'CheckMate General Disclaimer'
+  title: 'General Disclaimer – CheckRay',
+  description: 'CheckRay General Disclaimer'
 }
 
 export default function DisclaimerPage() {
@@ -20,12 +20,12 @@ export default function DisclaimerPage() {
     >
       <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
         <strong>Please read this disclaimer carefully.</strong> By using
-        CheckMate, you acknowledge and agree to all statements on this page.
+        CheckRay, you acknowledge and agree to all statements on this page.
       </div>
 
       <LegalSection title="Not a Law Firm. Not Professional Advice.">
         <p>
-          CheckMate is not a law firm, financial institution, medical provider,
+          CheckRay is not a law firm, financial institution, medical provider,
           or any type of licensed professional services firm. Nothing on this
           platform — including AI-generated analysis, risk scores, red flags,
           suggested next steps, or reply language — constitutes legal advice,
@@ -33,26 +33,26 @@ export default function DisclaimerPage() {
           of professional advice.
         </p>
         <p>
-          CheckMate does not create an attorney-client relationship, financial
+          CheckRay does not create an attorney-client relationship, financial
           advisor relationship, doctor-patient relationship, or any other
           professional relationship of any kind.
         </p>
         <p>
           If you need legal, financial, medical, or other professional help,
-          please consult a qualified professional. Do not rely on CheckMate as a
+          please consult a qualified professional. Do not rely on CheckRay as a
           substitute.
         </p>
       </LegalSection>
 
       <LegalSection title="No Guarantee of Accuracy">
         <p>
-          AI and automated analysis can be wrong. CheckMate does not guarantee
+          AI and automated analysis can be wrong. CheckRay does not guarantee
           that any result, risk score, red flag, or suggested action is
           accurate, complete, current, or appropriate for your specific
           situation.
         </p>
         <p>
-          CheckMate does NOT guarantee that any message, link, job listing,
+          CheckRay does NOT guarantee that any message, link, job listing,
           bill, fee, collection notice, rental listing, or other document is:
         </p>
         <ul className="list-inside list-disc space-y-1">
@@ -68,13 +68,13 @@ export default function DisclaimerPage() {
       <LegalSection title="User Responsibility">
         <p>
           You are solely responsible for your own decisions and actions.
-          CheckMate provides informational starting points — you must
+          CheckRay provides informational starting points — you must
           independently verify important information with official sources,
           qualified professionals, employers, banks, insurers, landlords,
           government agencies, attorneys, doctors, or other appropriate experts
           before acting.
         </p>
-        <p>Do not use CheckMate as your only source of truth.</p>
+        <p>Do not use CheckRay as your only source of truth.</p>
       </LegalSection>
 
       <LegalSection title="Emergency & High-Stakes Situations">
@@ -104,7 +104,7 @@ export default function DisclaimerPage() {
 
       <LegalSection title="Safer Language Policy">
         <p>
-          CheckMate uses probabilistic language throughout the app:
+          CheckRay uses probabilistic language throughout the app:
           &ldquo;possible red flags,&rdquo; &ldquo;risk signals,&rdquo;
           &ldquo;appears suspicious,&rdquo; &ldquo;may be risky,&rdquo; and
           &ldquo;recommended next steps.&rdquo; This language is intentional. It
@@ -115,7 +115,7 @@ export default function DisclaimerPage() {
 
       <LegalSection title="Limitation of Liability">
         <p>
-          To the fullest extent permitted by law, CheckMate and its affiliates,
+          To the fullest extent permitted by law, CheckRay and its affiliates,
           officers, directors, and employees shall not be liable for any loss,
           damage, or harm of any kind arising from your use of the service or
           reliance on any result, including but not limited to financial loss,
@@ -129,7 +129,7 @@ export default function DisclaimerPage() {
 
       <LegalSection title="No Endorsement">
         <p>
-          CheckMate does not endorse, recommend, or validate any person,
+          CheckRay does not endorse, recommend, or validate any person,
           company, product, service, or course of action. References to official
           resources (FTC, banks, government agencies, etc.) are for
           informational convenience only and do not imply any affiliation or

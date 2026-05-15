@@ -1,5 +1,5 @@
 /**
- * CheckMate Legal Copy Utility
+ * CheckRay Legal Copy Utility
  *
  * Centralises version constants and helpers for legal acceptance tracking.
  * When you update any legal document, increment the version here.
@@ -68,14 +68,14 @@ export const CONSENT_CHECKBOX_LABEL =
 
 export const DISCLAIMER_COPY = {
   default:
-    'CheckMate can be wrong. This is informational only — not legal, financial, medical, or professional advice. Verify with official sources before acting.',
+    'CheckRay can be wrong. This is informational only — not legal, financial, medical, or professional advice. Verify with official sources before acting.',
 
   highRisk:
     'Do not send money, passwords, verification codes, bank details, SSN, ID documents, or personal information unless you have independently verified the recipient through official channels.',
 
-  bill: 'CheckMate does not determine whether a bill, fee, debt, lease charge, or legal notice is valid or enforceable. Use this as an informational starting point and verify with the sender, your records, and a qualified professional if needed.',
+  bill: 'CheckRay does not determine whether a bill, fee, debt, lease charge, or legal notice is valid or enforceable. Use this as an informational starting point and verify with the sender, your records, and a qualified professional if needed.',
 
-  job: "CheckMate does not guarantee whether a job, employer, recruiter, or listing is legitimate. Verify through the company's official website, official email domain, and trusted channels before sharing personal information or accepting any offer.",
+  job: "CheckRay does not guarantee whether a job, employer, recruiter, or listing is legitimate. Verify through the company's official website, official email domain, and trusted channels before sharing personal information or accepting any offer.",
 
   phishing:
     'Do not click suspicious links or enter personal information. Visit the official website directly or contact the organization through verified channels.',
