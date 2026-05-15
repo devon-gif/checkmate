@@ -2,7 +2,6 @@ import React from 'react'
 import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
-import { ExternalLink } from '@/components/external-link'
 
 const LEGAL_LINKS = [
   { href: '/terms', label: 'Terms' },
@@ -10,7 +9,7 @@ const LEGAL_LINKS = [
   { href: '/disclaimer', label: 'Disclaimer' },
   { href: '/ai-disclosure', label: 'AI Disclosure' },
   { href: '/acceptable-use', label: 'Acceptable Use' },
-  { href: '/contact', label: 'Contact' },
+  { href: '/contact', label: 'Contact' }
 ]
 
 export function FooterText({ className, ...props }: React.ComponentProps<'p'>) {
@@ -22,8 +21,8 @@ export function FooterText({ className, ...props }: React.ComponentProps<'p'>) {
       )}
       {...props}
     >
-      CheckMate provides informational risk analysis only — not legal, financial, or medical
-      advice. Results may be wrong. Verify before acting.
+      CheckMate provides informational risk analysis only — not legal,
+      financial, or medical advice. Results may be wrong. Verify before acting.
     </p>
   )
 }
@@ -53,10 +52,7 @@ export function FooterLegal({ className }: { className?: string }) {
 export function Footer({ className }: { className?: string }) {
   return (
     <footer
-      className={cn(
-        'border-t border-border bg-background py-4',
-        className
-      )}
+      className={cn('border-t border-border bg-background py-4', className)}
     >
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4">
         <FooterText />

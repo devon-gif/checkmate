@@ -4,7 +4,7 @@ export function LegalPage({
   title,
   version,
   effectiveDate,
-  children,
+  children
 }: {
   title: string
   version: string
@@ -27,11 +27,19 @@ export function LegalPage({
   )
 }
 
-export function LegalSection({ title, children }: { title: string; children: React.ReactNode }) {
+export function LegalSection({
+  title,
+  children
+}: {
+  title: string
+  children: React.ReactNode
+}) {
   return (
     <section>
       <h2 className="mb-3 text-lg font-semibold text-foreground">{title}</h2>
-      <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">{children}</div>
+      <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+        {children}
+      </div>
     </section>
   )
 }
@@ -51,12 +59,16 @@ export function LegalFooterLinks() {
     { href: '/disclaimer', label: 'Disclaimer' },
     { href: '/ai-disclosure', label: 'AI Disclosure' },
     { href: '/acceptable-use', label: 'Acceptable Use' },
-    { href: '/contact', label: 'Contact' },
+    { href: '/contact', label: 'Contact' }
   ]
   return (
     <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1">
       {links.map(l => (
-        <Link key={l.href} href={l.href} className="hover:text-foreground hover:underline">
+        <Link
+          key={l.href}
+          href={l.href}
+          className="hover:text-foreground hover:underline"
+        >
           {l.label}
         </Link>
       ))}

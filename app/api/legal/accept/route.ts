@@ -5,7 +5,7 @@ import {
   TERMS_VERSION,
   PRIVACY_VERSION,
   AI_DISCLOSURE_VERSION,
-  ACCEPTABLE_USE_VERSION,
+  ACCEPTABLE_USE_VERSION
 } from '@/lib/legalCopy'
 
 export async function POST(req: NextRequest) {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   // Require authentication
   const {
-    data: { session },
+    data: { session }
   } = await supabase.auth.getSession()
 
   if (!session?.user) {
@@ -38,12 +38,15 @@ export async function POST(req: NextRequest) {
     ai_disclosure_version: AI_DISCLOSURE_VERSION,
     acceptable_use_version: ACCEPTABLE_USE_VERSION,
     ip_address: ip,
-    user_agent: userAgent,
+    user_agent: userAgent
   })
 
   if (error) {
     console.error('[legal/accept] insert error:', error)
-    return NextResponse.json({ error: 'Failed to record acceptance' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to record acceptance' },
+      { status: 500 }
+    )
   }
 
   return NextResponse.json({ success: true })

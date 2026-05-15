@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { IconSpinner } from '@/components/ui/icons'
@@ -45,19 +45,24 @@ export function LegalReacceptanceModal({ open }: LegalReacceptanceModalProps) {
 
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={e => e.preventDefault()}>
+      <DialogContent
+        className="sm:max-w-md"
+        onPointerDownOutside={e => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Updated Terms & Policies</DialogTitle>
           <DialogDescription>
-            We&apos;ve updated our Terms of Service, Privacy Policy, and/or AI Disclosure. Please
-            review and accept the updated documents to continue using CheckMate.
+            We&apos;ve updated our Terms of Service, Privacy Policy, and/or AI
+            Disclosure. Please review and accept the updated documents to
+            continue using CheckMate.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-          CheckMate is not a law firm. Results are informational only — not legal, financial, or
-          medical advice. AI analysis can be wrong. Verify before acting.
-        </div>
+        <p className="rounded-md border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+          CheckMate is not a law firm. Results are informational only — not
+          legal, financial, or medical advice. AI analysis can be wrong. Verify
+          before acting.
+        </p>
 
         <ConsentCheckbox
           checked={checked}

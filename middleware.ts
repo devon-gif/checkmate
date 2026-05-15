@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server'
 import {
   TERMS_VERSION,
   PRIVACY_VERSION,
-  AI_DISCLOSURE_VERSION,
+  AI_DISCLOSURE_VERSION
 } from '@/lib/legalCopy'
 
 // Public paths that never require legal acceptance check
@@ -18,7 +18,7 @@ const PUBLIC_PATHS = [
   '/ai-disclosure',
   '/acceptable-use',
   '/contact',
-  '/legal-update',
+  '/legal-update'
 ]
 
 function isPublicPath(pathname: string) {
@@ -33,7 +33,7 @@ export async function middleware(req: NextRequest) {
 
   // Refresh session if expired - required for Server Components
   const {
-    data: { session },
+    data: { session }
   } = await supabase.auth.getSession()
 
   // Redirect unauthenticated users to sign-in
@@ -84,6 +84,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!share|api|_next/static|_next/image|favicon.ico).*)',
-  ],
+    '/((?!share|api|_next/static|_next/image|favicon.ico).*)'
+  ]
 }

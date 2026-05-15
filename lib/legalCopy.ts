@@ -20,7 +20,7 @@ export const CURRENT_LEGAL_VERSIONS = {
   terms: TERMS_VERSION,
   privacy: PRIVACY_VERSION,
   ai_disclosure: AI_DISCLOSURE_VERSION,
-  acceptable_use: ACCEPTABLE_USE_VERSION,
+  acceptable_use: ACCEPTABLE_USE_VERSION
 } as const
 
 // ---------------------------------------------------------------------------
@@ -75,12 +75,12 @@ export const DISCLAIMER_COPY = {
 
   bill: 'CheckMate does not determine whether a bill, fee, debt, lease charge, or legal notice is valid or enforceable. Use this as an informational starting point and verify with the sender, your records, and a qualified professional if needed.',
 
-  job: 'CheckMate does not guarantee whether a job, employer, recruiter, or listing is legitimate. Verify through the company\'s official website, official email domain, and trusted channels before sharing personal information or accepting any offer.',
+  job: "CheckMate does not guarantee whether a job, employer, recruiter, or listing is legitimate. Verify through the company's official website, official email domain, and trusted channels before sharing personal information or accepting any offer.",
 
   phishing:
     'Do not click suspicious links or enter personal information. Visit the official website directly or contact the organization through verified channels.',
 
-  compact: 'Informational only. Not advice. Verify before acting.',
+  compact: 'Informational only. Not advice. Verify before acting.'
 } as const
 
 export type DisclaimerVariant = keyof typeof DISCLAIMER_COPY

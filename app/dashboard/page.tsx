@@ -204,6 +204,8 @@ export default async function DashboardPage() {
           </div>
         )}
       </section>
+
+      <LegalDisclaimer variant="default" className="mb-4" />
     </div>
   )
 }

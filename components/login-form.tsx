@@ -72,7 +72,9 @@ export function LoginForm({
     e.preventDefault()
 
     if (action === 'sign-up' && !consentChecked) {
-      toast.error('You must agree to the Terms of Service, Privacy Policy, and AI Disclosure to sign up.')
+      toast.error(
+        'You must agree to the Terms of Service, Privacy Policy, and AI Disclosure to sign up.'
+      )
       return
     }
 
@@ -135,7 +137,9 @@ export function LoginForm({
         )}
 
         <div className="mt-4 flex items-center">
-          <Button disabled={isLoading || (action === 'sign-up' && !consentChecked)}>
+          <Button
+            disabled={isLoading || (action === 'sign-up' && !consentChecked)}
+          >
             {isLoading && <IconSpinner className="mr-2 animate-spin" />}
             {action === 'sign-in' ? 'Sign In' : 'Sign Up'}
           </Button>
