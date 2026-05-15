@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 
 import { auth } from '@/auth'
 import { CaseRiskBadge } from '@/components/case-risk-badge'
+import { LegalDisclaimer } from '@/components/legal-disclaimer'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { IconArrowRight, IconPlus } from '@/components/ui/icons'
