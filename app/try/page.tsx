@@ -4,7 +4,7 @@ import { NewCaseForm } from '@/app/cases/new/new-case-form'
 export const metadata = {
   title: 'Free Risk Check — CheckMate',
   description:
-    'Paste a suspicious message, link, or listing and get an instant AI risk report — no account required.'
+    'Paste a suspicious message, link, or listing and ask Ray for an instant risk report — no account required.'
 }
 
 export default function TryPage() {
@@ -16,14 +16,14 @@ export default function TryPage() {
           No account needed
         </span>
         <h1 className="text-3xl font-semibold tracking-tight text-white">
-          Free risk check
+          Ask Ray for a free risk check
         </h1>
         <p className="text-sm leading-6 text-white/50">
-          Paste a suspicious text, email, bill, job offer, or link below.
-          CheckMate analyses it instantly and gives you a plain-English risk
-          report.{' '}
+          Paste a suspicious text, email, bill, job offer, or link below. Ray
+          reads it and gives you a plain-English risk report.{' '}
           <span className="text-white/30">
-            Create a free account to save results and track your cases.
+            Create a free CheckMate account to save results and track your
+            cases.
           </span>
         </p>
       </div>

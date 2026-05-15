@@ -30,14 +30,14 @@ export default async function DashboardPage() {
       <div className="mx-auto flex w-full max-w-5xl flex-1 items-center px-6 py-16">
         <GlassCard className="w-full p-10">
           <span className="mb-5 inline-block rounded-full border border-cm-green/30 bg-cm-green/10 px-3 py-1 text-xs font-medium text-cm-green">
-            Personal risk assistant
+            Meet Ray — your risk-check assistant
           </span>
           <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-white md:text-5xl">
-            Check messages, links, bills, and offers before they cost you.
+            Ask Ray before you reply, click, pay, or share.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/50">
-            Paste suspicious text or a URL and get a plain-English risk readout,
-            possible red flags, and suggested next steps.
+            Paste suspicious text or a URL and Ray gives you a plain-English
+            risk readout, possible red flags, and suggested next steps.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <GradientButton href="/sign-in" variant="primary">
@@ -102,8 +102,9 @@ export default async function DashboardPage() {
             Your risk checks
           </h1>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-white/40">
-            Review active cases, risk signals, and suggested next steps before
-            replying, clicking, paying, or sharing information.
+            Review active cases, the risk signals Ray noticed, and suggested
+            next steps before replying, clicking, paying, or sharing
+            information.
           </p>
         </div>
         <GradientButton href="/cases/new" variant="primary">

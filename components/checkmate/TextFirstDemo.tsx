@@ -3,32 +3,39 @@ import { GlassCard } from './GlassCard'
 const DEMO_LINES = [
   {
     id: 1,
-    from: 'Unknown',
-    text: 'Hi, I saw your CV online. We have an urgent opening — $85/hr remote. No experience needed. Send your info to claim your spot.',
-    time: '2:17 PM',
-    side: 'in' as const
+    from: 'You',
+    text: 'Is this recruiter legit?',
+    time: '2:14 PM',
+    side: 'out' as const
   },
   {
     id: 2,
+    from: 'Unknown sender',
+    text: 'You’re hired for a remote role. We’ll send a check for equipment.',
+    time: '2:14 PM',
+    side: 'in' as const
+  },
+  {
+    id: 3,
     from: 'You',
-    text: 'Forwarding to CheckMate…',
-    time: '2:18 PM',
+    text: 'Forwarding to Ray…',
+    time: '2:15 PM',
     side: 'out' as const,
     faded: true
   }
 ]
 
 const RESULT = {
-  score: 82,
+  score: 92,
   level: 'HIGH' as const,
+  summary: 'Ray’s read: High Risk — possible job scam.',
   flags: [
-    'Unsolicited job offer with no company name',
-    '"No experience needed" + unusually high pay',
-    'Urgency language designed to pressure a quick response',
-    'Request for personal information before any formal process'
+    'Upfront equipment purchase',
+    'Text-only recruiter',
+    'No verified company email'
   ],
   action:
-    'Do not send personal information. If interested, research the company independently and verify through official job boards.'
+    'Do not send money, SSN, bank info, ID, passwords, or verification codes. Verify through the company’s official website before acting.'
 }
 
 function ScoreMeter({ score }: { score: number }) {
@@ -57,12 +64,11 @@ export function TextFirstDemo() {
             See it in action
           </p>
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Real example, real analysis.
+            Real example, real read from Ray.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/50">
-            This is a simulated demo. CheckMate may surface possible risk
-            signals like these — but can be wrong. Results are informational
-            only.
+            This is a simulated demo. Ray may surface possible risk signals
+            like these — but can be wrong. Results are informational only.
           </p>
         </div>
 
@@ -102,16 +108,21 @@ export function TextFirstDemo() {
           {/* Result card */}
           <GlassCard className="flex flex-col gap-5 p-6">
             <div className="flex items-start justify-between">
-              <p className="text-xs font-medium uppercase tracking-widest text-white/40">
-                CheckMate result
-              </p>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-widest text-white/40">
+                  Ray’s read
+                </p>
+                <p className="mt-1 text-sm font-medium text-white">
+                  {RESULT.summary}
+                </p>
+              </div>
               <ScoreMeter score={RESULT.score} />
             </div>
 
             {/* Red flags */}
             <div>
               <p className="mb-3 text-sm font-medium text-white">
-                Possible red flags
+                Ray found these red flags
               </p>
               <ul className="space-y-2">
                 {RESULT.flags.map(flag => (
@@ -129,16 +140,24 @@ export function TextFirstDemo() {
             {/* Recommended action */}
             <div className="bg-cm-green/8 rounded-xl border border-cm-green/20 p-4">
               <p className="mb-1 text-xs font-medium uppercase tracking-widest text-cm-green">
-                Suggested next step
+                Ray recommends
               </p>
               <p className="text-sm leading-relaxed text-white/70">
                 {RESULT.action}
               </p>
             </div>
 
+            <button
+              type="button"
+              className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-cm-green text-sm font-medium text-cm-bg transition hover:bg-cm-green/90"
+            >
+              Draft a safer reply
+            </button>
+
             <p className="text-center text-[11px] text-white/25">
-              CheckMate can be wrong. Verify through official channels before
-              acting.
+              Ray can be wrong. Results are informational only — not legal,
+              financial, medical, or professional advice. Verify through
+              official channels before acting.
             </p>
           </GlassCard>
         </div>

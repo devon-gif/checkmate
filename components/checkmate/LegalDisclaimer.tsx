@@ -12,9 +12,9 @@ export function LegalDisclaimerBanner({
   if (variant === 'compact') {
     return (
       <p className={cn('text-center text-xs text-white/30', className)}>
-        CheckMate may be wrong. Results are informational only — not legal,
-        financial, or medical advice. Verify through official channels before
-        acting.
+        Ray can be wrong. Results are informational only — not legal,
+        financial, medical, or professional advice. Verify through official
+        channels before acting.
       </p>
     )
   }
@@ -30,12 +30,12 @@ export function LegalDisclaimerBanner({
         ⚠ Important — please read
       </p>
       <p className="leading-relaxed">
-        CheckMate identifies possible risk signals and common red flags based on
-        patterns. It <strong>can be wrong</strong> and is not a guarantee that
-        any message is safe or a scam. Results are for informational purposes
-        only and do not constitute legal, financial, or professional advice.
-        Always verify through official channels before sharing information,
-        clicking links, or making payments.
+        Ray identifies possible risk signals and common red flags based on
+        patterns. Ray <strong>can be wrong</strong> and is not a guarantee
+        that any message is safe or a scam. Results are for informational
+        purposes only and do not constitute legal, financial, medical, or
+        other professional advice. Always verify through official channels
+        before sharing information, clicking links, or making payments.
       </p>
     </div>
   )

@@ -63,7 +63,7 @@ export function RiskPreviewCard({
           <p className={cn('text-sm font-semibold', levelColor(level))}>
             {humanizeLevel(level)}
           </p>
-          <p className="text-xs text-white/40">Risk score / 100</p>
+          <p className="text-xs text-white/40">Ray’s read · {score}/100</p>
         </div>
       </div>
 
@@ -86,7 +86,7 @@ export function RiskPreviewCard({
           ))}
           {flags.length > 3 && (
             <li className="text-xs text-white/30">
-              +{flags.length - 3} more red flags
+              +{flags.length - 3} more red flags Ray noticed
             </li>
           )}
         </ul>

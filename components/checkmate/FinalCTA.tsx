@@ -16,12 +16,11 @@ export function FinalCTA() {
           Ready to check something?
         </p>
         <h2 className="mb-6 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          Stop guessing. Let CheckMate take a look.
+          Before you reply, ask Ray.
         </h2>
         <p className="mb-10 text-base leading-relaxed text-white/50">
-          Paste your message, URL, or upload a screenshot. You&apos;ll get a
-          risk score, possible red flags, and what to do next — in seconds.
-          CheckMate can be wrong, so always verify through official channels.
+          One quick check can help you spot possible red flags before you act.
+          Ray can be wrong, so always verify through official channels.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4">

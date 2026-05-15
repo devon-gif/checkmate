@@ -3,7 +3,7 @@ import { GlassCard } from './GlassCard'
 const categories = [
   {
     icon: '📱',
-    label: 'Suspicious texts',
+    label: 'Scam texts',
     examples: [
       'Fake prize notices',
       'Delivery scam SMS',
@@ -12,21 +12,21 @@ const categories = [
   },
   {
     icon: '💼',
-    label: 'Job offers',
+    label: 'Ghost jobs and recruiter messages',
     examples: [
-      'Work-from-home listings',
-      'Upfront payment requests',
-      'Vague role descriptions'
+      'Vague role descriptions',
+      'Upfront equipment fees',
+      'Text-only recruiters'
     ]
   },
   {
     icon: '🔗',
-    label: 'Links & URLs',
+    label: 'Suspicious links',
     examples: ['Phishing links', 'Lookalike domains', 'Shortened URLs']
   },
   {
     icon: '🧾',
-    label: 'Bills & invoices',
+    label: 'Bills and fees',
     examples: [
       'Unexpected charges',
       'Unfamiliar vendor names',
@@ -34,36 +34,22 @@ const categories = [
     ]
   },
   {
-    icon: '📧',
-    label: 'Emails',
+    icon: '🏠',
+    label: 'Rental or marketplace messages',
+    examples: [
+      'Too-good-to-be-true rent',
+      'Overpayment scams',
+      'Unusual payment methods'
+    ]
+  },
+  {
+    icon: '�',
+    label: 'Forwarded emails',
     examples: [
       'Impersonation emails',
       'Urgent wire requests',
       'Fake login alerts'
     ]
-  },
-  {
-    icon: '🏠',
-    label: 'Rental listings',
-    examples: [
-      'Too-good-to-be-true rent',
-      'Overseas landlord stories',
-      'No in-person showing'
-    ]
-  },
-  {
-    icon: '🛒',
-    label: 'Marketplace messages',
-    examples: [
-      'Overpayment scams',
-      'Unusual payment methods',
-      'Shipping fee tricks'
-    ]
-  },
-  {
-    icon: '📄',
-    label: 'Documents & screenshots',
-    examples: ['Fake contracts', 'Altered cheques', 'Spoofed ID images']
   }
 ]
 
@@ -73,19 +59,19 @@ export function WhatCanCheck() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-14 text-center">
           <p className="mb-3 text-sm font-medium uppercase tracking-widest text-cm-green">
-            What CheckMate can check
+            What Ray can check
           </p>
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            If something feels off, we can help.
+            If something feels off, Ray can help.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/50">
-            CheckMate may identify possible risk signals across a wide range of
-            messages and content — though it can be wrong. Always verify through
+            Ray checks for risk signals in suspicious texts, links, jobs,
+            bills, and emails. Ray can be wrong. Always verify through
             official channels before acting.
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map(cat => (
             <GlassCard
               key={cat.label}

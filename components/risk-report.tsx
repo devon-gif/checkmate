@@ -87,7 +87,7 @@ function ScoreBar({ score, level }: { score: number; level: RiskLevel }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-muted-foreground">Risk score</span>
+        <span className="text-sm font-medium text-muted-foreground">Ray’s read</span>
         <span className="text-sm font-semibold tabular-nums">{score} / 100</span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -178,7 +178,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                   <line x1="4" y1="22" x2="4" y2="15" />
                 </svg>
-                Red flags
+                Ray found these red flags
               </span>
             </SectionHeading>
             <ul className="space-y-2">
@@ -201,7 +201,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
-                Recommended actions
+                Ray recommends
               </span>
             </SectionHeading>
             <BulletList items={report.recommended_actions} />
@@ -217,7 +217,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground" aria-hidden="true">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              Suggested safe reply
+              Safer reply from Ray
             </span>
           </SectionHeading>
           <CopyButton text={report.safe_reply} />

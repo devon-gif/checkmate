@@ -49,7 +49,7 @@ export function NewCaseForm() {
           id="cm-text"
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="Paste a text message, email, invoice notice, job offer, rental listing, marketplace message, or URL…"
+          placeholder="Paste a text message, email, invoice notice, job offer, rental listing, marketplace message, or URL for Ray to review…"
           rows={8}
           className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
         />
@@ -73,7 +73,7 @@ export function NewCaseForm() {
       {/* Submit row */}
       <div className="border-white/8 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-white/30">
-          CheckMate may be wrong. Results are informational only — not advice.
+          Ray can be wrong. Results are informational only — not advice.
         </p>
         <GradientButton
           type="submit"
@@ -83,12 +83,12 @@ export function NewCaseForm() {
           {isSubmitting ? (
             <>
               <IconSpinner className="mr-2 h-4 w-4 animate-spin" />
-              Analyzing…
+              Ray is reading…
             </>
           ) : (
             <>
               <IconArrowRight className="mr-2 h-4 w-4" />
-              Analyze case
+              Ask Ray
             </>
           )}
         </GradientButton>

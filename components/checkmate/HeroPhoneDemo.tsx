@@ -9,7 +9,7 @@ export function HeroPhoneDemo() {
     {
       id: 2,
       direction: 'out' as const,
-      text: 'Forwarded to CheckMate…',
+      text: 'Forwarded to Ray…',
       time: '10:43 AM',
       faded: true
     },
@@ -17,7 +17,7 @@ export function HeroPhoneDemo() {
       id: 3,
       direction: 'in' as const,
       isCheckMate: true,
-      text: '⚠️ Risk score: 87/100 — HIGH\n\nRed flags:\n• Unsolicited prize claim\n• Shortened URL hiding destination\n• Urgent "claim now" pressure\n\nRecommended: Do not click. Delete the message.',
+      text: 'Ray’s read: High Risk — 87/100\n\nRed flags Ray noticed:\n• Unsolicited prize claim\n• Shortened URL hiding destination\n• Urgent "claim now" pressure\n\nRay suggests: Do not click. Delete the message and verify through official channels if you think it might be real.',
       time: '10:43 AM'
     }
   ]
@@ -32,7 +32,7 @@ export function HeroPhoneDemo() {
         {/* Status bar */}
         <div className="mb-3 flex items-center justify-between px-2 text-[10px] text-white/40">
           <span>10:43</span>
-          <span>CheckMate ·</span>
+          <span>Ray · CheckMate</span>
           <span>●●●</span>
         </div>
 
@@ -57,7 +57,7 @@ export function HeroPhoneDemo() {
               >
                 {msg.isCheckMate && (
                   <span className="mb-1 block text-[9px] font-medium uppercase tracking-widest text-cm-green">
-                    CheckMate
+                    Ray
                   </span>
                 )}
                 {msg.text}

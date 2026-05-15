@@ -3,30 +3,34 @@ import { GlassCard } from './GlassCard'
 const channels = [
   {
     icon: '💬',
-    label: 'Text message',
-    description:
-      'Text or forward the suspicious message to CheckMate. Get a reply within seconds.',
+    label: 'Text Ray',
+    description: 'Send suspicious texts, links, or screenshots.',
     badge: 'Most popular'
   },
   {
     icon: '📧',
-    label: 'Email forward',
-    description:
-      'Forward the email to CheckMate. It reads the headers and body for risk signals.',
+    label: 'Forward Email',
+    description: 'Forward questionable emails, notices, or bills.',
     badge: null
   },
   {
-    icon: '🖥️',
-    label: 'Web paste',
+    icon: '�',
+    label: 'Paste a Link',
     description:
-      'Paste text, a URL, or upload a screenshot directly on this site. No sign-in required.',
+      'Ask Ray to check job posts, payment pages, package links, and more.',
+    badge: null
+  },
+  {
+    icon: '🧾',
+    label: 'Upload a Bill',
+    description: 'Review fees, final notices, PDFs, and screenshots.',
     badge: null
   },
   {
     icon: '📱',
-    label: 'Home screen app',
+    label: 'Save to Home Screen',
     description:
-      'Add CheckMate to your home screen for one-tap access when something feels off.',
+      'Use CheckMate like an app without an app store download.',
     badge: 'Coming soon'
   }
 ]
@@ -48,12 +52,13 @@ export function WaysToUse() {
             Ways to use CheckMate
           </p>
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            However you got the message, <br className="hidden sm:block" />
-            CheckMate can help.
+            However the message arrived,{' '}
+            <br className="hidden sm:block" />
+            Ray can help.
           </h2>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {channels.map(channel => (
             <GlassCard
               key={channel.label}
