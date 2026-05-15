@@ -3,27 +3,24 @@ import Link from 'next/link'
 
 import { auth } from '@/auth'
 import { Button } from '@/components/ui/button'
-import { IconNextChat, IconPlus } from '@/components/ui/icons'
+import { IconPlus } from '@/components/ui/icons'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 import { cookies } from 'next/headers'
+import { CheckMateLogo } from '@/components/checkmate/CheckMateLogo'
 
 export async function Header() {
   const cookieStore = cookies()
   const session = await auth({ cookieStore })
   return (
-    <header className="sticky top-0 z-50 flex h-16 w-full shrink-0 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 flex h-16 w-full shrink-0 items-center justify-between border-b border-white/8 bg-cm-bg/90 px-4 backdrop-blur-xl">
       <div className="flex items-center gap-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <IconNextChat className="h-6 w-6 dark:hidden" inverted />
-          <IconNextChat className="hidden h-6 w-6 dark:block" />
-          <span className="font-semibold tracking-tight">CheckMate</span>
-        </Link>
+        <CheckMateLogo href="/dashboard" />
         <nav className="hidden items-center gap-1 md:flex">
-          <Button asChild variant="ghost">
+          <Button asChild variant="ghost" className="text-white/70 hover:text-white">
             <Link href="/dashboard">Dashboard</Link>
           </Button>
-          <Button asChild variant="ghost">
+          <Button asChild variant="ghost" className="text-white/70 hover:text-white">
             <Link href="/cases/new">New case</Link>
           </Button>
         </nav>
@@ -32,7 +29,10 @@ export async function Header() {
         <ThemeToggle />
         {session?.user ? (
           <>
-            <Button asChild className="hidden sm:inline-flex">
+            <Button
+              asChild
+              className="hidden bg-cm-green text-cm-bg hover:bg-cm-green/90 sm:inline-flex"
+            >
               <Link href="/cases/new">
                 <IconPlus className="mr-2" />
                 New case
@@ -42,10 +42,13 @@ export async function Header() {
           </>
         ) : (
           <>
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" asChild className="text-white/70 hover:text-white">
               <Link href="/sign-in">Login</Link>
             </Button>
-            <Button asChild>
+            <Button
+              asChild
+              className="bg-cm-green text-cm-bg hover:bg-cm-green/90"
+            >
               <Link href="/sign-up">Sign up</Link>
             </Button>
           </>

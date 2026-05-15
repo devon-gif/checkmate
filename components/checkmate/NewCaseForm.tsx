@@ -54,7 +54,7 @@ export function NewCaseForm() {
           onChange={e => setText(e.target.value)}
           placeholder="Paste a text message, email, invoice notice, job offer, rental listing, marketplace message, or URL…"
           rows={8}
-          className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
+          className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
         />
       </div>
 
@@ -70,7 +70,7 @@ export function NewCaseForm() {
           value={url}
           onChange={e => setUrl(e.target.value)}
           placeholder="https://suspicious-link.example.com"
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
         />
       </div>
 
