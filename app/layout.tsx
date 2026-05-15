@@ -11,10 +11,11 @@ import { Header } from '@/components/header'
 
 export const metadata: Metadata = {
   title: {
-    default: 'Next.js AI Chatbot',
-    template: `%s - Next.js AI Chatbot`
+    default: 'CheckMate',
+    template: `%s - CheckMate`
   },
-  description: 'An AI-powered chatbot template built with Next.js and Vercel.',
+  description:
+    'A personal risk assistant for suspicious texts, emails, bills, links, and listings.',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: 'white' },
     { media: '(prefers-color-scheme: dark)', color: 'black' }
@@ -46,7 +47,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <div className="flex min-h-screen flex-col">
             {/* @ts-ignore */}
             <Header />
-            <main className="flex flex-1 flex-col bg-muted/50">{children}</main>
+            <main className="flex flex-1 flex-col bg-muted/30">{children}</main>
           </div>
           <TailwindIndicator />
         </Providers>

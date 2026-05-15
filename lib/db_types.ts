@@ -50,12 +50,440 @@ export interface Database {
           payload?: Json | null
           user_id?: string | null
         }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          metadata: Json
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          metadata?: Json
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          metadata?: Json
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "chats_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            foreignKeyName: 'profiles_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          metadata: Json
+          plan: string
+          provider: string
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          metadata?: Json
+          plan?: string
+          provider?: string
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          metadata?: Json
+          plan?: string
+          provider?: string
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'subscriptions_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      cases: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          risk_level: string
+          risk_score: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          risk_level?: string
+          risk_score?: number
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          risk_level?: string
+          risk_score?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'cases_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      case_messages: {
+        Row: {
+          case_id: string
+          content: string
+          created_at: string
+          id: string
+          metadata: Json
+          sender_role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          sender_role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          case_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          sender_role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'case_messages_case_id_fkey'
+            columns: ['case_id']
+            referencedRelation: 'cases'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'case_messages_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      case_attachments: {
+        Row: {
+          case_id: string
+          content_type: string | null
+          created_at: string
+          file_name: string
+          file_size: number | null
+          id: string
+          message_id: string | null
+          metadata: Json
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          content_type?: string | null
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json
+          storage_bucket: string
+          storage_path: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          case_id?: string
+          content_type?: string | null
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'case_attachments_case_id_fkey'
+            columns: ['case_id']
+            referencedRelation: 'cases'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'case_attachments_message_case_fkey'
+            columns: ['message_id', 'case_id']
+            referencedRelation: 'case_messages'
+            referencedColumns: ['id', 'case_id']
+          },
+          {
+            foreignKeyName: 'case_attachments_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      risk_reports: {
+        Row: {
+          case_id: string
+          created_at: string
+          disclaimer: string | null
+          id: string
+          recommended_actions: Json
+          red_flags: Json
+          risk_level: string
+          risk_score: number | null
+          safe_reply: string | null
+          sources: Json
+          summary: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          disclaimer?: string | null
+          id?: string
+          recommended_actions?: Json
+          red_flags?: Json
+          risk_level?: string
+          risk_score?: number | null
+          safe_reply?: string | null
+          sources?: Json
+          summary?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          disclaimer?: string | null
+          id?: string
+          recommended_actions?: Json
+          red_flags?: Json
+          risk_level?: string
+          risk_score?: number | null
+          safe_reply?: string | null
+          sources?: Json
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'risk_reports_case_id_fkey'
+            columns: ['case_id']
+            referencedRelation: 'cases'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      usage_events: {
+        Row: {
+          cost_estimate: number | null
+          created_at: string
+          event_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          cost_estimate?: number | null
+          created_at?: string
+          event_type: string
+          id?: string
+          user_id?: string
+        }
+        Update: {
+          cost_estimate?: number | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'usage_events_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      phone_numbers: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          label: string | null
+          phone_number: string
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          phone_number: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          phone_number?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'phone_numbers_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      email_aliases: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_primary: boolean
+          label: string | null
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'email_aliases_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           }
         ]
       }
@@ -111,10 +539,10 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: "buckets_owner_fkey"
-            columns: ["owner"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            foreignKeyName: 'buckets_owner_fkey'
+            columns: ['owner']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           }
         ]
       }
@@ -178,10 +606,10 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: "objects_bucketId_fkey"
-            columns: ["bucket_id"]
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
+            foreignKeyName: 'objects_bucketId_fkey'
+            columns: ['bucket_id']
+            referencedRelation: 'buckets'
+            referencedColumns: ['id']
           }
         ]
       }
@@ -253,4 +681,3 @@ export interface Database {
     }
   }
 }
-

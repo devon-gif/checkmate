@@ -14,7 +14,7 @@ export async function getChats(userId?: string | null) {
   }
   try {
     const cookieStore = cookies()
-    const supabase = createServerActionClient<Database>({
+    const supabase = createServerActionClient<Database, 'public', any>({
       cookies: () => cookieStore
     })
     const { data } = await supabase
@@ -32,7 +32,7 @@ export async function getChats(userId?: string | null) {
 
 export async function getChat(id: string) {
   const cookieStore = cookies()
-  const supabase = createServerActionClient<Database>({
+  const supabase = createServerActionClient<Database, 'public', any>({
     cookies: () => cookieStore
   })
   const { data } = await supabase
@@ -47,7 +47,7 @@ export async function getChat(id: string) {
 export async function removeChat({ id, path }: { id: string; path: string }) {
   try {
     const cookieStore = cookies()
-    const supabase = createServerActionClient<Database>({
+    const supabase = createServerActionClient<Database, 'public', any>({
       cookies: () => cookieStore
     })
     await supabase.from('chats').delete().eq('id', id).throwOnError()
@@ -64,7 +64,7 @@ export async function removeChat({ id, path }: { id: string; path: string }) {
 export async function clearChats() {
   try {
     const cookieStore = cookies()
-    const supabase = createServerActionClient<Database>({
+    const supabase = createServerActionClient<Database, 'public', any>({
       cookies: () => cookieStore
     })
     await supabase.from('chats').delete().throwOnError()
@@ -80,7 +80,7 @@ export async function clearChats() {
 
 export async function getSharedChat(id: string) {
   const cookieStore = cookies()
-  const supabase = createServerActionClient<Database>({
+  const supabase = createServerActionClient<Database, 'public', any>({
     cookies: () => cookieStore
   })
   const { data } = await supabase
@@ -100,7 +100,7 @@ export async function shareChat(chat: Chat) {
   }
 
   const cookieStore = cookies()
-  const supabase = createServerActionClient<Database>({
+  const supabase = createServerActionClient<Database, 'public', any>({
     cookies: () => cookieStore
   })
   await supabase

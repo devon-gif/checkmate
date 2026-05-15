@@ -18,7 +18,7 @@ const openai = new OpenAIApi(configuration)
 
 export async function POST(req: Request) {
   const cookieStore = cookies()
-  const supabase = createRouteHandlerClient<Database>({
+  const supabase = createRouteHandlerClient<Database, 'public', any>({
     cookies: () => cookieStore
   })
   const json = await req.json()
