@@ -40,7 +40,7 @@ export function HeroSection() {
 
         {/* CTAs */}
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <GradientButton href="/cases/new" variant="primary">
+          <GradientButton href="/try" variant="primary">
             Try a free check
           </GradientButton>
           <GradientButton href="#text-demo" variant="secondary">
