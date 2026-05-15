@@ -32,7 +32,7 @@ export function HeroPhoneDemo() {
         {/* Status bar */}
         <div className="mb-3 flex items-center justify-between px-2 text-[10px] text-white/40">
           <span>10:43</span>
-          <span>Ray · CheckMate</span>
+          <span>Ray · CheckRay</span>
           <span>●●●</span>
         </div>
 

@@ -15,11 +15,11 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
   ),
   title: {
-    default: 'CheckMate',
-    template: `%s - CheckMate`
+    default: 'CheckRay — Ask Ray before you reply',
+    template: `%s — CheckRay`
   },
   description:
-    'A personal risk assistant for suspicious texts, emails, bills, links, and listings.',
+    'Check suspicious texts, job posts, links, bills, and emails for possible red flags with Ray, the AI risk-check assistant inside CheckRay.',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: 'white' },
     { media: '(prefers-color-scheme: dark)', color: 'black' }

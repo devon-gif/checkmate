@@ -2,7 +2,7 @@ import { GlassCard } from '@/components/checkmate/GlassCard'
 import { NewCaseForm } from '@/app/cases/new/new-case-form'
 
 export const metadata = {
-  title: 'Free Risk Check — CheckMate',
+  title: 'Free Risk Check — CheckRay',
   description:
     'Paste a suspicious message, link, or listing and ask Ray for an instant risk report — no account required.'
 }
@@ -22,7 +22,7 @@ export default function TryPage() {
           Paste a suspicious text, email, bill, job offer, or link below. Ray
           reads it and gives you a plain-English risk report.{' '}
           <span className="text-white/30">
-            Create a free CheckMate account to save results and track your
+            Create a free CheckRay account to save results and track your
             cases.
           </span>
         </p>
