@@ -20,7 +20,7 @@ export async function Header() {
   const isLoggedIn = !!session?.user
 
   return (
-    <header className="sticky top-0 left-0 right-0 z-50 bg-deep/70 backdrop-blur-xl border-b border-white/5">
+    <header className="sticky top-0 left-0 right-0 z-50 bg-deep/55 backdrop-blur-lg border-b border-white/8" style={{ boxShadow: '0 1px 0 0 rgba(255,255,255,0.04), inset 0 1px 0 0 rgba(255,255,255,0.04)' }}>
       <div className="center flex items-center h-14.5 max-md:h-14">
         {/* Logo */}
         <Link
