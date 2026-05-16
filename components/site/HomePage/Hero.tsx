@@ -63,7 +63,7 @@ export default function Hero() {
             Free scam and risk checks. No account required.
           </div>
           <div className="mb-8 text-big-title-1 bg-radial-white-1 bg-clip-text text-transparent max-xl:text-big-title-2 max-lg:text-title-1 max-lg:mb-5 max-md:mb-[20rem] max-md:text-big-title-mobile">
-            Not sure if it's real?
+            Not sure if it&apos;s real?
             <br />
             Check with Ray first.
           </div>
