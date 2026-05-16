@@ -239,7 +239,79 @@ Run the migrations in order in the Supabase SQL Editor:
 
 ---
 
-## Response Shape
+## Canonical curl test cases
+
+Set `BASE=http://localhost:3000` before running.
+
+### J1. Fake-check job scam (expect: very_high, score 92–98)
+
+```bash
+curl -s -X POST $BASE/api/analyze-case \
+  -H "Content-Type: application/json" \
+  -d '{"input_text":"You are hired for a remote data entry role. We will send a check for equipment. Deposit it and wire the difference back."}' \
+  | jq '{risk_level:.report.risk_level,risk_score:.report.risk_score,category:.report.category}'
+```
+Expected: `risk_level: "very_high"`, `risk_score: 92–98`, `category: "job_scam_or_ghost_job"`
+Red flags must include "Fake check or equipment check request" and "Wire money back request".
+`safe_reply` must mention "do not deposit" and "company email domain".
+
+### J2. Toll phishing (expect: very_high, score 85–92)
+
+```bash
+curl -s -X POST $BASE/api/analyze-case \
+  -H "Content-Type: application/json" \
+  -d '{"input_text":"Final notice: pay your toll balance now at track-package-fast-help.com or your registration may be suspended."}' \
+  | jq '{risk_level:.report.risk_level,risk_score:.report.risk_score,category:.report.category}'
+```
+Expected: `risk_level: "very_high"`, `risk_score: 85–92`, `category: "phishing_url"`
+
+### J3. Bill/fee dispute (expect: medium, score 30–55, no "scam" in summary)
+
+```bash
+curl -s -X POST $BASE/api/analyze-case \
+  -H "Content-Type: application/json" \
+  -d '{"input_text":"My landlord charged me $1,248.97 for carpet replacement after move-out. They say it was prorated over 60 months. What should I ask for before paying?"}' \
+  | jq '{risk_level:.report.risk_level,risk_score:.report.risk_score,category:.report.category,summary:.report.summary}'
+```
+Expected: `risk_level: "medium"`, `risk_score: 30–55`, `category: "bill_or_fee"`
+`summary` must NOT contain the word "scam". Must suggest requesting itemization or receipts.
+
+### J4. Low-risk verification (expect: low, score 0–29)
+
+```bash
+curl -s -X POST $BASE/api/analyze-case \
+  -H "Content-Type: application/json" \
+  -d '{"input_text":"Can you send me the official job posting and contact me from your company email domain before we continue?"}' \
+  | jq '{risk_level:.report.risk_level,risk_score:.report.risk_score}'
+```
+Expected: `risk_level: "low"`, `risk_score: 0–29`
+
+### J5. Empty input (expect: 400)
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" -X POST $BASE/api/analyze-case \
+  -H "Content-Type: application/json" -d '{}'
+```
+Expected: `400`
+
+### J6. Too-short input (expect: 400 validation_error)
+
+```bash
+curl -s -X POST $BASE/api/analyze-case \
+  -H "Content-Type: application/json" \
+  -d '{"input_text":"hi"}' | jq .error
+```
+Expected: `"validation_error"`
+
+### J7. No stack trace in errors
+
+```bash
+curl -s -X POST $BASE/api/analyze-case \
+  -H "Content-Type: application/json" -d '{}' | jq .
+```
+Response must NOT contain `stack`, `at Object.`, `node_modules`, or file paths.
+
+---
 
 ```jsonc
 {
