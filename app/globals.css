@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Helvetica face used by the premium Neurovia template */
+@font-face {
+  font-family: 'Helvetica';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url('/fonts/Helvetica.woff2') format('woff2'),
+    url('/fonts/Helvetica.woff') format('woff');
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -98,5 +109,72 @@
 
   .cm-border-subtle {
     border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Premium dotted-grid texture, used as a subtle hero background overlay. */
+  .cm-grid-bg {
+    background-image:
+      radial-gradient(
+        circle at 1px 1px,
+        rgba(255, 255, 255, 0.06) 1px,
+        transparent 0
+      );
+    background-size: 28px 28px;
+    mask-image: radial-gradient(
+      ellipse at center,
+      rgba(0, 0, 0, 0.9) 0%,
+      transparent 70%
+    );
+    -webkit-mask-image: radial-gradient(
+      ellipse at center,
+      rgba(0, 0, 0, 0.9) 0%,
+      transparent 70%
+    );
+  }
+
+  /* Soft mint conic accent ring, used behind the hero phone for cinematic glow. */
+  .cm-conic-glow {
+    background: conic-gradient(
+      from 180deg at 50% 50%,
+      rgba(122, 226, 207, 0) 0deg,
+      rgba(122, 226, 207, 0.2) 90deg,
+      rgba(122, 226, 207, 0) 180deg,
+      rgba(122, 226, 207, 0.15) 270deg,
+      rgba(122, 226, 207, 0) 360deg
+    );
+  }
+
+  /* Radial mask used by the premium template behind the hero video orb. */
+  .mask-radial {
+    -webkit-mask-image: radial-gradient(
+      50% 50% at 50% 50%,
+      #000 20%,
+      transparent 52%
+    );
+    mask-image: radial-gradient(
+      50% 50% at 50% 50%,
+      #000 20%,
+      transparent 52%
+    );
+  }
+}
+
+/* ── Premium template component utilities (ported from Neurovia) ──────────── */
+@layer components {
+  .center {
+    @apply mx-auto w-full max-w-360 px-20 max-xl:px-10 max-md:px-5;
+  }
+  .label {
+    @apply inline-flex items-center h-8 px-3.5 rounded-lg
+      text-title-5 text-white
+      max-md:h-8 max-md:text-title-3-mobile;
+    background-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.15),
+      rgba(255, 255, 255, 0.15)
+    );
+    box-shadow:
+      0.0625rem 0.0625rem 0.0625rem 0 rgba(255, 255, 255, 0.1) inset,
+      0 0 0.625rem 0 rgba(255, 255, 255, 0.1) inset;
   }
 }
