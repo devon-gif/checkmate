@@ -11,6 +11,10 @@ import { type Database, type Json } from '@/lib/db_types'
 import { DashboardCards } from '@/components/checkmate/DashboardCards'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
+import {
+  BillingStatusCard,
+  type BillingStatus
+} from '@/components/checkmate/BillingStatusCard'
 
 type CaseRow = Database['public']['Tables']['cases']['Row']
 type ReportRow = Database['public']['Tables']['risk_reports']['Row']
@@ -100,6 +104,31 @@ export default async function DashboardPage() {
     .eq('event_type', 'check_created')
     .gte('created_at', since24h)
 
+  // Billing status
+  const { data: subRow } = await supabase
+    .from('subscriptions')
+    .select('status, trial_ends_at, plan')
+    .eq('user_id', session.user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const subAny = subRow as any
+  let billingStatus: BillingStatus = 'unknown'
+  if (subAny?.status === 'active') {
+    billingStatus = 'active'
+  } else if (subAny?.status === 'trialing') {
+    const trialEnd = subAny.trial_ends_at ? new Date(subAny.trial_ends_at) : null
+    billingStatus = trialEnd && new Date() < trialEnd ? 'trialing' : 'expired'
+  } else if (subRow) {
+    billingStatus = 'expired'
+  } else {
+    // No subscription row yet — first visit, trial will be created on first check
+    billingStatus = 'trialing'
+  }
+
+  const stripeConfigured = Boolean(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO)
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       {/* Header row */}
@@ -132,6 +161,13 @@ export default async function DashboardPage() {
         averageScore={averageScore}
         checksUsed={checksUsedToday ?? 0}
         checksLimit={FREE_TIER_DAILY_LIMIT}
+      />
+
+      {/* Billing status */}
+      <BillingStatusCard
+        status={billingStatus}
+        trialEndsAt={subAny?.trial_ends_at ?? null}
+        stripeConfigured={stripeConfigured}
       />
 
       {/* Cases list */}
