@@ -23,6 +23,12 @@ interface Props {
   trialEndsAt?: string | null
   /** true when NEXT_PUBLIC_STRIPE_PRICE_ID_PRO is present server-side */
   stripeConfigured: boolean
+  /** PlanId from user_billing e.g. 'trial' | 'basic' | 'plus' | 'free' */
+  plan?: string | null
+  /** Checks used this calendar month */
+  checksUsed?: number
+  /** Monthly check limit (null = unlimited) */
+  checksLimit?: number | null
 }
 
 function daysUntil(iso: string): number {
@@ -32,7 +38,7 @@ function daysUntil(iso: string): number {
   )
 }
 
-export function BillingStatusCard({ status, trialEndsAt, stripeConfigured }: Props) {
+export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan, checksUsed = 0, checksLimit }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -91,12 +97,41 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured }: Pro
         />
 
         <div>
-          {status === 'active' && (
+          {status === 'active' && (() => {
+            const isPlus = plan === 'plus' || plan === 'plus_yearly'
+            const isBasic = plan === 'basic' || plan === 'basic_yearly'
+            if (isPlus) return (
+              <>
+                <p className="text-sm font-medium text-white">Plus plan</p>
+                <p className="mt-0.5 text-xs text-white/40">Unlimited fair-use checks included.</p>
+              </>
+            )
+            if (isBasic) return (
+              <>
+                <p className="text-sm font-medium text-white">
+                  Basic plan
+                  {checksLimit != null && (
+                    <span className="ml-2 text-xs font-normal text-white/50">
+                      {checksUsed}/{checksLimit} checks this month
+                    </span>
+                  )}
+                </p>
+                <p className="mt-0.5 text-xs text-white/40">25 checks per month.</p>
+              </>
+            )
+            // Generic active (unknown plan)
+            return (
+              <>
+                <p className="text-sm font-medium text-white">Plan active</p>
+                <p className="mt-0.5 text-xs text-white/40">Unlimited risk checks included.</p>
+              </>
+            )
+          })()}
+
+          {status === 'unknown' && (
             <>
-              <p className="text-sm font-medium text-white">Pro plan active</p>
-              <p className="mt-0.5 text-xs text-white/40">
-                Unlimited risk checks included.
-              </p>
+              <p className="text-sm font-medium text-white">Free</p>
+              <p className="mt-0.5 text-xs text-white/40">1 check per month. Start a free trial to unlock more.</p>
             </>
           )}
 
