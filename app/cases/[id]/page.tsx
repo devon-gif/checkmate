@@ -160,6 +160,30 @@ export default async function CaseDetailPage({ params }: Props) {
         </GlassCard>
       )}
 
+      {/* Ask Ray follow-up — coming soon */}
+      <GlassCard className="mt-6 px-5 py-5">
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-white/40">
+          Ask Ray a follow-up
+        </h2>
+        <p className="mb-3 text-xs text-white/25">
+          Coming soon — follow-up questions on this check.
+        </p>
+        <div className="flex gap-3 opacity-50 pointer-events-none select-none">
+          <input
+            type="text"
+            placeholder="Example: What should I ask before replying?"
+            disabled
+            className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/50 placeholder-white/20 focus:outline-none"
+          />
+          <button
+            disabled
+            className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/30 cursor-not-allowed"
+          >
+            Ask Ray
+          </button>
+        </div>
+      </GlassCard>
+
       {/* Actions */}
       <div className="mt-6 flex flex-wrap gap-3">
         <GradientButton href="/cases/new" variant="primary">

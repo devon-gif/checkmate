@@ -15,6 +15,11 @@ import {
   BillingStatusCard,
   type BillingStatus
 } from '@/components/checkmate/BillingStatusCard'
+import { ScamWatchCard } from '@/components/checkmate/ScamWatchCard'
+import {
+  ensureNotificationPreferences,
+  getNotificationPreferences
+} from '@/lib/notifications/preferences'
 
 type CaseRow = Database['public']['Tables']['cases']['Row']
 type ReportRow = Database['public']['Tables']['risk_reports']['Row']
@@ -141,6 +146,10 @@ export default async function DashboardPage({
 
   const stripeConfigured = Boolean(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO)
 
+  // Ensure notification_preferences row exists (no-op if already created)
+  await ensureNotificationPreferences(session.user.id)
+  const notifPrefs = await getNotificationPreferences(session.user.id, cookieStore)
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       {/* Header row */}
@@ -185,6 +194,11 @@ export default async function DashboardPage({
         status={billingStatus}
         trialEndsAt={subAny?.trial_ends_at ?? null}
         stripeConfigured={stripeConfigured}
+      />
+
+      {/* Weekly Scam Watch preference */}
+      <ScamWatchCard
+        initialEnabled={notifPrefs?.weekly_email_enabled ?? true}
       />
 
       {/* Cases list */}
