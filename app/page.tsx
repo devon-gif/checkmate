@@ -1,25 +1,19 @@
-import { HeroSection } from '@/components/checkmate/HeroSection'
-import { HowItWorks } from '@/components/checkmate/HowItWorks'
-import { WaysToUse } from '@/components/checkmate/WaysToUse'
-import { WhatCanCheck } from '@/components/checkmate/WhatCanCheck'
-import { TextFirstDemo } from '@/components/checkmate/TextFirstDemo'
-import { FinalCTA } from '@/components/checkmate/FinalCTA'
+import Hero from '@/components/site/HomePage/Hero'
+import Details from '@/components/site/HomePage/Details'
+import Features from '@/components/site/HomePage/Features'
+import WaysToUse from '@/components/site/HomePage/WaysToUse'
+import Pricing from '@/components/site/HomePage/Pricing'
+import Start from '@/components/site/Start'
 
 export default function LandingPage() {
   return (
-    <div className="bg-cm-bg text-white">
-      {/* Subtle top border accent */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-cm-green/40 to-transparent" />
-
-      <HeroSection />
-      <HowItWorks />
+    <div className="relative overflow-hidden bg-deep text-white font-helvetica">
+      <Hero />
+      <Details />
+      <Features />
       <WaysToUse />
-      <WhatCanCheck />
-      <TextFirstDemo />
-      <FinalCTA />
-
-      {/* Bottom border accent */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <Pricing />
+      <Start />
     </div>
   )
 }
