@@ -39,7 +39,7 @@ export function ScamWatchCard({ initialEnabled }: ScamWatchCardProps) {
           <div className="flex items-center gap-2">
             <span className="text-base">📬</span>
             <h3 className="text-sm font-semibold text-white">
-              Ray's Weekly Scam Watch
+              Ray&apos;s Weekly Scam Watch
             </h3>
           </div>
           <p className="mt-1.5 max-w-lg text-xs leading-5 text-white/45">

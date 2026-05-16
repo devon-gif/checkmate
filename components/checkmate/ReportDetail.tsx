@@ -97,7 +97,7 @@ export function ReportDetail({ caseRow, report }: ReportDetailProps) {
           {report.summary && (
             <GlassCard className="px-6 py-5">
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/40">
-                Ray's summary
+                Ray&apos;s summary
               </h2>
               <p className="text-sm leading-7 text-white/70">{report.summary}</p>
             </GlassCard>
