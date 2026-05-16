@@ -30,7 +30,7 @@ function PhoneVideoDemo() {
             playsInline
             preload="auto"
             className="w-full h-full object-cover"
-            onError={() => console.error('CheckRay hero video failed to load', phoneVideoSrc)}
+            onError={() => console.error("CheckRay hero video failed to load", phoneVideoSrc)}
           />
         </div>
 
