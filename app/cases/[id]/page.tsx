@@ -8,6 +8,7 @@ import { RiskReport } from '@/components/risk-report'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
 import { CaseRiskBadge } from '@/components/case-risk-badge'
+import { FollowUpBox } from '@/components/checkmate/FollowUpBox'
 import { IconArrowRight } from '@/components/ui/icons'
 import { humanizeCategory } from '@/lib/checkmate-shared'
 import { type Database, type Json } from '@/lib/db_types'
@@ -80,7 +81,8 @@ export default async function CaseDetailPage({ params }: Props) {
     .order('created_at', { ascending: true })
     .limit(1)
 
-  const submittedContent = messages?.[0]?.content ?? null
+  // Prefer case_messages content; fall back to input_text stored on the case row
+  const submittedContent = messages?.[0]?.content ?? caseRow.input_text ?? null
 
   // Build typed report for the display component
   const reportData: RiskReportData | null = reportRow
@@ -160,29 +162,8 @@ export default async function CaseDetailPage({ params }: Props) {
         </GlassCard>
       )}
 
-      {/* Ask Ray follow-up — coming soon */}
-      <GlassCard className="mt-6 px-5 py-5">
-        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-white/40">
-          Ask Ray a follow-up
-        </h2>
-        <p className="mb-3 text-xs text-white/25">
-          Coming soon — follow-up questions on this check.
-        </p>
-        <div className="flex gap-3 opacity-50 pointer-events-none select-none">
-          <input
-            type="text"
-            placeholder="Example: What should I ask before replying?"
-            disabled
-            className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/50 placeholder-white/20 focus:outline-none"
-          />
-          <button
-            disabled
-            className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/30 cursor-not-allowed"
-          >
-            Ask Ray
-          </button>
-        </div>
-      </GlassCard>
+      {/* Ask Ray follow-up */}
+      <FollowUpBox caseId={params.id} />
 
       {/* Actions */}
       <div className="mt-6 flex flex-wrap gap-3">
