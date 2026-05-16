@@ -6,10 +6,12 @@
  * Returns an AccessResult describing whether a visitor may run an analysis,
  * what tier they are on, and how many checks they have used.
  *
- * Anonymous visitors  → 1 free check total (tracked by cm_anon_id cookie)
- * New signed-up users → 7-day free trial (subscriptions row auto-created)
- * Paying users        → unlimited (status = 'active')
- * Expired trials      → blocked until subscribed
+ * Anonymous visitors   → 1 free check total (tracked by anonymous_checks table)
+ * New signed-up users  → 7-day free trial (user_billing row auto-created)
+ * Paying users         → unlimited (status = 'active')
+ * Expired trials       → blocked until subscribed
+ *
+ * Cookie: checkray_anonymous_id  — opaque UUID stored for 90 days.
  */
 import 'server-only'
 
@@ -18,11 +20,12 @@ import { createClient } from '@supabase/supabase-js'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type AccessStatus =
-  | 'anonymous_free'
-  | 'trialing'
-  | 'active'
-  | 'expired'
-  | 'blocked'
+  | 'anonymous_free'    // anonymous, has not yet used their free check
+  | 'anonymous_used'    // anonymous, free check already consumed — must sign up
+  | 'trialing'          // logged in, trial window open
+  | 'active'            // logged in, paid subscription active
+  | 'expired'           // logged in, trial ended or subscription canceled
+  | 'blocked'           // catch-all for any other blocked state
 
 export interface AccessResult {
   canAnalyze: boolean
@@ -34,6 +37,9 @@ export interface AccessResult {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Browser cookie name used to identify anonymous visitors. */
+export const ANON_COOKIE_NAME = 'checkray_anonymous_id'
 
 const TRIAL_DAYS = 7
 const ANON_LIMIT = 1
@@ -67,8 +73,7 @@ export async function checkAccess({
   // ── Anonymous path ──────────────────────────────────────────────────────────
   if (!userId) {
     if (!anonymousId) {
-      // No cookie yet — this is a brand-new visitor, allow and they'll get a
-      // cookie set after the check completes.
+      // Brand-new visitor — no cookie yet. Allow and we'll set the cookie after.
       return {
         canAnalyze: true,
         accessStatus: 'anonymous_free',
@@ -87,7 +92,7 @@ export async function checkAccess({
     if (used >= ANON_LIMIT) {
       return {
         canAnalyze: false,
-        accessStatus: 'blocked',
+        accessStatus: 'anonymous_used',
         checksUsed: used,
         checksLimit: ANON_LIMIT,
         reason:
@@ -104,53 +109,50 @@ export async function checkAccess({
   }
 
   // ── Authenticated path ──────────────────────────────────────────────────────
-  const { data: existing } = await sb
-    .from('subscriptions')
+  const { data: billing } = await sb
+    .from('user_billing' as any)
     .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(1)
     .maybeSingle()
 
-  let sub: any = existing
+  let row: any = billing
 
-  // Auto-create a trial subscription for new users
-  if (!sub) {
+  // Auto-create a trial row for new users
+  if (!row) {
     const now = new Date()
-    const trialEnds = new Date(
-      now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000
-    )
+    const trialEnds = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
 
     const { data: created, error: insertError } = await sb
-      .from('subscriptions')
+      .from('user_billing' as any)
       .insert({
         user_id: userId,
         plan: 'trial',
         status: 'trialing',
         trial_started_at: now.toISOString(),
         trial_ends_at: trialEnds.toISOString()
-      } as any)
+      })
       .select()
       .single()
 
     if (insertError) {
-      console.error('[billing/access] Failed to create trial subscription:', insertError)
+      console.error('[billing/access] Failed to create user_billing row:', insertError)
       return {
         canAnalyze: false,
         accessStatus: 'blocked',
         checksUsed: 0,
         checksLimit: null,
-        reason: 'Could not initialise your trial. Please try signing out and back in.'
+        reason:
+          'Could not initialise your trial. Please try signing out and back in.'
       }
     }
 
-    sub = created
+    row = created
   }
 
   const now = new Date()
 
   // Active paid subscription
-  if (sub.status === 'active') {
+  if (row.status === 'active') {
     return {
       canAnalyze: true,
       accessStatus: 'active',
@@ -161,8 +163,8 @@ export async function checkAccess({
   }
 
   // Trialing — check whether trial window is still open
-  if (sub.status === 'trialing') {
-    const trialEnd = sub.trial_ends_at ? new Date(sub.trial_ends_at) : null
+  if (row.status === 'trialing') {
+    const trialEnd = row.trial_ends_at ? new Date(row.trial_ends_at) : null
     if (trialEnd && now < trialEnd) {
       const daysLeft = Math.ceil(
         (trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
@@ -172,30 +174,34 @@ export async function checkAccess({
         accessStatus: 'trialing',
         checksUsed: 0,
         checksLimit: null,
-        trialEndsAt: sub.trial_ends_at,
+        trialEndsAt: row.trial_ends_at,
         reason: `Trial active — ${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining.`
       }
     }
 
-    // Trial window has closed
+    // Trial window has closed — update status
+    await sb
+      .from('user_billing' as any)
+      .update({ status: 'inactive' })
+      .eq('user_id', userId)
+
     return {
       canAnalyze: false,
       accessStatus: 'expired',
       checksUsed: 0,
       checksLimit: null,
-      trialEndsAt: sub.trial_ends_at,
-      reason:
-        'Your free trial has ended. Subscribe to continue using CheckRay.'
+      trialEndsAt: row.trial_ends_at,
+      reason: 'Your free trial has ended. Upgrade to continue using CheckRay.'
     }
   }
 
-  // Any other status (canceled, past_due, unpaid, inactive)
+  // Any other status (canceled, past_due, inactive)
   return {
     canAnalyze: false,
     accessStatus: 'expired',
     checksUsed: 0,
     checksLimit: null,
-    reason: 'Your subscription is inactive. Subscribe to continue using CheckRay.'
+    reason: 'Your subscription is inactive. Upgrade to continue using CheckRay.'
   }
 }
 

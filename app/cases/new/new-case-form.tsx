@@ -9,6 +9,7 @@ import { RiskReport, type RiskReportData } from '@/components/risk-report'
 import { SaveResultPrompt } from '@/components/checkmate/SaveResultPrompt'
 import { IconArrowRight, IconSpinner } from '@/components/ui/icons'
 import type { CaseCategory, RiskLevel } from '@/lib/checkmate-shared'
+import type { AccessStatus } from '@/lib/billing/access'
 
 const CATEGORIES: { value: CaseCategory | ''; label: string }[] = [
   { value: '', label: 'Not sure - let CheckRay decide' },
@@ -32,6 +33,7 @@ export function NewCaseForm() {
   const [categoryHint, setCategoryHint] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [blockedReason, setBlockedReason] = useState<{ message: string; status: AccessStatus } | null>(null)
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -50,6 +52,16 @@ export function NewCaseForm() {
       })
 
       const payload = await response.json()
+
+      // Access blocked — show inline gate instead of toast
+      if (response.status === 402) {
+        setBlockedReason({
+          message: payload.message ?? 'Access limit reached.',
+          status: (payload.access?.accessStatus ?? 'blocked') as AccessStatus
+        })
+        return
+      }
+
       if (!response.ok) throw new Error(payload.error ?? 'Analysis failed')
 
       const r = payload.report
@@ -84,6 +96,7 @@ export function NewCaseForm() {
 
   function onReset() {
     setResult(null)
+    setBlockedReason(null)
     setText('')
     setUrl('')
     setCategoryHint('')
@@ -91,8 +104,50 @@ export function NewCaseForm() {
 
   return (
     <div className="space-y-8">
-      {/* Input form — hidden once a result is showing */}
-      {!result && (
+      {/* Blocked gate — shown when 402 is returned mid-session */}
+      {blockedReason && (
+        <div className="flex flex-col items-center gap-5 py-6 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-2xl">
+            {blockedReason.status === 'anonymous_used' ? '🔒' : '⏰'}
+          </div>
+          <div>
+            <p className="text-base font-medium text-white">
+              {blockedReason.status === 'anonymous_used'
+                ? "You've used your free check"
+                : 'Your trial has ended'}
+            </p>
+            <p className="mt-1 text-sm text-white/50">{blockedReason.message}</p>
+          </div>
+          {blockedReason.status === 'anonymous_used' ? (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <a
+                href="/sign-up"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-cm-green px-6 py-3 text-sm font-medium text-cm-bg transition hover:bg-cm-green/90"
+              >
+                Create free account
+              </a>
+              <a
+                href="/sign-in"
+                className="inline-flex items-center justify-center rounded-xl border border-white/20 px-6 py-3 text-sm font-medium text-white/70 transition hover:border-white/40 hover:text-white"
+              >
+                Sign in
+              </a>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <a
+                href="/pricing"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-cm-green px-6 py-3 text-sm font-medium text-cm-bg transition hover:bg-cm-green/90"
+              >
+                View plans
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Input form — hidden once a result or block is showing */}
+      {!result && !blockedReason && (
         <form onSubmit={onSubmit} className="space-y-5">
           <div className="space-y-2">
             <label

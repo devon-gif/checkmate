@@ -13,10 +13,7 @@ import { type Database } from '@/lib/db_types'
 import { saveCase } from '@/lib/db/save-case'
 import { saveReport } from '@/lib/db/save-report'
 import { logUsageEvent } from '@/lib/db/log-usage-event'
-import { checkAccess, recordAnonymousCheck } from '@/lib/billing/access'
-
-// Cookie name for anonymous visitor identification
-const ANON_COOKIE = 'cm_anon_id'
+import { checkAccess, recordAnonymousCheck, ANON_COOKIE_NAME } from '@/lib/billing/access'
 
 // ─── Request validation ───────────────────────────────────────────────────────
 
@@ -69,7 +66,7 @@ export async function POST(req: Request) {
   const isAuthenticated = Boolean(session?.user?.id)
 
   // Read anonymous ID cookie (if present)
-  const anonymousId: string | null = cookieStore.get(ANON_COOKIE)?.value ?? null
+  const anonymousId: string | null = cookieStore.get(ANON_COOKIE_NAME)?.value ?? null
 
   // Create the Supabase client once — shared by rate-limit check and DB writes.
   const supabase = createRouteHandlerClient<Database, 'public', any>({
@@ -158,7 +155,7 @@ export async function POST(req: Request) {
 
     // Persist anonymous ID in cookie for future requests (90-day TTL)
     if (!anonymousId) {
-      response.cookies.set(ANON_COOKIE, anonId, {
+      response.cookies.set(ANON_COOKIE_NAME, anonId, {
         httpOnly: true,
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 90,

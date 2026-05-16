@@ -12,7 +12,6 @@
  */
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
@@ -34,7 +33,6 @@ function daysUntil(iso: string): number {
 }
 
 export function BillingStatusCard({ status, trialEndsAt, stripeConfigured }: Props) {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

@@ -109,25 +109,33 @@ export default async function DashboardPage({
     .gte('created_at', since24h)
 
   // Billing status
-  const { data: subRow } = await supabase
-    .from('subscriptions')
+  const { data: billingRow } = await supabase
+    .from('subscriptions' as any)
     .select('status, trial_ends_at, plan')
     .eq('user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  const subAny = subRow as any
+  // Also check user_billing (preferred, created by access.ts on first check)
+  const { data: userBillingRow } = await supabase
+    .from('user_billing' as any)
+    .select('status, trial_ends_at, plan')
+    .eq('user_id', session.user.id)
+    .maybeSingle()
+
+  // Prefer user_billing row; fall back to subscriptions
+  const subAny = (userBillingRow ?? billingRow) as any
   let billingStatus: BillingStatus = 'unknown'
   if (subAny?.status === 'active') {
     billingStatus = 'active'
   } else if (subAny?.status === 'trialing') {
     const trialEnd = subAny.trial_ends_at ? new Date(subAny.trial_ends_at) : null
     billingStatus = trialEnd && new Date() < trialEnd ? 'trialing' : 'expired'
-  } else if (subRow) {
+  } else if (subAny) {
     billingStatus = 'expired'
   } else {
-    // No subscription row yet — first visit, trial will be created on first check
+    // No row yet — first visit, trial will be created on first check
     billingStatus = 'trialing'
   }
 
