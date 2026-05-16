@@ -78,7 +78,6 @@ export async function checkAccess({
     }
 
     const { count } = await sb
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from('anonymous_checks' as any)
       .select('id', { count: 'exact', head: true })
       .eq('anonymous_id', anonymousId)
@@ -113,7 +112,6 @@ export async function checkAccess({
     .limit(1)
     .maybeSingle()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let sub: any = existing
 
   // Auto-create a trial subscription for new users
@@ -125,14 +123,12 @@ export async function checkAccess({
 
     const { data: created, error: insertError } = await sb
       .from('subscriptions')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .insert({
         user_id: userId,
         plan: 'trial',
         status: 'trialing',
         trial_started_at: now.toISOString(),
         trial_ends_at: trialEnds.toISOString()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
       .select()
       .single()
@@ -213,7 +209,6 @@ export async function checkAccess({
 export async function recordAnonymousCheck(anonymousId: string): Promise<void> {
   try {
     const sb = serviceClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (sb as any).from('anonymous_checks').insert({ anonymous_id: anonymousId })
   } catch (err) {
     console.error('[billing/access] Failed to record anonymous check:', err)

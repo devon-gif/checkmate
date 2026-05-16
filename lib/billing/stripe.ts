@@ -11,7 +11,6 @@ import Stripe from 'stripe'
 
 export const stripe: Stripe | null = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       apiVersion: '2024-06-20' as any,
       typescript: true
     })
