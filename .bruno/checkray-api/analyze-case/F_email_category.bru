@@ -1,0 +1,18 @@
+meta {
+  name: F - Email category (expect MEDIUM/HIGH email)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/analyze-case
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "input_text": "From: hr-payroll@company-payroll-updates.net\nSubject: ACTION REQUIRED: Verify your direct deposit details\n\nDear Employee, we are updating payroll records. Please click below and re-enter your bank routing and account number within 24 hours to avoid a missed payment.",
+    "category_hint": "email"
+  }
+}

@@ -1,0 +1,18 @@
+meta {
+  name: I - Rental scam (expect HIGH rental_or_marketplace)
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/analyze-case
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "input_text": "Hi, I'm a military landlord currently deployed overseas. I can't show the apartment in person but I'll mail you the keys after you send the first month's rent and deposit via Zelle. Rent is way below market — $800/mo for a 2BR in downtown.",
+    "category_hint": "rental_or_marketplace"
+  }
+}

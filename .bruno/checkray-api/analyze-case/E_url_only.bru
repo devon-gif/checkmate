@@ -1,0 +1,17 @@
+meta {
+  name: E - URL only (expect HIGH phishing_url)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/analyze-case
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "input_url": "https://amazon-security-alert-verify.xyz/account"
+  }
+}

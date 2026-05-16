@@ -1,0 +1,17 @@
+meta {
+  name: D - Low risk (expect LOW)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/analyze-case
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "input_text": "Can you send me the official job posting and company email before we continue?"
+  }
+}

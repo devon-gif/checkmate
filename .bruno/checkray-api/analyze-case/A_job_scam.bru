@@ -1,0 +1,17 @@
+meta {
+  name: A - Job scam (expect VERY_HIGH)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/analyze-case
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "input_text": "You're hired for a remote data entry role. We'll send a check for equipment. Deposit it and wire the difference back. No experience required. $85/hr."
+  }
+}

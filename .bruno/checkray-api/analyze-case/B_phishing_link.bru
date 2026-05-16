@@ -1,0 +1,18 @@
+meta {
+  name: B - Phishing link (expect HIGH/VERY_HIGH)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/analyze-case
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "input_text": "Final notice: pay your toll balance now or your registration may be suspended.",
+    "input_url": "http://track-package-fast-help.com/pay"
+  }
+}

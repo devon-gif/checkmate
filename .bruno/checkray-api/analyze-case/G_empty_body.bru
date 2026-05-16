@@ -1,0 +1,15 @@
+meta {
+  name: G - Validation error empty body (expect 400)
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/analyze-case
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}

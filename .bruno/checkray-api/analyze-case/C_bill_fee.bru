@@ -1,0 +1,18 @@
+meta {
+  name: C - Bill or fee dispute (expect MEDIUM)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/analyze-case
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "input_text": "My landlord charged me $1,248.97 for carpet replacement after move-out. They say it was prorated over 60 months. What should I ask for before paying?",
+    "category_hint": "bill_or_fee"
+  }
+}
