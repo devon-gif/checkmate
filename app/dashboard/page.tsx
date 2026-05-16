@@ -138,6 +138,11 @@ export default async function DashboardPage({
       {/* Header row */}
       <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
+          {searchParams?.billing === 'success' && (
+            <div className="mb-4 rounded-xl border border-cm-green/30 bg-cm-green/10 px-4 py-3 text-sm text-cm-green">
+              Your Pro subscription is now active. Welcome to CheckRay Pro.
+            </div>
+          )}
           <span className="mb-3 inline-block rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/50">
             CheckRay dashboard
           </span>
