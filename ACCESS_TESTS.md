@@ -117,13 +117,19 @@ where user_id = '<your-user-id>';
 
 ---
 
-## 6. Active status allows checks
+## 6. Active status allows checks (Basic plan — within limit)
 
-**Setup:** Manually activate a user:
+**Setup:** Manually activate a user as Basic:
 ```sql
 update public.user_billing
-set status = 'active', plan = 'pro'
+set status = 'active', plan = 'basic'
 where user_id = '<your-user-id>';
+
+-- Ensure usage_events has fewer than 25 check_created rows this month
+delete from public.usage_events
+where user_id = '<your-user-id>'
+  and event_type = 'check_created'
+  and created_at >= date_trunc('month', now());
 ```
 
 **Steps:**
@@ -132,8 +138,56 @@ where user_id = '<your-user-id>';
 
 **Expected:**
 - Analysis succeeds without any gate
-- Response includes `"access": { "accessStatus": "active", "canAnalyze": true }`
-- Dashboard billing card shows green dot and "Pro plan active"
+- Response includes `"access": { "accessStatus": "active", "canAnalyze": true, "plan": "basic" }`
+- Dashboard billing card shows green dot
+
+---
+
+## 7. Basic plan user hits 25-check monthly cap
+
+**Setup:** Manually set a Basic user to 25 checks this month:
+```sql
+update public.user_billing
+set status = 'active', plan = 'basic'
+where user_id = '<your-user-id>';
+
+-- Insert 25 check_created events this month (adjust count as needed)
+insert into public.usage_events (user_id, event_type, created_at)
+select '<your-user-id>', 'check_created', now()
+from generate_series(1, 25);
+```
+
+**Steps:**
+1. Sign in as that user
+2. Go to `/cases/new` and attempt a check
+
+**Expected:**
+- `POST /api/analyze-case` returns `HTTP 402`
+- Inline blocked UI shown: "You've reached your 25 checks/month limit. Upgrade to Plus for unlimited checks."
+
+---
+
+## 8. Plus plan user has no monthly cap
+
+**Setup:** Manually activate a user as Plus:
+```sql
+update public.user_billing
+set status = 'active', plan = 'plus'
+where user_id = '<your-user-id>';
+
+-- Insert 30 check_created events (more than Basic cap)
+insert into public.usage_events (user_id, event_type, created_at)
+select '<your-user-id>', 'check_created', now()
+from generate_series(1, 30);
+```
+
+**Steps:**
+1. Sign in as that user
+2. Go to `/cases/new` and run a check
+
+**Expected:**
+- Analysis succeeds — no cap enforced
+- Response includes `"access": { "accessStatus": "active", "canAnalyze": true, "plan": "plus" }`
 
 ---
 
