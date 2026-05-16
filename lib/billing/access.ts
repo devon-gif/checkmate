@@ -16,6 +16,7 @@
 import 'server-only'
 
 import { createClient } from '@supabase/supabase-js'
+import { PLAN_MONTHLY_LIMIT, type PlanId } from '@/lib/billing/plans'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export type AccessStatus =
 export interface AccessResult {
   canAnalyze: boolean
   accessStatus: AccessStatus
+  plan: PlanId | null
   checksUsed: number
   checksLimit: number | null
   trialEndsAt?: string | null
@@ -77,6 +79,7 @@ export async function checkAccess({
       return {
         canAnalyze: true,
         accessStatus: 'anonymous_free',
+        plan: null,
         checksUsed: 0,
         checksLimit: ANON_LIMIT
       }
@@ -93,6 +96,7 @@ export async function checkAccess({
       return {
         canAnalyze: false,
         accessStatus: 'anonymous_used',
+        plan: null,
         checksUsed: used,
         checksLimit: ANON_LIMIT,
         reason:
@@ -103,6 +107,7 @@ export async function checkAccess({
     return {
       canAnalyze: true,
       accessStatus: 'anonymous_free',
+      plan: null,
       checksUsed: used,
       checksLimit: ANON_LIMIT
     }
@@ -139,6 +144,7 @@ export async function checkAccess({
       return {
         canAnalyze: false,
         accessStatus: 'blocked',
+        plan: null,
         checksUsed: 0,
         checksLimit: null,
         reason:
@@ -151,13 +157,42 @@ export async function checkAccess({
 
   const now = new Date()
 
-  // Active paid subscription
+  // Resolve the canonical PlanId from the stored plan string
+  const planId = (row.plan ?? 'trial') as PlanId
+  const monthlyLimit = PLAN_MONTHLY_LIMIT[planId] ?? null
+
+  // Active paid subscription — enforce monthly limit for basic plan
   if (row.status === 'active') {
+    // Count checks used this calendar month
+    let checksUsedThisMonth = 0
+    if (monthlyLimit !== null) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      const { count } = await sb
+        .from('usage_events' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('event_type', 'check_created')
+        .gte('created_at', monthStart)
+      checksUsedThisMonth = count ?? 0
+    }
+
+    if (monthlyLimit !== null && checksUsedThisMonth >= monthlyLimit) {
+      return {
+        canAnalyze: false,
+        accessStatus: 'blocked',
+        plan: planId,
+        checksUsed: checksUsedThisMonth,
+        checksLimit: monthlyLimit,
+        reason: `You've used all ${monthlyLimit} checks for this month. Your limit resets at the start of next month.`
+      }
+    }
+
     return {
       canAnalyze: true,
       accessStatus: 'active',
-      checksUsed: 0,
-      checksLimit: null,
+      plan: planId,
+      checksUsed: checksUsedThisMonth,
+      checksLimit: monthlyLimit,
       trialEndsAt: null
     }
   }
@@ -172,6 +207,7 @@ export async function checkAccess({
       return {
         canAnalyze: true,
         accessStatus: 'trialing',
+        plan: 'trial',
         checksUsed: 0,
         checksLimit: null,
         trialEndsAt: row.trial_ends_at,
@@ -188,6 +224,7 @@ export async function checkAccess({
     return {
       canAnalyze: false,
       accessStatus: 'expired',
+      plan: 'trial',
       checksUsed: 0,
       checksLimit: null,
       trialEndsAt: row.trial_ends_at,
@@ -199,6 +236,7 @@ export async function checkAccess({
   return {
     canAnalyze: false,
     accessStatus: 'expired',
+    plan: planId,
     checksUsed: 0,
     checksLimit: null,
     reason: 'Your subscription is inactive. Upgrade to continue using CheckRay.'
