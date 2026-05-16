@@ -1,5 +1,4 @@
 import { GradientButton } from './GradientButton'
-import { HeroPhoneDemo } from './HeroPhoneDemo'
 
 export function HeroSection() {
   return (
@@ -81,34 +80,24 @@ export function HeroSection() {
           </p>
         </div>
 
-        {/* Right column — phone demo */}
+        {/* Right column — hero video */}
         <div className="relative mx-auto w-full max-w-md">
-          {/* Conic glow ring behind phone */}
+          {/* Conic glow ring behind video */}
           <div
             aria-hidden="true"
             className="cm-conic-glow pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-2xl"
           />
 
-          {/* Phone */}
-          <div className="relative">
-            <HeroPhoneDemo />
-
-            {/* Floating Ray's-read chip */}
-            <div className="cm-glass absolute -right-2 -top-3 hidden rounded-2xl px-4 py-3 shadow-[0_0_30px_rgba(122,226,207,0.2)] sm:block lg:-right-6">
-              <p className="text-[10px] font-medium uppercase tracking-widest text-cm-green">
-                Ray&rsquo;s read
-              </p>
-              <p className="mt-1 flex items-baseline gap-1 text-sm font-semibold text-white">
-                High Risk{' '}
-                <span className="text-xs text-white/40">· 87/100</span>
-              </p>
-            </div>
-
-            {/* Floating "verify" pill */}
-            <div className="cm-glass absolute -bottom-4 -left-3 hidden items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-medium text-white/70 shadow-[0_0_24px_rgba(0,0,0,0.4)] sm:inline-flex lg:-left-6">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cm-green" />
-              Verify through official channels
-            </div>
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_0_60px_rgba(122,226,207,0.15)]">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full"
+            >
+              <source src="/videos/video-1.mp4" type="video/mp4" />
+            </video>
           </div>
         </div>
       </div>
