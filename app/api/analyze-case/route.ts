@@ -19,14 +19,14 @@ import { checkAccess, recordAnonymousCheck, ANON_COOKIE_NAME } from '@/lib/billi
 
 const requestSchema = z.object({
   // Primary field names
-  input_text: z.string().max(20_000).optional(),
-  input_url: z.string().max(2_000).optional(),
+  input_text: z.string().min(1).max(20_000).optional(),
+  input_url: z.string().min(1).max(2_000).optional(),
   category_hint: z
     .enum([...caseCategories, 'email'] as [string, ...string[]])
     .optional(),
   // Legacy aliases for backwards compat
-  text: z.string().max(20_000).optional(),
-  url: z.string().max(2_000).optional()
+  text: z.string().min(1).max(20_000).optional(),
+  url: z.string().min(1).max(2_000).optional()
 })
 
 // ─── POST /api/analyze-case ───────────────────────────────────────────────────
@@ -60,6 +60,13 @@ export async function POST(req: Request) {
     )
   }
 
+  if (submittedText && submittedText.length < 10 && !submittedUrl) {
+    return NextResponse.json(
+      { error: 'validation_error', message: 'Input is too short to analyse. Please provide more context.' },
+      { status: 400 }
+    )
+  }
+
   // 2. Session check — done BEFORE the AI call so rate limits gate compute cost
   const cookieStore = cookies()
   const session = await auth({ cookieStore })
@@ -88,29 +95,6 @@ export async function POST(req: Request) {
       },
       { status: 402 }
     )
-  }
-
-  // ── Legacy authenticated rate limit (kept as a safety valve) ─────────────
-  const FREE_TIER_DAILY_LIMIT = 25
-  if (isAuthenticated) {
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const { count } = await supabase
-      .from('usage_events')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', session!.user.id)
-      .eq('event_type', 'check_created')
-      .gte('created_at', since)
-
-    if ((count ?? 0) >= FREE_TIER_DAILY_LIMIT) {
-      return NextResponse.json(
-        {
-          error: 'Daily limit reached.',
-          detail: `Free accounts are limited to ${FREE_TIER_DAILY_LIMIT} checks per 24 hours. Try again later.`,
-          retry_after: 'PT24H'
-        },
-        { status: 429 }
-      )
-    }
   }
 
   // 3. Run analysis (AI with deterministic fallback) — always, guests included

@@ -1,13 +1,91 @@
-# Billing TODO
+# BILLING_TODO.md — Stripe Billing Setup Checklist
 
-Deferred billing tasks not yet implemented. These are non-blocking for MVP launch but required for full billing functionality.
+Billing routes (`/api/billing/create-checkout-session`, `/api/billing/customer-portal`) exist
+but require Stripe products/prices and a webhook route before they are functional.
 
 ---
 
-## Stripe configuration
+## Current state (May 2026)
 
-- [ ] Create Stripe products and price objects for all 4 billable plans:
-  - Basic monthly — $9.99/mo
+- `/api/billing/create-checkout-session` ✅ exists, needs multi-plan price param
+- `/api/billing/customer-portal` ✅ exists, functional once Stripe is configured
+- `/api/billing/webhook` ❌ **does not exist — must create before billing goes live**
+- `user_billing` table ✅ exists, RLS correct
+- `lib/billing/stripe.ts` gracefully returns null if `STRIPE_SECRET_KEY` is absent (app runs without billing)
+
+---
+
+## 1. Create Stripe products and prices
+
+```
+Product: CheckRay Basic
+  Price: $9.99/month  → NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC
+  Price: $99/year     → NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_YEARLY
+
+Product: CheckRay Plus
+  Price: $19.99/month → NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS
+  Price: $199/year    → NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS_YEARLY
+```
+
+## 2. Update checkout session route
+
+Current route uses a single `NEXT_PUBLIC_STRIPE_PRICE_ID_PRO`. Update to accept `priceId` body param:
+
+```ts
+const { priceId } = await req.json()
+const allowed = [BASIC_ID, BASIC_YEARLY_ID, PLUS_ID, PLUS_YEARLY_ID]
+if (!allowed.includes(priceId)) return 400
+```
+
+## 3. Create Stripe webhook route
+
+File: `app/api/billing/webhook/route.ts`
+
+Handle:
+- `checkout.session.completed` → set `user_billing.status = 'active'`, map price → plan
+- `customer.subscription.updated` → update plan/status/period
+- `customer.subscription.deleted` → set `status = 'canceled'`
+- `invoice.payment_failed` → set `status = 'past_due'`
+
+Use `stripe.webhooks.constructEvent(rawBody, sig, STRIPE_WEBHOOK_SECRET)`.
+Write to `user_billing` using the service-role Supabase client.
+
+## 4. Price → Plan mapping
+
+```ts
+const PRICE_TO_PLAN: Record<string, PlanId> = {
+  [process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC!]:         'basic',
+  [process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_YEARLY!]:  'basic_yearly',
+  [process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS!]:          'plus',
+  [process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS_YEARLY!]:   'plus_yearly',
+}
+```
+
+## 5. Enable Stripe Customer Portal
+
+In Stripe Dashboard → Customer Portal:
+- Allow plan switching (Basic ↔ Plus)
+- Allow cancellation
+- Enable invoice history
+- Return URL: `https://checkray.app/dashboard`
+
+## 6. Test mode checklist
+
+- [ ] Create test products/prices in Stripe test mode
+- [ ] Set test price IDs in `.env.local`
+- [ ] Run `stripe listen --forward-to localhost:3000/api/billing/webhook`
+- [ ] Complete test checkout → verify `user_billing.status = 'active'`
+- [ ] Open customer portal → cancel → verify `user_billing.status = 'canceled'`
+- [ ] Verify Basic plan enforces 25 checks/month after upgrade
+- [ ] Verify Plus plan allows unlimited checks
+
+## 7. Remaining tasks
+
+- [ ] Webhook route (`/api/billing/webhook`)
+- [ ] Multi-plan checkout param support
+- [ ] PricingCards connect to correct priceId per plan
+- [ ] Cancellation survey / save offers (post-launch)
+
   - Basic yearly — $95.88/yr
   - Plus monthly — $19.99/mo
   - Plus yearly — $191.88/yr
