@@ -5,6 +5,11 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 
 function PhoneVideoDemo() {
+  // Production video is loaded from Supabase Storage via NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL.
+  // Falls back to the local /public/videos file during development.
+  const phoneVideoSrc =
+    process.env.NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL || '/videos/checkray-phone.mp4'
+
   return (
     // Pulled left from the edge — was right-0, now right-[-2rem] on xl gives breathing room
     <div className="absolute right-[-2rem] bottom-0 max-xl:right-[-1rem] max-lg:static max-lg:mt-10 max-lg:mx-auto">
@@ -12,22 +17,24 @@ function PhoneVideoDemo() {
       <div className="absolute inset-x-[-15%] top-[20%] -z-10 h-[70%] rounded-full bg-green/20 blur-[6rem]" />
 
       <div className="relative w-[400px] max-xl:w-[350px] max-lg:w-[300px] max-md:w-[260px]">
+        {/* Screen clip layer — sits below the phone frame PNG (z-10 < z-20) */}
         <div
-          className="absolute flex items-center justify-center overflow-hidden rounded-[2.5rem] max-xl:rounded-[2.2rem] max-lg:rounded-[1.8rem] max-md:rounded-[1.5rem]"
+          className="absolute overflow-hidden rounded-[2.5rem] max-xl:rounded-[2.2rem] max-lg:rounded-[1.8rem] max-md:rounded-[1.5rem]"
           style={{ top: '3%', left: '6%', right: '6%', bottom: '3%', zIndex: 10 }}
         >
           <video
-            src={process.env.NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL || "/videos/checkray-phone.mp4"}
+            src={phoneVideoSrc}
             autoPlay
             muted
             loop
             playsInline
-            preload="metadata"
-            className="w-[90%] h-auto object-contain"
-            style={{ marginTop: '2%' }}
+            preload="auto"
+            className="w-full h-full object-cover"
+            onError={() => console.error('CheckRay hero video failed to load', phoneVideoSrc)}
           />
         </div>
 
+        {/* Phone frame PNG — stays on top with pointer-events-none */}
         <Image
           src="/images/oihoihoihoih.png"
           alt=""
