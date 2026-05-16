@@ -25,7 +25,11 @@ function asStringArray(value: Json) {
     : []
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams?: { billing?: string }
+}) {
   const cookieStore = cookies()
   const session = await auth({ cookieStore })
 
