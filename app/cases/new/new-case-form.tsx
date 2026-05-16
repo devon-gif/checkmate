@@ -105,7 +105,7 @@ export function NewCaseForm() {
               id="case-text"
               value={text}
               onChange={e => setText(e.target.value)}
-              placeholder="Paste a job post, recruiter message, suspicious text, link, bill, or email…"
+              placeholder="Paste a suspicious text, email, link, bill, job post, recruiter message, or marketplace message…"
               rows={8}
               className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
             />
