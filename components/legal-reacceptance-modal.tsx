@@ -57,12 +57,12 @@ export function LegalReacceptanceModal({ open, redirectTo = '/dashboard' }: Lega
         // localStorage unavailable (private mode edge case) — non-fatal
       }
 
-      console.log('[legal] acceptance saved, redirecting to /dashboard')
+      console.log('[legal] acceptance saved, redirecting to', redirectTo)
       toast.success('Terms accepted. Welcome to CheckRay!')
 
       // router.push navigates away from /legal-update so the modal disappears.
-      // router.refresh() alone only re-renders the same page — that was the bug.
-      router.push('/dashboard')
+      // router.refresh() alone only re-renders the same page -- that was the bug.
+      router.push(redirectTo)
     } catch {
       toast.error('Something went wrong. Please try again.')
       setIsLoading(false)
