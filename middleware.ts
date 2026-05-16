@@ -38,7 +38,8 @@ const PUBLIC_PATHS = [
   '/acceptable-use',
   '/contact',
   '/legal-update',
-  '/try'
+  '/try',
+  '/pricing'
 ]
 
 /**
