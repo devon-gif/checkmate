@@ -13,6 +13,10 @@ import { type Database } from '@/lib/db_types'
 import { saveCase } from '@/lib/db/save-case'
 import { saveReport } from '@/lib/db/save-report'
 import { logUsageEvent } from '@/lib/db/log-usage-event'
+import { checkAccess, recordAnonymousCheck } from '@/lib/billing/access'
+
+// Cookie name for anonymous visitor identification
+const ANON_COOKIE = 'cm_anon_id'
 
 // ─── Request validation ───────────────────────────────────────────────────────
 
@@ -64,12 +68,32 @@ export async function POST(req: Request) {
   const session = await auth({ cookieStore })
   const isAuthenticated = Boolean(session?.user?.id)
 
+  // Read anonymous ID cookie (if present)
+  const anonymousId: string | null = cookieStore.get(ANON_COOKIE)?.value ?? null
+
   // Create the Supabase client once — shared by rate-limit check and DB writes.
   const supabase = createRouteHandlerClient<Database, 'public', any>({
     cookies: () => cookieStore
   })
 
-  // ── Rate limit: authenticated users — 25 checks per rolling 24 h ──────────
+  // ── Access / billing gate ─────────────────────────────────────────────────
+  const access = await checkAccess({
+    userId: session?.user?.id ?? null,
+    anonymousId
+  })
+
+  if (!access.canAnalyze) {
+    return NextResponse.json(
+      {
+        error: 'usage_limit_reached',
+        message: access.reason ?? 'Analysis limit reached.',
+        access
+      },
+      { status: 402 }
+    )
+  }
+
+  // ── Legacy authenticated rate limit (kept as a safety valve) ─────────────
   const FREE_TIER_DAILY_LIMIT = 25
   if (isAuthenticated) {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
@@ -113,14 +137,36 @@ export async function POST(req: Request) {
 
   // 4. Guest path: return result without persisting ───────────────────────────
   if (!isAuthenticated) {
-    return NextResponse.json({
+    // Generate an anonymous ID if none exists yet
+    const anonId = anonymousId ?? crypto.randomUUID()
+
+    // Record this check (non-fatal)
+    await recordAnonymousCheck(anonId)
+
+    const response = NextResponse.json({
       saved: false,
       save_reason: 'not_authenticated' as const,
       case_id: null,
       report_id: null,
       used_fallback: analysis.used_fallback,
-      report
+      report,
+      access: {
+        ...access,
+        checksUsed: (access.checksUsed ?? 0) + 1
+      }
     })
+
+    // Persist anonymous ID in cookie for future requests (90-day TTL)
+    if (!anonymousId) {
+      response.cookies.set(ANON_COOKIE, anonId, {
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 90,
+        path: '/'
+      })
+    }
+
+    return response
   }
 
   // ── Authenticated path: persist everything to Supabase ────────────────────
@@ -188,7 +234,8 @@ export async function POST(req: Request) {
       case_id: createdCase.id,
       report_id: savedReport.id,
       used_fallback: analysis.used_fallback,
-      report
+      report,
+      access
     })
   } catch (err) {
     // Unexpected DB error — still return the analysis so the user sees results

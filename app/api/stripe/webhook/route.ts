@@ -103,6 +103,13 @@ export async function POST(req: Request) {
         const customerId =
           typeof sub.customer === 'string' ? sub.customer : sub.customer?.id
 
+        // current_period_end/start moved to items in newer Stripe API versions
+        const subAny = sub as any
+        const periodEnd: number | undefined =
+          subAny.current_period_end ?? sub.items?.data?.[0]?.current_period_end
+        const periodStart: number | undefined =
+          subAny.current_period_start ?? sub.items?.data?.[0]?.current_period_start
+
         await sb
           .from('subscriptions')
           .update({
@@ -110,11 +117,11 @@ export async function POST(req: Request) {
             provider_subscription_id: sub.id,
             status: sub.status,
             plan: 'pro',
-            current_period_end: sub.current_period_end
-              ? new Date(sub.current_period_end * 1000).toISOString()
+            current_period_end: periodEnd
+              ? new Date(periodEnd * 1000).toISOString()
               : null,
-            current_period_start: sub.current_period_start
-              ? new Date(sub.current_period_start * 1000).toISOString()
+            current_period_start: periodStart
+              ? new Date(periodStart * 1000).toISOString()
               : null,
             cancel_at_period_end: sub.cancel_at_period_end
           } as any)
