@@ -210,6 +210,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
       </div>
 
       {/* Safe reply */}
+      {report.safe_reply && (
       <section className="mx-5 rounded-lg border border-border bg-muted/40 p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <SectionHeading>
@@ -226,6 +227,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
           &ldquo;{report.safe_reply}&rdquo;
         </p>
       </section>
+      )}
 
       {/* Disclaimer */}
       <div className="rounded-b-xl border-t border-border bg-muted/30 px-5 py-3">

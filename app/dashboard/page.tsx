@@ -8,6 +8,7 @@ import { LegalDisclaimer } from '@/components/legal-disclaimer'
 import { IconArrowRight, IconPlus } from '@/components/ui/icons'
 import { humanizeCategory } from '@/lib/checkmate-shared'
 import { type Database, type Json } from '@/lib/db_types'
+import { PLAN_MONTHLY_LIMIT } from '@/lib/billing/plans'
 import { DashboardCards } from '@/components/checkmate/DashboardCards'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
@@ -103,7 +104,7 @@ export default async function DashboardPage({
       )
     : 0
 
-  // Usage: checks in the last 24 h
+  // Usage: checks in the last 24 h (for stats card)
   const FREE_TIER_DAILY_LIMIT = 25
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const { count: checksUsedToday } = await supabase
@@ -112,6 +113,16 @@ export default async function DashboardPage({
     .eq('user_id', session.user.id)
     .eq('event_type', 'check_created')
     .gte('created_at', since24h)
+
+  // Usage: checks this calendar month (for billing card)
+  const now = new Date()
+  const since1stOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const { count: checksUsedThisMonth } = await supabase
+    .from('usage_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', session.user.id)
+    .eq('event_type', 'check_created')
+    .gte('created_at', since1stOfMonth)
 
   // Billing status
   const { data: billingRow } = await supabase
@@ -194,6 +205,9 @@ export default async function DashboardPage({
         status={billingStatus}
         trialEndsAt={subAny?.trial_ends_at ?? null}
         stripeConfigured={stripeConfigured}
+        plan={subAny?.plan ?? null}
+        checksUsed={checksUsedThisMonth ?? 0}
+        checksLimit={PLAN_MONTHLY_LIMIT[subAny?.plan as keyof typeof PLAN_MONTHLY_LIMIT] ?? null}
       />
 
       {/* Weekly Scam Watch preference */}
