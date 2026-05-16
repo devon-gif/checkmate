@@ -23,13 +23,15 @@ const LEGAL_LS_VALUE = `${TERMS_VERSION}|${PRIVACY_VERSION}|${AI_DISCLOSURE_VERS
 
 interface LegalReacceptanceModalProps {
   open: boolean
+  /** Where to redirect after acceptance. Defaults to /dashboard. */
+  redirectTo?: string
 }
 
 /**
  * Shown when a logged-in user's accepted legal versions are out of date.
  * Forces them to re-accept before continuing.
  */
-export function LegalReacceptanceModal({ open }: LegalReacceptanceModalProps) {
+export function LegalReacceptanceModal({ open, redirectTo = '/dashboard' }: LegalReacceptanceModalProps) {
   const router = useRouter()
   const [checked, setChecked] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(false)
