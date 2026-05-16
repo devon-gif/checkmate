@@ -112,6 +112,8 @@ export async function middleware(req: NextRequest) {
     if (needsAcceptance) {
       const redirectUrl = req.nextUrl.clone()
       redirectUrl.pathname = '/legal-update'
+      // Pass along where the user was trying to go so the modal can redirect back
+      redirectUrl.searchParams.set('redirectedFrom', pathname)
       return NextResponse.redirect(redirectUrl)
     }
 
