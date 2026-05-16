@@ -47,7 +47,7 @@ export function ScamWatchCard({ initialEnabled }: ScamWatchCardProps) {
             suspicious bills, and red flags to watch for.
           </p>
           <p className="mt-1 text-[11px] text-white/25">
-            You can turn this off anytime.
+                      You can turn this off anytime.
           </p>
         </div>
 
