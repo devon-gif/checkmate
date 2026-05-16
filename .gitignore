@@ -36,3 +36,7 @@ yarn-error.log*
 .env
 .vercel
 .vscode
+
+# Large marketing-template videos kept locally (out of git to stay under push limits).
+# Pull them from the sister `checkmate-site` repo: cp -R ../checkmate-site/public/videos public/
+public/videos/
