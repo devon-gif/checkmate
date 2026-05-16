@@ -76,7 +76,7 @@ export function LegalReacceptanceModal({ open }: LegalReacceptanceModalProps) {
         onPointerDownOutside={e => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Updated Terms & Policies</DialogTitle>
+          <DialogTitle>Updated Terms &amp; Policies</DialogTitle>
           <DialogDescription>
             We&apos;ve updated our Terms of Service, Privacy Policy, and/or AI
             Disclosure. Please review and accept the updated documents to
@@ -104,51 +104,7 @@ export function LegalReacceptanceModal({ open }: LegalReacceptanceModalProps) {
             className="w-full"
           >
             {isLoading && <IconSpinner className="mr-2 animate-spin" />}
-            Accept & Continue
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-
-  return (
-    <Dialog open={open}>
-      <DialogContent
-        className="sm:max-w-md"
-        onPointerDownOutside={e => e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle>Updated Terms & Policies</DialogTitle>
-          <DialogDescription>
-            We&apos;ve updated our Terms of Service, Privacy Policy, and/or AI
-            Disclosure. Please review and accept the updated documents to
-            continue using CheckRay.
-          </DialogDescription>
-        </DialogHeader>
-
-        <p className="rounded-md border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-          CheckRay is not a law firm. Results are informational only, not
-          legal, financial, or medical advice. AI analysis can be wrong. Verify
-          before acting.
-        </p>
-
-        <ConsentCheckbox
-          checked={checked}
-          onCheckedChange={setChecked}
-          disabled={isLoading}
-          className="mt-2"
-        />
-
-        <DialogFooter className="mt-2">
-          <Button
-            onClick={handleAccept}
-            disabled={!checked || isLoading}
-            className="w-full"
-          >
-            {isLoading && <IconSpinner className="mr-2 animate-spin" />}
-            Accept & Continue
+            Accept &amp; Continue
           </Button>
         </DialogFooter>
       </DialogContent>
