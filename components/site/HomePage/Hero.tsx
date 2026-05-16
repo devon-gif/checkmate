@@ -17,7 +17,7 @@ function PhoneVideoDemo() {
           style={{ top: '3%', left: '6%', right: '6%', bottom: '3%', zIndex: 10 }}
         >
           <video
-            src="/videos/checkray-phone.mp4"
+            src={process.env.NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL || "/videos/checkray-phone.mp4"}
             autoPlay
             muted
             loop
