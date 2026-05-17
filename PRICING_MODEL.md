@@ -23,6 +23,8 @@
 - Saved check history
 - Safer reply drafts
 - Dashboard
+- Weekly scam alerts
+- Chrome extension included *(coming soon)*
 - Email support
 - 7-day free trial (no credit card required)
 - CTA: "Start 7-day trial"
@@ -36,6 +38,8 @@
 - Safer reply drafts
 - Priority analysis
 - Dashboard
+- Weekly scam alerts
+- Chrome extension included *(coming soon)*
 - Priority support
 - 7-day free trial (no credit card required)
 - CTA: "Start 7-day trial"
@@ -131,6 +135,55 @@ Shown after cancellation is confirmed (or before — to inform save offers).
 - "Skip"
 
 Responses stored in `user_billing.cancellation_reason` and `user_billing.cancellation_feedback`.
+
+---
+
+## Chrome Extension (planned — Basic+ feature)
+
+**Feature name:** CheckRay Browser Extension
+
+**Core promise:** "Check anything suspicious while you browse."
+
+**Availability:** Basic plan and Plus plan only. Not available on the free tier.
+
+**Marketing line:**
+> Chrome extension coming soon: check suspicious job posts, emails, links, and pages while you browse.
+
+### V1 use cases
+
+- Highlight suspicious text in the browser and send it to Ray
+- Paste email, recruiter message, or job description text into the extension popup
+- Check the current page URL for common phishing/scam signals
+- Check job descriptions and company websites for possible red flags
+- Check suspicious links, bills, marketplace listings, and emails
+- Save results directly to the user's CheckRay dashboard
+- Open the full report in the web app
+
+### Safe wording rules (carry forward from web app)
+
+Use: *common red flags*, *risk signals*, *possible scam*, *possible ghost job*, *verify through official sources*, *Ray can be wrong*
+
+Never use: *Ray proves it is fake*, *Ray confirms it is legit*, *guaranteed scam detection*, *verified safe*
+
+### Auth model
+
+- User must be signed in to use the extension (Basic or Plus subscriber)
+- Extension uses the same Supabase session as the web app (shared cookie or token)
+- Free/anonymous users see an upgrade prompt inside the popup
+
+### Gating
+
+- Extension checks use the same `POST /api/analyze-case` route — billing gate already enforces plan limits
+- No separate extension-specific quota needed for V1
+
+### Not in scope for V1
+
+- Gmail/Outlook in-page helper
+- LinkedIn/Indeed job post auto-detection
+- Browser warning overlay for high-risk pages
+- Trusted contact sharing from extension
+
+See `RETENTION_FEATURES_TODO.md` → Chrome Extension section for full feature roadmap.
 
 ---
 

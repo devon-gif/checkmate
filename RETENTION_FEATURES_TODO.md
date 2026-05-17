@@ -85,6 +85,44 @@ Low-priority. Explore options:
 
 ---
 
+## 8. Chrome Extension
+
+**Feature name:** CheckRay Browser Extension
+**Availability:** Basic plan and Plus plan only
+**Marketing line:** “Chrome extension coming soon: check suspicious job posts, emails, links, and pages while you browse.”
+
+### V1 scope
+
+1. **Popup text checker** — user pastes suspicious text (email, message, job post) into the extension popup and sends it to Ray
+2. **Current page URL checker** — one-click check of the active tab URL for common phishing/scam risk signals
+3. **Highlight to check** — user highlights text on any page, right-clicks, selects “Check with Ray” — result opens in popup
+4. **Save results to dashboard** — each extension check creates a case and saves to the user’s CheckRay dashboard (same as web app flow)
+5. **Open full report** — “See full report” button in popup opens `/cases/[id]` in a new tab
+
+### V1 implementation notes
+
+- Reuses `POST /api/analyze-case` — no new backend route needed
+- Auth: user must be signed in on `checkray.app`; extension reads the shared session token
+- Extension checks count toward the user’s existing monthly limit (Basic: 25, Plus: unlimited)
+- Build as a Manifest V3 Chrome extension
+- No new dependencies in the main Next.js app
+
+### Later / post-V1
+
+1. **Gmail/Outlook helper** — detect email content in-page and offer to check it with Ray
+2. **LinkedIn/Indeed job post helper** — auto-extract job description text from the current page
+3. **Company website context check** — check a company URL for basic legitimacy signals
+4. **Trusted contact sharing** — share a result directly from the extension popup
+5. **Browser warning overlay** — show a subtle warning bar on pages that score very_high on a quick URL check
+
+### Do not build yet
+
+- Do not create any extension files until V1 scope is locked and the web MVP is stable
+- Do not add `webextension-polyfill`, `crxjs`, or any browser-extension build tooling to the main Next.js project
+- Keep extension in a separate repo or monorepo workspace when ready
+
+---
+
 ## Priority order
 
 1. Share report (quick win, drives organic growth)
@@ -92,5 +130,6 @@ Low-priority. Explore options:
 3. Trusted contact / family sharing (strongest retention hook)
 4. Weekly email sender (retention via Resend)
 5. Cancellation survey (improves churn data)
-6. Report a scam (community signal, long-term)
-7. Customer support chat (defer until scale)
+6. Chrome extension V1 (major paid-tier differentiator)
+7. Report a scam (community signal, long-term)
+8. Customer support chat (defer until scale)
