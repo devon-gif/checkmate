@@ -75,9 +75,9 @@ export default function Hero() {
             className="mb-5 bg-radial-white-1 bg-clip-text text-transparent max-lg:mb-4 max-md:mb-[18rem]"
             style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)', lineHeight: '1.05', letterSpacing: '-0.03em', fontWeight: 400 }}
           >
-            A second look before you
+            Scam? Ghost job? Sketchy link?
             <br />
-            click, pay, or reply.
+            CheckRay it.
           </div>
 
           {/* Body copy */}
