@@ -1,0 +1,10 @@
+# Pre-commit hooks for CheckRay.
+# Install: `brew install pre-commit gitleaks` (macOS) then `pre-commit install`
+# Run all hooks manually: `pre-commit run --all-files`
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks — scan staged changes for secrets
+        description: Detect hardcoded secrets in staged files.

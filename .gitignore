@@ -47,3 +47,8 @@ public/videos/video-5.mp4
 
 # Scam-intelligence crawl outputs — test artifacts, change daily, not source-of-truth.
 data/scam-intel/*.json
+
+# Chrome extension (Plasmo) artifacts
+chrome-extension/.plasmo/
+chrome-extension/build/
+chrome-extension/node_modules/

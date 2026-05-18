@@ -1,0 +1,19 @@
+# Gitleaks config for CheckRay.
+# Extends the default ruleset and adds repo-specific allowlist entries.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "CheckRay-specific allowlist (paths only — never allow real secrets)"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)pnpm-lock\.yaml$''',
+  '''(^|/)package-lock\.yaml$''',
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.next/''',
+  '''(^|/)\.plasmo/''',
+  '''(^|/)build/''',
+  '''(^|/)chrome-extension/build/''',
+]
