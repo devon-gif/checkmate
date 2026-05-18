@@ -188,6 +188,12 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
             Billing not configured yet
           </span>
         )}
+        <a
+          href="/support?category=cancellation"
+          className="text-xs text-white/30 transition hover:text-white/60 underline underline-offset-2"
+        >
+          Need help with billing or cancellation?
+        </a>
       </div>
     </GlassCard>
   )
