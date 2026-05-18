@@ -4,6 +4,29 @@ Last updated: May 2026
 
 ---
 
+## How the app degrades when envs are missing
+
+The MVP is hardened so that a misconfigured env on Vercel does **not** take
+down the whole site:
+
+- **Middleware** (`middleware.ts`) only runs on `/dashboard`, `/cases`,
+  `/settings`, `/account`, `/billing`. Any throw is caught and the request
+  is allowed through. The homepage and marketing pages cannot be killed by
+  middleware.
+- **`/api/analyze-case`** is wrapped in a top-level try/catch and returns a
+  friendly JSON error instead of a stack trace.
+- **`lib/billing/access.ts`** logs and returns a permissive
+  `anonymous_free` result if `SUPABASE_SERVICE_ROLE_KEY` /
+  `NEXT_PUBLIC_SUPABASE_URL` are missing or Supabase is unreachable, so
+  `/cases/new` still renders.
+- **`/dashboard`** no longer uses `.throwOnError()`; missing tables or
+  empty results render the empty-state UI instead of a 500.
+
+These are safety nets — you still need every env below set correctly for
+the product to actually work end-to-end.
+
+---
+
 ## Before first deploy
 
 ### 1. Environment variables (Vercel → Settings → Environment Variables)

@@ -86,6 +86,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Smooth scroll for in-page anchor links (e.g. "See how Ray works" → #how-it-works)
+     and offset for the sticky header so section headings aren't hidden behind it. */
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 4.5rem;
+  }
 }
 
 /* ── CheckMate marketing page utilities ───────────────────────────────────── */

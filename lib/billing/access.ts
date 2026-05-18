@@ -48,17 +48,37 @@ const ANON_LIMIT = 1
 
 // ─── Service-role Supabase client ─────────────────────────────────────────────
 
+/**
+ * Returns a service-role Supabase client, or null if envs are missing.
+ * Returning null (rather than throwing) lets callers degrade gracefully —
+ * a missing env on Vercel must not cause the homepage / new-case page to 500.
+ */
 function serviceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) {
-    throw new Error(
-      '[billing/access] NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.'
+    console.warn(
+      '[billing/access] Supabase service-role env vars missing; running in permissive fallback mode.'
     )
+    return null
   }
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false }
   })
+}
+
+/**
+ * Permissive fallback used whenever Supabase is unreachable or misconfigured.
+ * Keeps the user moving instead of locking them out of the product.
+ */
+function permissiveAnonResult(): AccessResult {
+  return {
+    canAnalyze: true,
+    accessStatus: 'anonymous_free',
+    plan: null,
+    checksUsed: 0,
+    checksLimit: ANON_LIMIT
+  }
 }
 
 // ─── Main access check ───────────────────────────────────────────────────────
@@ -70,7 +90,23 @@ export async function checkAccess({
   userId?: string | null
   anonymousId?: string | null
 }): Promise<AccessResult> {
+  try {
+    return await checkAccessInner({ userId, anonymousId })
+  } catch (err) {
+    console.error('[billing/access] checkAccess failed, falling back permissive:', err)
+    return permissiveAnonResult()
+  }
+}
+
+async function checkAccessInner({
+  userId,
+  anonymousId
+}: {
+  userId?: string | null
+  anonymousId?: string | null
+}): Promise<AccessResult> {
   const sb = serviceClient()
+  if (!sb) return permissiveAnonResult()
 
   // ── Anonymous path ──────────────────────────────────────────────────────────
   if (!userId) {
@@ -253,6 +289,7 @@ export async function checkAccess({
 export async function recordAnonymousCheck(anonymousId: string): Promise<void> {
   try {
     const sb = serviceClient()
+    if (!sb) return
     await (sb as any).from('anonymous_checks').insert({ anonymous_id: anonymousId })
   } catch (err) {
     console.error('[billing/access] Failed to record anonymous check:', err)

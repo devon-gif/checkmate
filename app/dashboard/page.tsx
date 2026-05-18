@@ -70,23 +70,32 @@ export default async function DashboardPage({
     cookies: () => cookieStore
   })
 
-  const { data: cases } = await supabase
+  // Note: we deliberately do NOT use .throwOnError() here. Empty tables, RLS
+  // blocks, or transient Supabase errors must degrade to an empty dashboard
+  // state rather than render a 500 page.
+  const { data: cases, error: casesError } = await supabase
     .from('cases')
     .select('*')
     .eq('user_id', session.user.id)
     .order('created_at', { ascending: false })
-    .throwOnError()
+
+  if (casesError) {
+    console.error('[dashboard] cases query failed:', casesError.message)
+  }
 
   const caseRows = (cases ?? []) as CaseRow[]
   const caseIds = caseRows.map(item => item.id)
-  const { data: reports } = caseIds.length
+  const { data: reports, error: reportsError } = caseIds.length
     ? await supabase
         .from('risk_reports')
         .select('*')
         .in('case_id', caseIds)
         .order('created_at', { ascending: false })
-        .throwOnError()
-    : { data: [] }
+    : { data: [], error: null }
+
+  if (reportsError) {
+    console.error('[dashboard] risk_reports query failed:', reportsError.message)
+  }
 
   const reportByCase = new Map<string, ReportRow>()
   ;((reports ?? []) as ReportRow[]).forEach(report => {
@@ -157,9 +166,15 @@ export default async function DashboardPage({
 
   const stripeConfigured = Boolean(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO)
 
-  // Ensure notification_preferences row exists (no-op if already created)
-  await ensureNotificationPreferences(session.user.id)
-  const notifPrefs = await getNotificationPreferences(session.user.id, cookieStore)
+  // Ensure notification_preferences row exists (no-op if already created).
+  // Wrapped because a missing migration on this table must not 500 the page.
+  let notifPrefs: Awaited<ReturnType<typeof getNotificationPreferences>> | null = null
+  try {
+    await ensureNotificationPreferences(session.user.id)
+    notifPrefs = await getNotificationPreferences(session.user.id, cookieStore)
+  } catch (err) {
+    console.error('[dashboard] notification_preferences unavailable:', err)
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">

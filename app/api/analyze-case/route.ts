@@ -32,6 +32,25 @@ const requestSchema = z.object({
 // ─── POST /api/analyze-case ───────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req)
+  } catch (err) {
+    // Top-level safety net. Any unexpected throw (env misconfig, OpenAI
+    // outage propagated past the fallback, etc.) is converted to a friendly
+    // error JSON instead of a generic 500. Stack traces are NEVER returned.
+    console.error('[analyze-case] unhandled error:', err)
+    return NextResponse.json(
+      {
+        error: 'analysis_failed',
+        message:
+          'Ray could not analyse this right now. Please try again in a moment.'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+async function handlePost(req: Request) {
   // 1. Parse + validate request body
   let body: unknown
   try {
