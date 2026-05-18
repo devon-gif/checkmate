@@ -13,7 +13,7 @@ function PhoneVideoDemo() {
 
   return (
     // Moved left from prior right-[-2rem] — now sits tighter against the orb
-    <div className="absolute right-[10rem] bottom-[-2rem] max-xl:right-[6rem] max-xl:bottom-[-1.5rem] max-lg:static max-lg:mt-8 max-lg:mx-auto">
+    <div className="absolute right-[10rem] bottom-[-4.5rem] max-xl:right-[6rem] max-xl:bottom-[-4rem] max-lg:static max-lg:mt-10 max-lg:mx-auto">
       {/* Ambient mint glow sitting behind the device */}
       <div className="absolute inset-x-[-15%] top-[20%] -z-10 h-[70%] rounded-full bg-green/20 blur-[6rem]" />
 
@@ -30,7 +30,7 @@ function PhoneVideoDemo() {
             loop
             playsInline
             preload="auto"
-            className="relative z-10 block h-full w-full object-cover opacity-100"
+            className="relative z-10 block h-full w-full scale-[0.9] object-contain opacity-100"
             onError={event =>
               console.error(
                 'CheckRay hero phone video failed to load:',
@@ -66,14 +66,13 @@ export default function Hero() {
       >
         <div className="max-w-[36rem]">
           {/* Eyebrow */}
-          <div className="mb-3 inline-flex items-center gap-1.5 text-[12px] leading-none tracking-wide text-green/80 max-md:text-[11px] max-md:mb-2">
-            <span className="size-1.5 rounded-full bg-green shrink-0" />
-            Free scam and risk checks. No account required.
+          <div className="mb-3 inline-flex items-center text-[12px] leading-none tracking-wide text-green/80 max-md:text-[11px] max-md:mb-2">
+            • Free scam and risk checks. No account required.
           </div>
 
           {/* Headline */}
           <div
-            className="mb-6 bg-radial-white-1 bg-clip-text text-transparent max-lg:mb-4 max-md:mb-[18rem]"
+            className="mb-5 bg-radial-white-1 bg-clip-text text-transparent max-lg:mb-4 max-md:mb-[18rem]"
             style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)', lineHeight: '1.05', letterSpacing: '-0.03em', fontWeight: 400 }}
           >
             A second look before you
@@ -81,15 +80,9 @@ export default function Hero() {
             click, pay, or reply.
           </div>
 
-          {/* Floating right-column micro-copy */}
-          <div className="absolute right-20 bottom-72 max-w-44 flex flex-col gap-44 text-right text-title-5 text-green max-xl:right-10 max-xl:gap-30 max-lg:static max-lg:gap-5 max-lg:mb-6 max-lg:text-left max-md:gap-8 max-md:mb-10 max-md:text-title-3-mobile">
-            <div>Scam texts, ghost jobs, phishing links, and fake bills. All covered.</div>
-            <div>Risk score, red flags, and what to do next</div>
-          </div>
-
           {/* Body copy */}
-          <div className="max-w-[27rem] mb-6 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5">
-            Paste a text, email, link, bill, job post, or screenshot. CheckRay spots common red flags, explains the risk, and helps you decide what to do next.
+          <div className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5">
+            Paste a text, email, link, bill, job post, or screenshot. CheckRay helps spot ghost jobs, recruiter scams, phishing messages, suspicious links, and other common red flags before you act.
           </div>
 
           {/* CTAs */}
