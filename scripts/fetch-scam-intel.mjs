@@ -24,13 +24,25 @@ import path from 'node:path'
 const USER_AGENT =
   'CheckRay MVP research crawler - contact: support@checkray.app'
 
+/**
+ * Source registry. Each source supports either RSS, HTML extraction, or both
+ * (RSS preferred, HTML fallback). `html_link_pattern` is a regex applied to
+ * anchor hrefs to find item links on the landing page.
+ */
 const SOURCES = [
   {
     id: 'ftc_consumer_alerts',
     name: 'FTC Consumer Alerts',
     landing_url: 'https://consumer.ftc.gov/consumer-alerts',
-    rss_url: 'https://consumer.ftc.gov/consumer-alerts/rss',
-    source_type: 'rss',
+    // Several FTC RSS paths are tried in order — the public path moves around.
+    rss_candidates: [
+      'https://consumer.ftc.gov/consumer-alerts/feed',
+      'https://consumer.ftc.gov/consumer-alerts/rss',
+      'https://consumer.ftc.gov/feed/consumer-alerts'
+    ],
+    html_link_pattern: /\/consumer-alerts\/\d{4}\/\d{2}\/[a-z0-9-]+/,
+    html_origin: 'https://consumer.ftc.gov',
+    source_type: 'mixed',
     trust_level: 'high',
     enabled: true
   },
@@ -46,8 +58,15 @@ const SOURCES = [
     id: 'cisa_advisories',
     name: 'CISA Cybersecurity Advisories',
     landing_url: 'https://www.cisa.gov/news-events/cybersecurity-advisories',
-    rss_url: 'https://www.cisa.gov/cybersecurity-advisories.xml',
-    source_type: 'rss',
+    rss_candidates: [
+      'https://www.cisa.gov/cybersecurity-advisories.xml',
+      'https://www.cisa.gov/news-events/cybersecurity-advisories.xml',
+      'https://www.cisa.gov/news.xml',
+      'https://www.cisa.gov/uscert/ncas/current-activity.xml'
+    ],
+    html_link_pattern: /\/news-events\/cybersecurity-advisories\/[a-z0-9-]+/,
+    html_origin: 'https://www.cisa.gov',
+    source_type: 'mixed',
     trust_level: 'high',
     enabled: true
   },
@@ -57,7 +76,21 @@ const SOURCES = [
     landing_url: 'https://www.bbb.org/scamtracker',
     source_type: 'html',
     trust_level: 'medium',
-    enabled: true
+    enabled: true,
+    // Generic BBB nav links we never want as "intelligence items".
+    bbb_nav_deny: [
+      'report a scam',
+      'look up a scam',
+      'open the heatmap',
+      'dashboard',
+      'submit a report',
+      'submit your report',
+      'about scam tracker',
+      'login',
+      'sign in',
+      'home',
+      'menu'
+    ]
   }
 ]
 
