@@ -1,17 +1,33 @@
 # ENVIRONMENT.md — CheckRay Environment Variables
 
-All variables marked **required** must be set before the app will start.
+> **Fail-safe contract (production).**
+> Public marketing pages (`/`, `/pricing`, `/sign-in`, `/sign-up`, legal
+> pages) must render even if **every** variable below is missing. Missing
+> Supabase publics simply disable auth + dashboard. Missing
+> `OPENAI_API_KEY` triggers the deterministic fallback analyzer. Missing
+> Stripe disables billing. The app must never show "Application error:
+> a server-side exception" on the homepage because of a missing env var.
+>
+> Implementation: `lib/env.ts` only warns, never throws. `auth.ts`
+> returns `null` instead of throwing when Supabase publics are absent.
+> Middleware allows all public routes through with no Supabase calls.
+
 Server-only variables must **never** appear in any `NEXT_PUBLIC_` key name.
 
-## Required for all environments
+## Required for full product (auth + dashboard + saved cases)
 
 | Variable | Client-safe? | Purpose |
 |---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Yes | Supabase anon key (public, row-level-security enforced) |
-| `SUPABASE_SERVICE_ROLE_KEY` | ❌ Server only | Supabase service role (bypasses RLS for server writes). Never log or expose. |
-| `OPENAI_API_KEY` | ❌ Server only | OpenAI API key for AI risk analysis. Falls back to deterministic analyzer if absent. |
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Yes | Supabase project URL. Missing → auth/dashboard disabled, public pages still render. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Yes | Supabase anon key (public, RLS enforced). Missing → same as above. |
+| `SUPABASE_SERVICE_ROLE_KEY` | ❌ Server only | Supabase service role (bypasses RLS for server writes). Never log or expose. Missing → billing/usage writes disabled. |
 | `NEXT_PUBLIC_APP_URL` | ✅ Yes | Canonical app URL without trailing slash (e.g. `https://checkray.app`). Used in Stripe redirect URLs. |
+
+## Strongly recommended (AI quality)
+
+| Variable | Client-safe? | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | ❌ Server only | OpenAI API key for AI risk analysis. Missing → `/api/analyze-case` transparently uses the deterministic fallback analyzer. |
 
 ## Recommended
 

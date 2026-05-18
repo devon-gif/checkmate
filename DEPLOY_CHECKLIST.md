@@ -31,20 +31,33 @@ the product to actually work end-to-end.
 
 ### 1. Environment variables (Vercel → Settings → Environment Variables)
 
-Required:
+> **Fail-safe contract.** Public marketing pages (`/`, `/pricing`, `/sign-in`,
+> `/sign-up`, legal pages) render even if every variable below is missing.
+> Missing Supabase publics simply disable auth/dashboard. Missing
+> `OPENAI_API_KEY` triggers the deterministic fallback analyzer. Missing
+> Stripe disables billing. No env var should ever cause an "Application
+> error: a server-side exception" on the homepage. If you see one, file a
+> bug — the env layer is supposed to fail soft.
+
+**Required for full product (auth + dashboard + saved cases):**
 - [ ] `NEXT_PUBLIC_SUPABASE_URL`
 - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` — mark as **Sensitive**
-- [ ] `OPENAI_API_KEY` — mark as **Sensitive**
 - [ ] `NEXT_PUBLIC_APP_URL` — set to `https://checkray.app` (no trailing slash)
 
-Optional (billing — skip if Stripe not configured):
+**Strongly recommended (AI quality):**
+- [ ] `OPENAI_API_KEY` — mark as **Sensitive**. Without it, `/api/analyze-case`
+      transparently uses the deterministic fallback analyzer.
+- [ ] `CHECKMATE_ANALYZER_MODEL` — defaults to `gpt-4o-mini` when unset.
+
+**Optional (media):**
+- [ ] `NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL` — hero phone video CDN URL.
+      Falls back to `/videos/checkray-mobile-video.mp4` if unset.
+
+**Optional / future (billing — Stripe not yet live):**
 - [ ] `STRIPE_SECRET_KEY` — mark as **Sensitive**
 - [ ] `STRIPE_WEBHOOK_SECRET` — mark as **Sensitive**
 - [ ] `NEXT_PUBLIC_STRIPE_PRICE_ID_PRO` (or per-plan IDs when multi-plan checkout is ready)
-
-Optional (media):
-- [ ] `NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL`
 
 ### 2. Supabase — run all migrations
 
