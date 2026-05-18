@@ -15,9 +15,18 @@ const REQUIRED: string[] = [
 ]
 
 const RECOMMENDED: string[] = ['OPENAI_API_KEY', 'CHECKMATE_ANALYZER_MODEL']
+const isProductionBuild = process.env.NEXT_PHASE === 'phase-production-build'
 
 for (const key of REQUIRED) {
   if (!process.env[key]) {
+    if (isProductionBuild) {
+      console.warn(
+        `[env] Warning: required runtime environment variable not set during build: ${key}. ` +
+          'Runtime routes that need it will fail until it is configured.'
+      )
+      continue
+    }
+
     throw new Error(
       `[env] Missing required environment variable: ${key}\n` +
         'Add it to .env.local (local dev) or your deployment environment.'

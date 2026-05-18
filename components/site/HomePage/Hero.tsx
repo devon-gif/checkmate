@@ -86,7 +86,7 @@ export default function Hero() {
 
           {/* Body copy */}
           <div className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5">
-            Paste a text, email, link, bill, job post, or screenshot. CheckRay helps spot ghost jobs, phishing messages, suspicious links, and scam red flags — with a Chrome extension coming soon.
+            Paste a text, email, link, bill, job post, or screenshot. CheckRay helps spot ghost jobs, phishing messages, suspicious links, and scam red flags, with a Chrome extension coming soon.
           </div>
 
           {/* CTAs */}
