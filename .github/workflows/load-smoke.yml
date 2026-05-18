@@ -1,0 +1,48 @@
+name: Load smoke (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Target BASE_URL'
+        required: false
+        default: 'http://localhost:3000'
+      test_script:
+        description: 'k6 test script to run'
+        required: false
+        default: 'tests/load/smoke-homepage.js'
+        type: choice
+        options:
+          - tests/load/smoke-homepage.js
+          - tests/load/public-routes.js
+          - tests/load/analyze-fallback.js
+
+jobs:
+  smoke:
+    name: k6 smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Run smoke test
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url }}
+          CHECKRAY_FORCE_FALLBACK: 'true'
+        run: |
+          k6 run \
+            --env BASE_URL="${BASE_URL}" \
+            --env CHECKRAY_FORCE_FALLBACK="${CHECKRAY_FORCE_FALLBACK}" \
+            ${{ github.event.inputs.test_script }}

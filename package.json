@@ -13,7 +13,12 @@
     "format:write": "prettier --write \"{app,lib,components}/**/*.{ts,tsx,mdx}\" --cache",
     "format:check": "prettier --check \"{app,lib,components}**/*.{ts,tsx,mdx}\" --cache",
     "scam:intel": "node scripts/fetch-scam-intel.mjs",
-    "test:analyzer": "node scripts/test-analyzer.mjs"
+    "test:analyzer": "node scripts/test-analyzer.mjs",
+    "load:smoke": "k6 run tests/load/smoke-homepage.js",
+    "load:public": "k6 run tests/load/public-routes.js",
+    "load:analyze:fallback": "CHECKRAY_FORCE_FALLBACK=true k6 run tests/load/analyze-fallback.js",
+    "load:spike": "k6 run tests/load/spike-public-routes.js",
+    "load:soak": "k6 run tests/load/soak-public-routes.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.24",
