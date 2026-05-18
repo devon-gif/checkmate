@@ -45,7 +45,10 @@ See [BILLING_TODO.md](./BILLING_TODO.md) for full setup steps.
 
 | Variable | Client-safe? | Purpose |
 |---|---|---|
-| `NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL` | ✅ Yes | URL for hero section phone mockup video |
+| `NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL` | ✅ Yes | Production hero phone video hosted on Vercel Blob |
+
+Production hero phone video is hosted on Vercel Blob through `NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL`.
+Local MP4 files in `public/videos` are fallback/testing only and should not be committed.
 
 ## Security rules
 

@@ -11,7 +11,7 @@ function PhoneVideoDemo() {
 
   return (
     // Moved left from prior right-[-2rem] — now sits tighter against the orb
-    <div className="absolute right-[10rem] bottom-0 max-xl:right-[6rem] max-lg:static max-lg:mt-8 max-lg:mx-auto">
+    <div className="absolute right-[10rem] bottom-[-2rem] max-xl:right-[6rem] max-xl:bottom-[-1.5rem] max-lg:static max-lg:mt-8 max-lg:mx-auto">
       {/* Ambient mint glow sitting behind the device */}
       <div className="absolute inset-x-[-15%] top-[20%] -z-10 h-[70%] rounded-full bg-green/20 blur-[6rem]" />
 
@@ -27,7 +27,7 @@ function PhoneVideoDemo() {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
             className="block h-full w-full object-cover opacity-100"
             onError={() =>
               console.error(
