@@ -42,7 +42,7 @@ export default function Start() {
         >
           <div className="absolute left-1/2 top-0 -z-10 size-72 -translate-x-1/2 rounded-full bg-green/10 blur-[5rem]" />
           <div className="mb-3 bg-radial-white-2 bg-clip-text text-transparent text-title-1 max-lg:text-title-2 max-md:mx-auto max-md:max-w-90 max-md:text-title-1-mobile">
-            Before you click, pay, reply, or apply — ask Ray.
+            Before you click, pay, reply, or apply, ask Ray.
           </div>
           <div className="mx-auto mb-7 max-w-132 text-description max-md:mb-5">
             Paste a job post, recruiter message, suspicious text, email, link,
