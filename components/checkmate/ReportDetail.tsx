@@ -48,27 +48,6 @@ export function ReportDetail({ caseRow, report }: ReportDetailProps) {
       setTimeout(() => setTrustedCopied(false), 2500)
     })
   }
-  function buildTrustedMessage() {
-    if (!report) return null
-    const riskLevel = caseRow.risk_level ?? 'unknown'
-    const topFlags = redFlags.slice(0, 3)
-    const topAction = actions[0] ?? 'verify through official channels'
-
-    if (topFlags.length === 0) {
-      return `Can you take a quick look before I act? I checked this with CheckRay and Ray did not find major red flags, but suggested verifying through official channels first.\n\nRay can be wrong. Verify through official sources.`
-    }
-
-    return `Can you take a quick look before I act? I checked this with CheckRay and Ray found ${riskLevel} risk.\n\nMain red flags:\n${topFlags.map(f => `• ${f}`).join('\n')}\n\nRay suggests: ${topAction}\n\nResults can be wrong, but I want a second opinion before I click, pay, reply, or apply.\n\nRay can be wrong. Verify through official sources.`
-  }
-
-  function copyTrustedMessage() {
-    const msg = buildTrustedMessage()
-    if (!msg) return
-    navigator.clipboard.writeText(msg).then(() => {
-      setTrustedCopied(true)
-      setTimeout(() => setTrustedCopied(false), 2500)
-    })
-  }
 
   function copyReply() {
     if (!safeReply) return
