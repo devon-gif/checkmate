@@ -1,7 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
+import { useState } from 'react'
 
 const cards = [
   {
@@ -52,6 +53,52 @@ function IconTile({ children }: { children: React.ReactNode }) {
   )
 }
 
+function CurvedConnector({ active }: { active: boolean }) {
+  // SVG curve from the IconTile dot (bottom-left) toward the globe image (right).
+  // viewBox kept simple; path drawn in a 600x400 space and stretched.
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-[1] h-full w-full"
+      viewBox="0 0 600 400"
+      preserveAspectRatio="none"
+      fill="none"
+    >
+      <defs>
+        <linearGradient id="checkray-connector" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="rgba(122,226,207,0.0)" />
+          <stop offset="35%" stopColor="rgba(122,226,207,0.95)" />
+          <stop offset="100%" stopColor="rgba(27,140,119,0.4)" />
+        </linearGradient>
+        <filter id="checkray-connector-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      {/* Path: starts near left dot (~x60,y330), arches up, ends near globe (~x520,y130) */}
+      <motion.path
+        d="M 60 330 C 200 240, 320 90, 520 130"
+        stroke="url(#checkray-connector)"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        filter="url(#checkray-connector-glow)"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{
+          pathLength: active ? 1 : 0,
+          opacity: active ? 1 : 0
+        }}
+        transition={{
+          pathLength: { duration: 0.9, ease: 'easeInOut' },
+          opacity: { duration: 0.35, ease: 'easeOut' }
+        }}
+      />
+    </svg>
+  )
+}
+
 function BentoCard({
   card,
   index
@@ -59,31 +106,51 @@ function BentoCard({
   card: (typeof cards)[number]
   index: number
 }) {
+  const reduced = useReducedMotion()
+  const [hovered, setHovered] = useState(false)
+  const isFirst = index === 0
+
   return (
     <motion.div
-      className={`${cardBase} ${card.className} flex p-8 max-xl:p-7 max-md:min-h-72 max-md:p-6`}
-      initial={{ opacity: 0, y: 18 }}
+      className={`${cardBase} ${card.className} group flex p-8 max-xl:p-7 max-md:min-h-72 max-md:p-6`}
+      initial={{ opacity: 0, y: reduced ? 0 : 18 }}
       whileInView={{ opacity: 1, y: 0 }}
+      whileHover={reduced ? undefined : { scale: 1.015 }}
       transition={{ delay: 0.08 + index * 0.08, duration: 0.55 }}
       viewport={{ amount: 0.35, once: true }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+      style={{ transformOrigin: 'center' }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(122,226,207,0.14),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_45%)]" />
       <div className="absolute -bottom-24 -right-20 size-64 rounded-full bg-green/10 blur-[4.5rem]" />
+      {/* Hover border highlight */}
+      <div
+        className={`pointer-events-none absolute inset-0 rounded-[1.25rem] transition-opacity duration-500 ${hovered ? 'opacity-100' : 'opacity-0'}`}
+        style={{
+          boxShadow:
+            'inset 0 0 0 1px rgba(122,226,207,0.28), 0 0 36px rgba(122,226,207,0.10)'
+        }}
+      />
       <div className="pointer-events-none absolute right-5 top-4 font-helvetica text-[5.5rem] leading-none tracking-normal text-white/[0.045] max-md:text-[4rem]">
         {card.num}
       </div>
+
+      {isFirst && !reduced && <CurvedConnector active={hovered} />}
 
       <Image
         src={card.image}
         alt=""
         width={345}
         height={300}
-        className={`${card.imageClassName} pointer-events-none select-none`}
+        className={`${card.imageClassName} pointer-events-none select-none transition-transform duration-700 ${isFirst && hovered ? 'scale-[1.03]' : ''}`}
       />
 
       <div className="relative z-[2] mt-auto max-w-86">
         <IconTile>
-          <span className="size-2.5 rounded-full bg-green shadow-[0_0_18px_rgba(122,226,207,0.9)]" />
+          <span
+            className={`size-2.5 rounded-full bg-green transition-shadow duration-500 ${isFirst && hovered ? 'shadow-[0_0_28px_rgba(122,226,207,1)]' : 'shadow-[0_0_18px_rgba(122,226,207,0.9)]'}`}
+          />
         </IconTile>
         <div className="mb-3 max-w-72 bg-radial-white-2 bg-clip-text text-title-3 text-transparent max-md:text-title-2-mobile">
           {card.title}
