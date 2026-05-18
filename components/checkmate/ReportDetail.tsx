@@ -1,6 +1,76 @@
 'use client'
 
-import * as React from 'react'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+> anyone who wants a second opinion before money or personal info moves."> "Perfect for families helping parents, job seekers checking recruiters, and> or advisor before you click, pay, reply, or apply."> "Ray creates a clear risk summary you can send to a friend, parent, child,## Positioning copy (used on site)---- Public link sharing must require explicit user opt-in per report.- Every share message includes: "Ray can be wrong. Verify through official sources."  no raw input text, no personal data beyond what the user consciously wrote.- Share message includes only the risk level, top flags, and recommended action —- Default is copy-to-clipboard. No automatic sending.## Safety notes---      per-check.      share URL (`/share/[token]`) for a single report. Default off; user opts in- [ ] **Permissioned public report links** — generate a time-limited, read-only      the report page.      share with a trusted person before proceeding. Could be a modal intercept on- [ ] **Emergency high-risk warning flow** — if risk_score ≥ 85, prompt user to      update.      explicitly share with them. Requires permissioned report links + RLS policy- [ ] **Family plan / shared dashboard** — trusted contacts can view reports you      Requires SMS gateway (Twilio/Postmark).- [ ] **SMS share** — generate a shortened share URL or plain-text summary for SMS.      Gate behind Basic/Plus. No live relay yet.- [ ] **Email share** — send the summary via Resend to a saved contact.      user. Pre-fill "Send to [Name]" from the report page.- [ ] **Saved trusted contacts** — store name + contact method (email/phone) per## Later---      with `buildTrustedMessage()` output).- [ ] Allow user to customise the message before copying (simple textarea pre-filled      table) so the user knows they already shared a check.- [ ] Persist a `shared_at` timestamp on `cases` (or a separate `trusted_shares`      without navigating to the detail page.- [ ] Dashboard "Share" button on each check row — opens the same copy summary## Near-term (next sprint)---- [x] "Trusted Circle sharing" mentioned in Plus pricing tier.- [x] Trusted Circle card in "Ways to use" section on the marketing site.- [x] No-red-flags path — a softer message when Ray finds nothing alarming.      reveal the message, copy-to-clipboard button, disclaimer inline.- [x] "Ask someone you trust" GlassCard on the report detail page — toggle to      top recommended action).      plain-English summary from the live report data (risk level, top 3 red flags,- [x] `buildTrustedMessage()` in `ReportDetail.tsx` — generates a copy-ready## MVP (shipped)---Core idea: a scam expert *and* a second human opinion, in your pocket.with someone they trust before they click, pay, reply, or apply.When Ray gives a risk report, the user can copy or share a plain-English summary## What it isimport * as React from 'react'
 import { CaseRiskBadge } from '@/components/case-risk-badge'
 import { LegalDisclaimer } from '@/components/legal-disclaimer'
 import { GlassCard } from '@/components/checkmate/GlassCard'
@@ -25,10 +95,34 @@ interface ReportDetailProps {
 export function ReportDetail({ caseRow, report }: ReportDetailProps) {
   const [copied, setCopied] = React.useState(false)
   const [followUp, setFollowUp] = React.useState('')
+  const [trustedCopied, setTrustedCopied] = React.useState(false)
+  const [trustedOpen, setTrustedOpen] = React.useState(false)
 
   const redFlags = report ? asStringArray(report.red_flags) : []
   const actions = report ? asStringArray(report.recommended_actions) : []
   const safeReply = report?.safe_reply ?? null
+
+  function buildTrustedMessage() {
+    if (!report) return null
+    const riskLevel = caseRow.risk_level ?? 'unknown'
+    const topFlags = redFlags.slice(0, 3)
+    const topAction = actions[0] ?? 'verify through official channels'
+
+    if (topFlags.length === 0) {
+      return `Can you take a quick look before I act? I checked this with CheckRay and Ray did not find major red flags, but suggested verifying through official channels first.\n\nRay can be wrong. Verify through official sources.`
+    }
+
+    return `Can you take a quick look before I act? I checked this with CheckRay and Ray found ${riskLevel} risk.\n\nMain red flags:\n${topFlags.map(f => `• ${f}`).join('\n')}\n\nRay suggests: ${topAction}\n\nResults can be wrong, but I want a second opinion before I click, pay, reply, or apply.\n\nRay can be wrong. Verify through official sources.`
+  }
+
+  function copyTrustedMessage() {
+    const msg = buildTrustedMessage()
+    if (!msg) return
+    navigator.clipboard.writeText(msg).then(() => {
+      setTrustedCopied(true)
+      setTimeout(() => setTrustedCopied(false), 2500)
+    })
+  }
 
   function copyReply() {
     if (!safeReply) return
@@ -161,6 +255,47 @@ export function ReportDetail({ caseRow, report }: ReportDetailProps) {
               </p>
             </GlassCard>
           )}
+
+          {/* Trusted Circle */}
+          <GlassCard className="px-6 py-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                  Ask someone you trust
+                </h2>
+                <p className="mt-1 text-xs text-white/35">
+                  Ray builds a plain-English summary you can send to a friend, parent, or advisor before you act.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTrustedOpen(o => !o)}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/50 transition hover:border-cm-green/30 hover:text-cm-green"
+              >
+                {trustedOpen ? 'Hide' : 'Get summary'}
+              </button>
+            </div>
+
+            {trustedOpen && (
+              <div className="mt-4">
+                <pre className="whitespace-pre-wrap rounded-lg border border-white/8 bg-white/3 px-4 py-3 text-xs leading-6 text-white/55">
+                  {buildTrustedMessage()}
+                </pre>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={copyTrustedMessage}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/50 transition hover:border-cm-green/30 hover:text-cm-green"
+                  >
+                    {trustedCopied ? '✓ Copied' : 'Copy message'}
+                  </button>
+                  <span className="text-[10px] text-white/20">
+                    Ray can be wrong. Verify through official sources.
+                  </span>
+                </div>
+              </div>
+            )}
+          </GlassCard>
 
           {/* Ask Ray follow-up — coming soon */}
           <GlassCard className="px-6 py-5">
