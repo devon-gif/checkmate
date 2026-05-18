@@ -25,7 +25,8 @@ const PROTECTED_PREFIXES = [
   '/cases',
   '/settings',
   '/account',
-  '/billing'
+  '/billing',
+  '/admin'
 ]
 
 function isProtectedPath(pathname: string) {
@@ -79,6 +80,7 @@ export const config = {
     '/cases/:path*',
     '/settings/:path*',
     '/account/:path*',
-    '/billing/:path*'
+    '/billing/:path*',
+    '/admin/:path*'
   ]
 }
