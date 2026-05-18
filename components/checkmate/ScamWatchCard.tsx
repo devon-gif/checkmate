@@ -43,19 +43,17 @@ export function ScamWatchCard({ initialEnabled }: ScamWatchCardProps) {
             </h3>
           </div>
           <p className="mt-1.5 max-w-lg text-xs leading-5 text-white/45">
-            Get a weekly email with common scams, ghost jobs, phishing links,
-            suspicious bills, and red flags to watch for.
-          </p>
-          <p className="mt-1 text-[11px] text-white/25">
-                      You can turn this off anytime.
+            Get weekly email updates about dangerous scams, ghost jobs,
+            phishing links, suspicious bills, and new red flags to watch for.
           </p>
         </div>
 
-        {/* Toggle */}
+        {/* Toggle — labelled "Send me weekly scam alerts" for a11y */}
         <button
           type="button"
           role="switch"
           aria-checked={enabled}
+          aria-label="Send me weekly scam alerts"
           onClick={toggle}
           disabled={saving}
           className={[
@@ -67,9 +65,7 @@ export function ScamWatchCard({ initialEnabled }: ScamWatchCardProps) {
             .filter(Boolean)
             .join(' ')}
         >
-          <span className="sr-only">
-            {enabled ? 'Disable weekly scam watch email' : 'Enable weekly scam watch email'}
-          </span>
+          <span className="sr-only">Send me weekly scam alerts</span>
           <span
             aria-hidden="true"
             className={[

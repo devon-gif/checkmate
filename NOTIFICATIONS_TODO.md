@@ -4,6 +4,41 @@ Steps required before sending real weekly scam watch emails.
 
 ---
 
+## Weekly Scam Watch — product spec (locked)
+
+The product surface for the **Weekly Scam Watch** is already on the
+homepage (`components/site/HomePage/ScamWatch.tsx`), Pricing cards
+(Basic + Plus), the "Ways to use" grid, and the dashboard
+(`components/checkmate/ScamWatchCard.tsx`). Before any email is
+actually sent, the following must be true:
+
+- [ ] **Resend integration** is wired up (see "Set up Resend" below).
+      No other provider for now.
+- [ ] **Every email contains a working unsubscribe link** that updates
+      `notification_preferences.weekly_email_enabled = false` and stamps
+      `unsubscribed_at`. Unsubscribe must work without login.
+- [ ] **Only opted-in users receive email.** Filter on
+      `weekly_email_enabled = true AND unsubscribed_at IS NULL` and also
+      honour Resend's suppression list.
+- [ ] **Human review before sending each early newsletter.** No automatic
+      send for the first ~6 editions — generate a preview, have a human
+      approve, then trigger the cron. Document the approver in
+      `sent_emails` once that table exists.
+- [ ] **No SMS / phone channel** in this product. Do not add Twilio,
+      MessageBird, or any phone integrations. Weekly Scam Watch is
+      email-only.
+- [ ] **No transactional emails** (welcome, password reset, billing) are
+      in scope for this newsletter pipeline — keep concerns separated.
+
+Copy that must stay consistent across surfaces:
+
+- Section title: **Ray's Weekly Scam Watch**
+- Toggle label: **Send me weekly scam alerts**
+- Disclaimer line: *"Alerts are informational only. Ray can be wrong.
+  Always verify through official sources."*
+
+---
+
 ## 1. Set up Resend
 
 - [ ] Create a [Resend](https://resend.com) account
