@@ -77,7 +77,7 @@ export default function Hero() {
           >
             Scam? Ghost job? Sketchy link?
             <br />
-            CheckRay it.
+            <span className="text-green">CheckRay it.</span>
           </div>
 
           {/* Body copy */}
