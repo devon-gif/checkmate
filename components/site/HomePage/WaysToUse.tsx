@@ -39,6 +39,12 @@ const ways = [
     description:
       'Ray sends a weekly email roundup of dangerous scam patterns, ghost jobs, phishing links, and suspicious messages to watch for.',
     badge: null as string | null
+  },
+  {
+    title: 'Ask someone you trust',
+    description:
+      'Ray creates a clear risk summary you can send to a friend, parent, child, or advisor before you click, pay, reply, or apply.',
+    badge: null as string | null
   }
 ]
 

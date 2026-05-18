@@ -50,6 +50,7 @@ const pricing = [
       'Everything in Basic',
       'Unlimited fair-use checks',
       'Priority access to new features',
+      'Trusted Circle sharing',
       'Best for families, job seekers, and heavy use',
       '7-day free trial'
     ]
