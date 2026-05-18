@@ -8,6 +8,8 @@ function PhoneVideoDemo() {
   const phoneVideoSrc =
     process.env.NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL ||
     '/videos/checkray-mobile-video.mp4'
+  // Note: if neither the env var nor the local file is present, the <video>
+  // element silently fails — the phone frame still renders. No crash.
 
   console.log('CheckRay phone video src:', phoneVideoSrc)
 
@@ -29,7 +31,7 @@ function PhoneVideoDemo() {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
             className="relative z-10 block h-full w-full scale-[0.9] object-contain opacity-100"
             onError={event =>
               console.error(
@@ -60,8 +62,11 @@ export default function Hero() {
     <div className="relative pt-16 pb-12 max-xl:pt-12 max-lg:pt-10 max-md:pt-8 max-md:pb-8">
       <motion.div
         className="center relative z-[3]"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
+        // Above-the-fold: animate on mount instead of whileInView so the
+        // hero is never stuck at opacity 0 if IntersectionObserver hasn't
+        // fired yet (and remains visible if JS/hydration is delayed).
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <div className="max-w-[36rem]">
@@ -71,23 +76,21 @@ export default function Hero() {
           </div>
 
           {/* Headline */}
-          <div
+          <h1
             className="mb-5 bg-radial-white-1 bg-clip-text text-transparent max-lg:mb-4 max-md:mb-[18rem]"
             style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)', lineHeight: '1.05', letterSpacing: '-0.03em', fontWeight: 400 }}
           >
-            Scam?
+            A second look
             <br />
-            Ghost job?
+            before you click,
             <br />
-            Sketchy link?
-            <br />
-            <span className="text-green">CheckRay it.</span>
-          </div>
+            pay, or <span className="text-green">reply.</span>
+          </h1>
 
           {/* Body copy */}
-          <div className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5">
-            Paste a text, email, link, bill, job post, or screenshot. CheckRay helps spot ghost jobs, phishing messages, suspicious links, and scam red flags, with a Chrome extension coming soon.
-          </div>
+          <p className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5">
+            Paste a text, email, link, bill, job post, or screenshot. CheckRay helps spot ghost jobs, recruiter scams, phishing messages, suspicious links, and other common red flags &mdash; on the web now, with a Chrome extension coming soon.
+          </p>
 
           {/* CTAs */}
           <div className="flex flex-wrap items-center gap-3 mb-4 max-md:mb-3">
@@ -114,9 +117,9 @@ export default function Hero() {
           </div>
 
           {/* Supporting note */}
-          <div className="max-w-[27rem] text-[11px] leading-5 text-white/35 max-md:mb-8">
+          <p className="max-w-[27rem] text-[11px] leading-5 text-white/35 max-md:mb-8">
             Works for scams, phishing, fake recruiters, suspicious links, bills, and more. Ray can be wrong. Results are informational only.
-          </div>
+          </p>
 
           <PhoneVideoDemo />
         </div>

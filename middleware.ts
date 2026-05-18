@@ -2,50 +2,24 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 
 import type { NextRequest } from 'next/server'
-import {
-  TERMS_VERSION,
-  PRIVACY_VERSION,
-  AI_DISCLOSURE_VERSION
-} from '@/lib/legalCopy'
 
 // ---------------------------------------------------------------------------
-// Constants
+// Minimal, edge-safe middleware.
+//
+// Hardening rules (do not relax without review):
+// - Public marketing pages (/, /pricing, /sign-in, /sign-up, etc.) are NOT
+//   in the matcher, so middleware never runs for them. This prevents a
+//   middleware crash from taking down the homepage.
+// - We never call the database from middleware. Legal acceptance is
+//   enforced inside the protected layouts/pages instead.
+// - We never read private env vars (SUPABASE_SERVICE_ROLE_KEY,
+//   OPENAI_API_KEY, STRIPE_SECRET_KEY, etc.) here.
+// - All Supabase calls are wrapped in try/catch so a missing or
+//   misconfigured env var on Vercel cannot trigger
+//   MIDDLEWARE_INVOCATION_FAILED. On error we let the request through;
+//   the protected page itself can re-check auth server-side.
 // ---------------------------------------------------------------------------
 
-/**
- * Cookie that caches the legal acceptance check result.
- * Value is a composite of all current legal versions: "terms|privacy|ai".
- * Max-age: 5 minutes. After expiry the middleware re-queries the DB.
- * When legal versions change, the value won't match and the DB is re-queried.
- */
-const LEGAL_CACHE_COOKIE = 'cm_legal_ok'
-const LEGAL_CACHE_MAX_AGE = 60 * 5 // 5 minutes
-
-const CURRENT_VERSIONS_KEY = `${TERMS_VERSION}|${PRIVACY_VERSION}|${AI_DISCLOSURE_VERSION}`
-
-/**
- * Routes that are always public — no auth or legal check required.
- * The homepage `/` is intentionally public.
- */
-const PUBLIC_PATHS = [
-  '/',
-  '/sign-in',
-  '/sign-up',
-  '/terms',
-  '/privacy',
-  '/disclaimer',
-  '/ai-disclosure',
-  '/acceptable-use',
-  '/contact',
-  '/legal-update',
-  '/try',
-  '/pricing'
-]
-
-/**
- * Routes that require an authenticated session.
- * Everything else is public unless added here.
- */
 const PROTECTED_PREFIXES = [
   '/dashboard',
   '/cases',
@@ -54,85 +28,57 @@ const PROTECTED_PREFIXES = [
   '/billing'
 ]
 
-function isPublicPath(pathname: string) {
-  // Exact match for "/" to avoid catching everything
-  if (pathname === '/') return true
-  return PUBLIC_PATHS.some(p => p !== '/' && pathname.startsWith(p))
-}
-
 function isProtectedPath(pathname: string) {
-  return PROTECTED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))
+  return PROTECTED_PREFIXES.some(
+    p => pathname === p || pathname.startsWith(p + '/')
+  )
 }
-
-// ---------------------------------------------------------------------------
-// Middleware
-// ---------------------------------------------------------------------------
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
-
-  // Refresh session if expired — required for Server Components
-  const {
-    data: { session }
-  } = await supabase.auth.getSession()
-
   const { pathname } = req.nextUrl
 
-  // Redirect unauthenticated users ONLY when they try to access protected routes
-  if (!session && isProtectedPath(pathname)) {
-    const redirectUrl = req.nextUrl.clone()
-    redirectUrl.pathname = '/sign-in'
-    redirectUrl.searchParams.set('redirectedFrom', pathname)
-    return NextResponse.redirect(redirectUrl)
+  // Defence in depth: even though the matcher excludes public paths, bail
+  // out fast for anything that is not explicitly protected.
+  if (!isProtectedPath(pathname)) {
+    return NextResponse.next()
   }
 
-  // For authenticated users on non-public paths, verify legal acceptance
-  if (session?.user && !isPublicPath(pathname)) {
-    // Fast path: cache cookie present and matches current versions → skip DB
-    const cached = req.cookies.get(LEGAL_CACHE_COOKIE)?.value
-    if (cached === CURRENT_VERSIONS_KEY) {
-      return res
-    }
+  const res = NextResponse.next()
 
-    // Slow path: query the DB
-    const { data: acceptance } = await supabase
-      .from('user_legal_acceptances')
-      .select('terms_version, privacy_version, ai_disclosure_version')
-      .eq('user_id', session.user.id)
-      .order('accepted_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+  try {
+    const supabase = createMiddlewareClient({ req, res })
+    const {
+      data: { session }
+    } = await supabase.auth.getSession()
 
-    const needsAcceptance =
-      !acceptance ||
-      acceptance.terms_version !== TERMS_VERSION ||
-      acceptance.privacy_version !== PRIVACY_VERSION ||
-      acceptance.ai_disclosure_version !== AI_DISCLOSURE_VERSION
-
-    if (needsAcceptance) {
+    if (!session) {
       const redirectUrl = req.nextUrl.clone()
-      redirectUrl.pathname = '/legal-update'
-      // Pass along where the user was trying to go so the modal can redirect back
+      redirectUrl.pathname = '/sign-in'
       redirectUrl.searchParams.set('redirectedFrom', pathname)
       return NextResponse.redirect(redirectUrl)
     }
-
-    // Acceptance is current — set cache cookie to avoid DB queries for next 5 min
-    res.cookies.set(LEGAL_CACHE_COOKIE, CURRENT_VERSIONS_KEY, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: LEGAL_CACHE_MAX_AGE,
-      path: '/'
-    })
+  } catch (err) {
+    // Never throw out of middleware — that turns into a 500 for the user.
+    // Log a short, secret-free message and let the request through; the
+    // protected page will perform its own server-side auth check.
+    console.error(
+      '[middleware] auth check failed, allowing request:',
+      err instanceof Error ? err.message : String(err)
+    )
   }
 
   return res
 }
 
 export const config = {
+  // Run middleware ONLY for protected app sections. Everything else
+  // (homepage, marketing, legal pages, sign-in/up, share links, api,
+  // _next assets) is excluded so a middleware fault cannot break them.
   matcher: [
-    '/((?!share|api|_next/static|_next/image|favicon.ico).*)'
+    '/dashboard/:path*',
+    '/cases/:path*',
+    '/settings/:path*',
+    '/account/:path*',
+    '/billing/:path*'
   ]
 }
