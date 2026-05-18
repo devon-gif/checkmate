@@ -62,7 +62,7 @@ export function NewCaseForm() {
         return
       }
 
-      if (!response.ok) throw new Error(payload.error ?? 'Analysis failed')
+      if (!response.ok) throw new Error(payload.message ?? payload.error ?? 'Analysis failed')
 
       const r = payload.report
       setResult({
@@ -166,8 +166,14 @@ export function NewCaseForm() {
               onChange={e => setText(e.target.value)}
               placeholder="Paste a suspicious text, email, link, bill, job post, recruiter message, or marketplace message…"
               rows={8}
+              maxLength={10000}
               className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20"
             />
+            {text.length > 8000 && (
+              <p className="mt-1 text-right text-[11px] text-white/30">
+                {text.length.toLocaleString()} / 10,000 characters
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
