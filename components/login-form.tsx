@@ -12,6 +12,11 @@ import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 
+const supabaseConfigured =
+  typeof process !== 'undefined' &&
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 interface LoginFormProps extends React.ComponentPropsWithoutRef<'div'> {
   action: 'sign-in' | 'sign-up'
 }
@@ -29,7 +34,21 @@ export function LoginForm({
     const p = new URLSearchParams(window.location.search).get('next')
     setNextParam(p && p.startsWith('/') ? `?next=${encodeURIComponent(p)}` : '')
   }, [])
-  // Create a Supabase client configured to use cookies
+
+  // Guard: if Supabase is not configured, show a friendly message instead of
+  // crashing with "supabaseUrl is required!".
+  if (!supabaseConfigured) {
+    return (
+      <div className="rounded-lg border border-white/10 bg-white/5 p-6 text-center text-sm text-white/60">
+        <p className="font-medium text-white/80 mb-1">Auth is not configured</p>
+        <p>NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required.</p>
+      </div>
+    )
+  }
+
+  // Create a Supabase client configured to use cookies — only reached when
+  // env vars are confirmed present above, so this never throws.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const supabase = createClientComponentClient()
 
   const [formState, setFormState] = React.useState<{

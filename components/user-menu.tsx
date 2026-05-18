@@ -27,11 +27,17 @@ function getUserInitials(name: string) {
 export function UserMenu({ user }: UserMenuProps) {
   const router = useRouter()
 
-  // Create a Supabase client configured to use cookies
-  const supabase = createClientComponentClient()
+  // Create a Supabase client configured to use cookies.
+  // Guard: if env vars are missing, sign-out simply refreshes the router.
+  const supabaseAvailable =
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const supabase = supabaseAvailable ? createClientComponentClient() : null
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    if (supabase) await supabase.auth.signOut()
     router.refresh()
   }
 

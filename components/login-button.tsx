@@ -7,6 +7,11 @@ import { cn } from '@/lib/utils'
 import { Button, type ButtonProps } from '@/components/ui/button'
 import { IconGitHub, IconSpinner } from '@/components/ui/icons'
 
+const supabaseConfigured =
+  typeof process !== 'undefined' &&
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 interface LoginButtonProps extends ButtonProps {
   showGithubIcon?: boolean
   text?: string
@@ -19,12 +24,20 @@ export function LoginButton({
   ...props
 }: LoginButtonProps) {
   const [isLoading, setIsLoading] = React.useState(false)
-  // Create a Supabase client configured to use cookies
-  const supabase = createClientComponentClient()
 
   if (process.env.NEXT_PUBLIC_AUTH_GITHUB !== 'true') {
     return null
   }
+
+  // Don't render if Supabase is not configured — avoids "supabaseUrl is required!" crash
+  if (!supabaseConfigured) {
+    return null
+  }
+
+  // Create a Supabase client configured to use cookies — only reached when
+  // env vars are confirmed present above, so this never throws.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const supabase = createClientComponentClient()
 
   return (
     <Button
