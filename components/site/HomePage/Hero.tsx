@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { fadeUp, fadeIn, staggerContainer } from '@/lib/animations'
 
 function PhoneVideoDemo() {
   const phoneVideoSrc =
@@ -62,21 +63,24 @@ export default function Hero() {
     <div className="relative pt-16 pb-12 max-xl:pt-12 max-lg:pt-10 max-md:pt-8 max-md:pb-8">
       <motion.div
         className="center relative z-[3]"
-        // Above-the-fold: animate on mount instead of whileInView so the
-        // hero is never stuck at opacity 0 if IntersectionObserver hasn't
-        // fired yet (and remains visible if JS/hydration is delayed).
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        // Above-the-fold: animate on mount so the hero is never stuck at
+        // opacity 0 if IntersectionObserver hasn't fired yet.
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
       >
         <div className="max-w-[36rem]">
           {/* Eyebrow */}
-          <div className="mb-3 inline-flex items-center text-[12px] leading-none tracking-wide text-green/80 max-md:text-[11px] max-md:mb-2">
+          <motion.div
+            variants={fadeUp}
+            className="mb-3 inline-flex items-center text-[12px] leading-none tracking-wide text-green/80 max-md:text-[11px] max-md:mb-2"
+          >
             • Free scam and risk checks. No account required.
-          </div>
+          </motion.div>
 
           {/* Headline */}
-          <h1
+          <motion.h1
+            variants={fadeUp}
             className="mb-5 bg-radial-white-1 bg-clip-text text-transparent max-lg:mb-4 max-md:mb-[18rem]"
             style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)', lineHeight: '1.05', letterSpacing: '-0.03em', fontWeight: 400 }}
           >
@@ -87,15 +91,21 @@ export default function Hero() {
             Sketchy link?
             <br />
             <span className="text-green">CheckRay it.</span>
-          </h1>
+          </motion.h1>
 
           {/* Body copy */}
-          <p className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5">
+          <motion.p
+            variants={fadeUp}
+            className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5"
+          >
             Paste a text, email, link, bill, job post, or screenshot. CheckRay helps spot ghost jobs, recruiter scams, phishing messages, suspicious links, and other common red flags — on the web now, with a Chrome extension coming soon.
-          </p>
+          </motion.p>
 
           {/* CTAs */}
-          <div className="flex flex-wrap items-center gap-3 mb-4 max-md:mb-3">
+          <motion.div
+            variants={fadeUp}
+            className="flex flex-wrap items-center gap-3 mb-4 max-md:mb-3"
+          >
             <Link
               href="/sign-up"
               className="relative inline-flex justify-center items-center h-11 px-6 rounded-xl text-title-5 text-white cursor-pointer transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
@@ -116,14 +126,19 @@ export default function Hero() {
             >
               See how Ray works
             </Link>
-          </div>
+          </motion.div>
 
           {/* Supporting note */}
-          <p className="max-w-[27rem] text-[11px] leading-5 text-white/35 max-md:mb-8">
+          <motion.p
+            variants={fadeUp}
+            className="max-w-[27rem] text-[11px] leading-5 text-white/35 max-md:mb-8"
+          >
             Works for scams, phishing, fake recruiters, suspicious links, bills, and more. Ray can be wrong. Results are informational only.
-          </p>
+          </motion.p>
 
-          <PhoneVideoDemo />
+          <motion.div variants={fadeIn}>
+            <PhoneVideoDemo />
+          </motion.div>
         </div>
       </motion.div>
 

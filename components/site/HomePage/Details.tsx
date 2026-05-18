@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useState } from 'react'
+import { fadeUpAt, drawLine, staggerContainer } from '@/lib/animations'
 
 const cards = [
   {
@@ -85,15 +86,7 @@ function CurvedConnector({ active }: { active: boolean }) {
         strokeWidth={1.6}
         strokeLinecap="round"
         filter="url(#checkray-connector-glow)"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{
-          pathLength: active ? 1 : 0,
-          opacity: active ? 1 : 0
-        }}
-        transition={{
-          pathLength: { duration: 0.9, ease: 'easeInOut' },
-          opacity: { duration: 0.35, ease: 'easeOut' }
-        }}
+        {...drawLine({ active, duration: 0.9 })}
       />
     </svg>
   )
@@ -113,10 +106,10 @@ function BentoCard({
   return (
     <motion.div
       className={`${cardBase} ${card.className} group flex p-8 max-xl:p-7 max-md:min-h-72 max-md:p-6`}
-      initial={{ opacity: 0, y: reduced ? 0 : 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      variants={fadeUpAt(0.08 + index * 0.08)}
+      initial="initial"
+      whileInView="animate"
       whileHover={reduced ? undefined : { scale: 1.015 }}
-      transition={{ delay: 0.08 + index * 0.08, duration: 0.55 }}
       viewport={{ amount: 0.35, once: true }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
@@ -181,18 +174,24 @@ export default function Details() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <motion.div
+          className="grid grid-cols-1 gap-4 lg:grid-cols-12"
+          variants={staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ amount: 0.2, once: true }}
+        >
           {cards.map((card, index) => (
             <BentoCard key={card.num} card={card} index={index} />
           ))}
-        </div>
+        </motion.div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
           <motion.div
             className={`${cardBase} min-h-45 px-8 py-7 lg:col-span-8 max-md:px-6 max-md:py-6`}
-            initial={{ opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.32, duration: 0.55 }}
+            variants={fadeUpAt(0.32)}
+            initial="initial"
+            whileInView="animate"
             viewport={{ amount: 0.35, once: true }}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_20%,rgba(122,226,207,0.18),transparent_36%),linear-gradient(90deg,rgba(255,255,255,0.08),transparent_62%)]" />
@@ -226,9 +225,9 @@ export default function Details() {
 
           <motion.div
             className={`${cardBase} min-h-45 px-8 py-7 lg:col-span-4 max-md:px-6 max-md:py-6`}
-            initial={{ opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.55 }}
+            variants={fadeUpAt(0.4)}
+            initial="initial"
+            whileInView="animate"
             viewport={{ amount: 0.35, once: true }}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(122,226,207,0.14),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.07),transparent_55%)]" />

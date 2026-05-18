@@ -13,6 +13,7 @@
  */
 
 import { motion } from 'framer-motion'
+import { glassReveal } from '@/lib/animations'
 
 const bullets = [
   'New scam patterns every week',
@@ -48,9 +49,9 @@ export default function ScamWatch() {
             boxShadow:
               '0 0 60px rgba(122,226,207,0.10), inset 0 1px 0 rgba(255,255,255,0.06)'
           }}
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          variants={glassReveal}
+          initial="initial"
+          whileInView="animate"
           viewport={{ amount: 0.3, once: true }}
         >
           {/* Soft mint orb */}

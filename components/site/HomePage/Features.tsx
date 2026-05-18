@@ -1,7 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
+import { fadeUp, fadeIn, staggerContainer } from '@/lib/animations'
 
 const features = [
   {
@@ -31,6 +32,7 @@ const features = [
 ]
 
 export default function Features() {
+  const reduced = useReducedMotion()
   return (
     <div
       id="features"
@@ -39,10 +41,10 @@ export default function Features() {
       <div className="center relative z-[2]">
         <motion.div
           className="max-w-148 mx-auto mb-18 text-center max-xl:mb-14 max-md:mb-8.5"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.7 }}
-          viewport={{ amount: 0.7 }}
+          variants={fadeIn}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ amount: 0.5, once: true }}
         >
           <div className="label mb-3 max-md:mb-1">What Ray can check</div>
           <div className="mb-6 bg-radial-white-2 bg-clip-text text-transparent text-title-1 max-lg:text-title-2 max-md:mb-3 max-md:text-title-1-mobile">
@@ -54,15 +56,19 @@ export default function Features() {
             actually run into.
           </div>
         </motion.div>
-        <div className="flex flex-wrap -mt-4 -mx-2">
+        <motion.div
+          className="flex flex-wrap -mt-4 -mx-2"
+          variants={staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ amount: 0.15, once: true }}
+        >
           {features.map((item, index) => (
             <motion.div
               key={index}
-              className="relative w-[calc(25%-1rem)] mt-4 mx-2 rounded-[1.25rem] bg-content shadow-2 backdrop-blur-[1.25rem] after:absolute after:inset-0 after:border after:border-line after:rounded-[1.25rem] after:pointer-events-none max-lg:w-[calc(50%-1rem)] max-md:w-[calc(100%-1rem)]"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.7 }}
-              viewport={{ amount: 0.5 }}
+              className="relative w-[calc(25%-1rem)] mt-4 mx-2 rounded-[1.25rem] bg-content shadow-2 backdrop-blur-[1.25rem] after:absolute after:inset-0 after:border after:border-line after:rounded-[1.25rem] after:pointer-events-none max-lg:w-[calc(50%-1rem)] max-md:w-[calc(100%-1rem)] transition-shadow duration-500 hover:shadow-[0_0_40px_rgba(122,226,207,0.10)]"
+              variants={fadeUp}
+              whileHover={reduced ? undefined : { y: -3 }}
             >
               <div className="max-md:text-center">
                 <Image
@@ -81,7 +87,7 @@ export default function Features() {
               </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
       <div className="max-md:hidden">
         <div className="absolute top-47.5 left-[calc(50%-52.38rem)] size-98.5 bg-green/20 rounded-full blur-[6.75rem]" />

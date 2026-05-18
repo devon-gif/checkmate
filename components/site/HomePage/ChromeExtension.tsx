@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { fadeUp, glassReveal } from '@/lib/animations'
 
 const redFlags = [
   'Equipment purchase request',
@@ -213,10 +214,10 @@ export default function ChromeExtension() {
           {/* Copy block */}
           <motion.div
             className="max-w-2xl text-center"
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ amount: 0.5 }}
+            variants={fadeUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ amount: 0.5, once: true }}
           >
             <div className="label mb-3 max-md:mb-1">Chrome extension</div>
 
@@ -267,10 +268,10 @@ export default function ChromeExtension() {
           {/* Browser mockup */}
           <motion.div
             className="w-full max-w-4xl"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.7 }}
-            viewport={{ amount: 0.2 }}
+            variants={glassReveal}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ amount: 0.2, once: true }}
           >
             <BrowserMockup />
           </motion.div>

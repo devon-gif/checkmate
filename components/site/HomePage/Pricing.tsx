@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { fadeUp, fadeIn, staggerContainer } from '@/lib/animations'
 
 const pricing = [
   {
@@ -77,10 +78,10 @@ export default function Pricing() {
       <div className="center">
         <motion.div
           className="max-w-175 mx-auto mb-17.5 text-center max-xl:mb-14 max-md:mb-8"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.7 }}
-          viewport={{ amount: 0.7 }}
+          variants={fadeIn}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ amount: 0.5, once: true }}
         >
           <div className="label mb-3 max-md:mb-1.5">Pricing</div>
           <div className="bg-radial-white-2 bg-clip-text text-transparent text-title-1 max-lg:text-title-2 max-md:text-title-1-mobile">
@@ -93,16 +94,17 @@ export default function Pricing() {
         </motion.div>
         <motion.div
           className="flex gap-4 max-lg:-mx-10 max-lg:px-10 max-lg:overflow-x-auto max-md:-mx-5 max-md:px-5"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.7 }}
-          viewport={{ amount: 0.35 }}
+          variants={staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ amount: 0.2, once: true }}
         >
           {pricing.map((item, index) => {
             const { isFeatured } = item
             return (
-              <div
+              <motion.div
                 key={index}
+                variants={fadeUp}
                 className={`relative flex flex-col flex-1 rounded-[1.25rem] overflow-hidden after:absolute after:inset-0 after:border after:border-line after:rounded-[1.25rem] after:pointer-events-none max-lg:shrink-0 max-lg:flex-auto max-lg:w-84 ${
                   isFeatured
                     ? 'shadow-2 before:absolute before:-top-20 before:left-1/2 before:z-[1] before:-translate-x-1/2 before:w-65 before:h-57 before:bg-green/10 before:rounded-full before:blur-[3.375rem]'
@@ -176,7 +178,7 @@ export default function Pricing() {
                     ))}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )
           })}
         </motion.div>
