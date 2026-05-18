@@ -289,15 +289,75 @@ function dedupeItems(items) {
 
 /* ─── Per-source fetchers ─────────────────────────────────────────────────── */
 
-async function fetchRssSource(source) {
-  if (!source.rss_url) {
-    return { source_id: source.id, ok: false, items: [], warning: 'No rss_url configured.' }
+/**
+ * Try each RSS candidate URL in order. Returns the parsed entries on first
+ * success, or a warning string after all attempts fail.
+ */
+async function tryRssCandidates(candidates) {
+  const errs = []
+  for (const url of candidates) {
+    try {
+      const xml = await fetchText(url)
+      const entries = parseRss(xml)
+      if (entries.length > 0) return { entries, used_url: url }
+      errs.push(`${url} returned 0 items`)
+    } catch (err) {
+      errs.push(`${url}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+  return { entries: [], errors: errs }
+}
+
+/**
+ * Generic landing-page HTML fallback. Extracts anchors whose href matches
+ * `html_link_pattern`, normalizes them against `html_origin`, and surfaces
+ * the anchor text as the item title.
+ */
+async function fetchHtmlLinks(source) {
+  if (!source.html_link_pattern || !source.html_origin) {
+    return { items: [], warning: 'No html_link_pattern configured.' }
   }
   try {
-    const xml = await fetchText(source.rss_url)
-    const entries = parseRss(xml)
+    const html = await fetchText(source.landing_url)
     const fetchedAt = new Date().toISOString()
-    const items = entries.map(e =>
+    const items = []
+    const seen = new Set()
+    const linkRegex = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+    let m
+    while ((m = linkRegex.exec(html)) !== null) {
+      const href = m[1]
+      const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+      if (!source.html_link_pattern.test(href)) continue
+      if (!text || text.length < 12) continue
+      let url
+      try {
+        url = new URL(href, source.html_origin).toString()
+      } catch {
+        continue
+      }
+      if (seen.has(url)) continue
+      seen.add(url)
+      items.push(toScamIntelItem(source, { title: text, url }, fetchedAt))
+      if (items.length >= 40) break
+    }
+    return { items }
+  } catch (err) {
+    return {
+      items: [],
+      warning: `HTML fallback failed: ${err instanceof Error ? err.message : String(err)}`
+    }
+  }
+}
+
+async function fetchRssSource(source) {
+  const candidates = source.rss_candidates || (source.rss_url ? [source.rss_url] : [])
+  if (candidates.length === 0) {
+    return { source_id: source.id, ok: false, items: [], warning: 'No RSS candidates configured.' }
+  }
+  const result = await tryRssCandidates(candidates)
+  if (result.entries.length > 0) {
+    const fetchedAt = new Date().toISOString()
+    const items = result.entries.map(e =>
       toScamIntelItem(
         source,
         {
@@ -310,14 +370,27 @@ async function fetchRssSource(source) {
       )
     )
     return { source_id: source.id, ok: true, items }
-  } catch (err) {
+  }
+  // All RSS candidates failed — fall back to HTML extraction if configured.
+  const rssWarning = `RSS candidates exhausted: ${(result.errors || []).join(' | ')}`
+  if (source.html_link_pattern) {
+    const html = await fetchHtmlLinks(source)
+    if (html.items.length > 0) {
+      return {
+        source_id: source.id,
+        ok: true,
+        items: html.items,
+        warning: `${rssWarning} — used HTML fallback (${html.items.length} item(s)).`
+      }
+    }
     return {
       source_id: source.id,
       ok: false,
       items: [],
-      warning: `RSS fetch failed: ${err instanceof Error ? err.message : String(err)}`
+      warning: html.warning ? `${rssWarning}; HTML fallback: ${html.warning}` : rssWarning
     }
   }
+  return { source_id: source.id, ok: false, items: [], warning: rssWarning }
 }
 
 function extractIc3Date(href) {
@@ -363,6 +436,7 @@ async function fetchIc3Psa(source) {
 }
 
 async function fetchBbbScamTracker(source) {
+  const deny = (source.bbb_nav_deny || []).map(s => s.toLowerCase())
   try {
     const html = await fetchText(source.landing_url)
     const fetchedAt = new Date().toISOString()
@@ -374,7 +448,11 @@ async function fetchBbbScamTracker(source) {
     while ((m = linkRegex.exec(html)) !== null) {
       const href = m[1]
       const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-      if (!text || text.length < 10) continue
+      if (!text || text.length < 18) continue
+      if (deny.includes(text.toLowerCase())) continue
+      // BBB nav links are typically short and lower-case; require at least
+      // one space to filter out single-word menu items.
+      if (!text.includes(' ')) continue
       const url = href.startsWith('http') ? href : `https://www.bbb.org${href}`
       if (seen.has(url)) continue
       seen.add(url)
@@ -387,7 +465,7 @@ async function fetchBbbScamTracker(source) {
         ok: true,
         items: [],
         warning:
-          'BBB Scam Tracker page is client-rendered — 0 items parsed from plain HTTP fetch. Treat as expected.'
+          'BBB Scam Tracker page is client-rendered — 0 intelligence items parsed from plain HTTP fetch (nav links filtered). Treat as expected.'
       }
     }
     return { source_id: source.id, ok: true, items }
@@ -404,7 +482,7 @@ async function fetchBbbScamTracker(source) {
 async function dispatchFetcher(src) {
   if (src.id === 'fbi_ic3_psa') return fetchIc3Psa(src)
   if (src.id === 'bbb_scam_tracker') return fetchBbbScamTracker(src)
-  if (src.rss_url) return fetchRssSource(src)
+  if (src.rss_candidates || src.rss_url) return fetchRssSource(src)
   return {
     source_id: src.id,
     ok: false,
