@@ -1,0 +1,2 @@
+# Keep this directory tracked in git even though *.json contents are ignored.
+# Scam-intelligence outputs land here via `npm run scam:intel`.

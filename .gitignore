@@ -44,4 +44,6 @@ public/videos/video-2.mp4
 public/videos/video-3.mp4
 public/videos/video-4.mp4
 public/videos/video-5.mp4
-public/videos/*.mp4
+
+# Scam-intelligence crawl outputs — test artifacts, change daily, not source-of-truth.
+data/scam-intel/*.json
