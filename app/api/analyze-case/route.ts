@@ -109,9 +109,13 @@ export async function POST(req: Request) {
     category: analysis.category,
     risk_score: analysis.risk_score,
     risk_level: analysis.risk_level,
+    confidence_level: analysis.confidence_level,
     summary: analysis.summary,
+    evidence_found: analysis.evidence_found,
     red_flags: analysis.red_flags,
+    missing_information: analysis.missing_information,
     recommended_actions: analysis.recommended_actions,
+    verification_steps: analysis.verification_steps,
     safe_reply: analysis.safe_reply,
     disclaimer: analysis.disclaimer ?? ANALYSIS_DISCLAIMER
   }

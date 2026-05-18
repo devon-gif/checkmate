@@ -16,6 +16,17 @@ import type { CaseCategory } from '@/lib/checkmate-shared'
 import { riskAnalysisSchema } from '@/lib/analysis/schema'
 import { detectUrls, buildFallbackAnalysis } from '@/lib/analysis/fallback'
 import type { RiskAnalysis } from '@/lib/analysis/types'
+import {
+  clampRiskScore,
+  confidenceFromEvidence,
+  defaultMissingInformation,
+  defaultVerificationSteps,
+  ensureDisclaimer,
+  evidenceFromFlags,
+  normalizeCategory,
+  normalizeRiskLevel,
+  uniqueStrings
+} from '@/lib/analysis/accuracy-policy'
 
 // Re-export everything from the shared module so server code can still import
 // from a single place, and client code imports from checkmate-shared directly.
@@ -46,7 +57,13 @@ const SYSTEM_PROMPT = [
   '## Tone rules (MANDATORY)',
   '- NEVER claim certainty. Use language like "may", "appears to", "possible", "risk signals", "common red flags", "verify through official channels".',
   '- NEVER say something is "definitely safe" or "definitely a scam".',
+  '- NEVER say "this is safe", "this is legal", "this is illegal", or "you should definitely pay".',
+  '- NEVER say a company is fake or scamming based only on a submitted message.',
   '- NEVER say "Ray verified this", "Ray guarantees", "Ray knows", "Ray confirms", "Ray prevents fraud", or that Ray is 100% accurate.',
+  '- Do not claim you checked a website, company, job board, or sender unless a verification tool actually did that. In this product flow, you usually cannot verify externally.',
+  '- Clearly distinguish "observed in the submitted text" from "recommended to verify".',
+  '- If information is missing, list what is missing instead of filling gaps.',
+  '- Use conservative scoring when evidence is thin.',
   '- Do not provide legal, medical, or financial advice.',
   '- Safe replies must be non-accusatory, calm, and avoid sharing sensitive information.',
   '',
@@ -73,6 +90,7 @@ const SYSTEM_PROMPT = [
   '- Asks for SSN, bank details, or government ID before a formal offer',
   '- No verifiable company website or LinkedIn',
   '- Ghost job signals: vague role description, no salary range, no named hiring manager, pressure to apply immediately',
+  '- Old/reposted listing alone should not be high risk. Vague description alone should not be high risk. Multiple soft signals can become medium/high.',
   '',
   '## Phishing / URL signals — flag as phishing_url and raise risk_score if:',
   '- URL uses suspicious TLD (.xyz, .tk, .ml, .click, .top, .ru)',
@@ -92,11 +110,18 @@ const SYSTEM_PROMPT = [
   '## Rental / marketplace signals:',
   '- Flag payment before viewing, overseas/military landlord stories, unusually low prices, or informal payment methods (Zelle, Venmo, crypto).',
   '',
+  '## Required output structure',
+  '- confidence_level: high only for multiple strong red flags or explicit known scam patterns; medium for several soft signals; low when context is thin or no clear signal appears.',
+  '- evidence_found: cite only evidence observed in the submitted text or URL field. Do not invent facts.',
+  '- missing_information: list what would be needed to verify, such as official sender identity, official company careers link, itemized bill, sender domain, or verified portal.',
+  '- verification_steps: 2–5 concrete steps the user can take through official channels.',
+  '- If low risk: summary must still say no major red flags were found, but verify through official channels.',
+  '',
   '## Disclaimer requirement',
   `Always set disclaimer to exactly: "${ANALYSIS_DISCLAIMER}"`,
   '',
   '## Risk level mapping',
-  'low: 0–29  |  medium: 30–59  |  high: 60–84  |  very_high: 85–100',
+  'low: 0–24  |  medium: 25–49  |  high: 50–74  |  very_high: 75–100',
   'Ensure risk_level is always consistent with risk_score.'
 ].join('\n')
 
@@ -107,8 +132,12 @@ type AiObject = {
   risk_score: number
   risk_level: 'low' | 'medium' | 'high' | 'very_high'
   category: CaseCategory
+  confidence_level: 'low' | 'medium' | 'high'
+  evidence_found: string[]
   red_flags: string[]
+  missing_information: string[]
   recommended_actions: string[]
+  verification_steps: string[]
   safe_reply: string
   summary: string
   disclaimer: string
@@ -155,12 +184,62 @@ function applyComboFloors(obj: AiObject, fullText: string, urls: string[]): AiOb
     }
   }
 
-  const risk_level = risk_score >= 85 ? 'very_high'
-    : risk_score >= 60 ? 'high'
-    : risk_score >= 30 ? 'medium'
-    : 'low'
+  const risk_level = normalizeRiskLevel(risk_score)
 
   return { ...obj, risk_score, risk_level, category, red_flags, recommended_actions, safe_reply }
+}
+
+function finalizeAnalysis(
+  obj: AiObject,
+  urls: string[],
+  strongSignalCount = 0
+): RiskAnalysis {
+  const risk_score = clampRiskScore(obj.risk_score)
+  const risk_level = normalizeRiskLevel(risk_score)
+  const category = normalizeCategory(obj.category)
+  const red_flags = uniqueStrings(obj.red_flags)
+  const missing_information = uniqueStrings(
+    obj.missing_information.length
+      ? obj.missing_information
+      : defaultMissingInformation(category)
+  )
+  const verification_steps = uniqueStrings(
+    obj.verification_steps.length
+      ? obj.verification_steps
+      : defaultVerificationSteps(category)
+  ).slice(0, 5)
+  const recommended_actions = uniqueStrings([
+    ...obj.recommended_actions,
+    ...verification_steps
+  ]).slice(0, 6)
+  const evidence_found = uniqueStrings(
+    obj.evidence_found.length ? obj.evidence_found : evidenceFromFlags(red_flags)
+  )
+
+  return {
+    category,
+    risk_score,
+    risk_level,
+    confidence_level: confidenceFromEvidence({
+      score: risk_score,
+      redFlags: red_flags,
+      missingInformation: missing_information,
+      strongSignalCount
+    }),
+    summary:
+      risk_level === 'low' && /safe|definitely|guarantee/i.test(obj.summary)
+        ? 'No major red flags were found in the provided information, but that does not prove it is safe. Verify through official channels before taking action.'
+        : obj.summary,
+    evidence_found,
+    red_flags,
+    missing_information,
+    recommended_actions,
+    safe_reply: obj.safe_reply,
+    verification_steps,
+    disclaimer: ensureDisclaimer(obj.disclaimer),
+    detected_urls: urls,
+    used_fallback: false
+  }
 }
 
 // ─── Public analyzer ──────────────────────────────────────────────────────────
@@ -198,9 +277,13 @@ export async function analyzeCase({
     '- category: exactly one from the allowed list.',
     '- risk_score: integer 0–100.',
     '- risk_level: must be consistent with risk_score.',
+    '- confidence_level: low, medium, or high based on evidence quality.',
     '- summary: 2–4 sentences, plain English, no certainty claims.',
+    '- evidence_found: quote or paraphrase only signals observed in user-provided text/URL.',
     '- red_flags: concrete list of specific signals found, each ≤ 15 words.',
+    '- missing_information: list missing context needed to verify.',
     '- recommended_actions: 3–6 specific actionable steps.',
+    '- verification_steps: 2–5 official-channel checks.',
     '- safe_reply: short message the user can send if a reply is appropriate.',
     `- disclaimer: exactly "${ANALYSIS_DISCLAIMER}"`
   ]
@@ -219,12 +302,7 @@ export async function analyzeCase({
     // critical scam patterns even if the model hedges.
     const boosted = applyComboFloors(object, submittedText + ' ' + submittedUrl, detectedUrls)
 
-    return {
-      ...boosted,
-      disclaimer: ANALYSIS_DISCLAIMER,
-      detected_urls: detectedUrls,
-      used_fallback: false
-    }
+    return finalizeAnalysis(boosted, detectedUrls)
   } catch (err) {
     console.warn('[checkmate] AI analyzer failed, using deterministic fallback:', err)
     return buildFallbackAnalysis(submittedText + ' ' + submittedUrl, detectedUrls, categoryHint)

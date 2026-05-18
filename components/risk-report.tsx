@@ -10,9 +10,13 @@ export interface RiskReportData {
   category: CaseCategory
   risk_score: number
   risk_level: RiskLevel
+  confidence_level?: 'low' | 'medium' | 'high'
   summary: string
+  evidence_found?: string[]
   red_flags: string[]
+  missing_information?: string[]
   recommended_actions: string[]
+  verification_steps?: string[]
   safe_reply: string
   disclaimer: string
   case_id?: string
@@ -159,6 +163,11 @@ export function RiskReport({ report, className }: RiskReportProps) {
             <span className="rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
               {humanizeCategory(report.category)}
             </span>
+            {report.confidence_level && (
+              <span className="rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
+                {report.confidence_level} confidence
+              </span>
+            )}
           </div>
           <p className="text-sm leading-relaxed text-foreground">{report.summary}</p>
         </div>
@@ -169,6 +178,14 @@ export function RiskReport({ report, className }: RiskReportProps) {
 
       {/* Body */}
       <div className="grid gap-5 px-5 sm:grid-cols-2">
+        {/* Evidence */}
+        {report.evidence_found && report.evidence_found.length > 0 && (
+          <section>
+            <SectionHeading>Evidence found</SectionHeading>
+            <BulletList items={report.evidence_found} />
+          </section>
+        )}
+
         {/* Red flags */}
         {report.red_flags.length > 0 && (
           <section>
@@ -178,7 +195,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                   <line x1="4" y1="22" x2="4" y2="15" />
                 </svg>
-                Ray found these red flags
+                Common red flags
               </span>
             </SectionHeading>
             <ul className="space-y-2">
@@ -189,6 +206,22 @@ export function RiskReport({ report, className }: RiskReportProps) {
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {/* Verification steps */}
+        {report.verification_steps && report.verification_steps.length > 0 && (
+          <section>
+            <SectionHeading>Verification steps</SectionHeading>
+            <BulletList items={report.verification_steps} />
+          </section>
+        )}
+
+        {/* Missing information */}
+        {report.missing_information && report.missing_information.length > 0 && (
+          <section>
+            <SectionHeading>Missing information</SectionHeading>
+            <BulletList items={report.missing_information} />
           </section>
         )}
 

@@ -70,9 +70,13 @@ export function NewCaseForm() {
         category: r.category as CaseCategory,
         risk_score: r.risk_score as number,
         risk_level: r.risk_level as RiskLevel,
+        confidence_level: r.confidence_level as 'low' | 'medium' | 'high' | undefined,
         summary: r.summary as string,
+        evidence_found: r.evidence_found as string[] | undefined,
         red_flags: r.red_flags as string[],
+        missing_information: r.missing_information as string[] | undefined,
         recommended_actions: r.recommended_actions as string[],
+        verification_steps: r.verification_steps as string[] | undefined,
         safe_reply: r.safe_reply as string,
         disclaimer: r.disclaimer as string,
         case_id: payload.case_id as string | undefined
