@@ -32,6 +32,12 @@ const ways = [
     description:
       'Check suspicious pages while browsing. Ray highlights risk signals and shows a fast readout right inside your browser.',
     badge: 'Coming soon' as string | null
+  },
+  {
+    title: 'Weekly scam alerts',
+    description:
+      'Ray sends a weekly email roundup of dangerous scam patterns, ghost jobs, phishing links, and suspicious messages to watch for.',
+    badge: null as string | null
   }
 ]
 

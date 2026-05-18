@@ -13,7 +13,7 @@ const pricing = [
     href: '/try',
     isFeatured: false,
     features: [
-      '1 check per month',
+      '1 free check/month',
       'Risk score and red flags',
       'Plain-English suggested next step',
       'No account required'
@@ -31,7 +31,7 @@ const pricing = [
       '25 checks per month',
       'Saved check history',
       'Safer reply drafts',
-      'Weekly scam alerts',
+      'Weekly Scam Watch emails',
       'Chrome extension included',
       '7-day free trial'
     ]
@@ -49,7 +49,7 @@ const pricing = [
       'Priority analysis',
       'Saved check history',
       'Safer reply drafts',
-      'Weekly scam alerts',
+      'Weekly Scam Watch emails',
       'Chrome extension included',
       '7-day free trial'
     ]
