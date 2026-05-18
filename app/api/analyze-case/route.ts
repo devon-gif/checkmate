@@ -117,10 +117,22 @@ async function handlePost(req: Request) {
   }
 
   // 3. Run analysis (AI with deterministic fallback) — always, guests included
+  //
+  // Force-fallback mode: skip the AI call entirely in two cases:
+  //   a) CHECKRAY_FORCE_FALLBACK=true env var (set when running load tests)
+  //   b) X-CheckRay-Test-Mode: fallback request header in non-production
+  //
+  // This prevents load tests from generating OpenAI API costs.
+  const forceFallback =
+    process.env.CHECKRAY_FORCE_FALLBACK === 'true' ||
+    (process.env.NODE_ENV !== 'production' &&
+      req.headers.get('x-checkray-test-mode') === 'fallback')
+
   const analysis = await analyzeCase({
     text: submittedText,
     url: submittedUrl,
-    categoryHint
+    categoryHint,
+    forceFallback
   })
 
   // Canonical nested report shape

@@ -247,11 +247,15 @@ function finalizeAnalysis(
 export async function analyzeCase({
   text,
   url,
-  categoryHint
+  categoryHint,
+  forceFallback = false
 }: {
   text?: string
   url?: string
   categoryHint?: string
+  /** When true, skip the AI call and use the deterministic fallback only.
+   *  Set via CHECKRAY_FORCE_FALLBACK=true or X-CheckRay-Test-Mode: fallback. */
+  forceFallback?: boolean
 }): Promise<RiskAnalysis> {
   const submittedText = text?.trim() ?? ''
   const submittedUrl = url?.trim() ?? ''
@@ -291,6 +295,11 @@ export async function analyzeCase({
     .join('\n')
 
   try {
+    // Skip AI if force-fallback mode is active (load tests, missing key, etc.)
+    if (forceFallback || !process.env.OPENAI_API_KEY) {
+      return buildFallbackAnalysis(submittedText + ' ' + submittedUrl, detectedUrls, categoryHint)
+    }
+
     const { object } = await generateObject({
       model: openai(process.env.CHECKMATE_ANALYZER_MODEL ?? 'gpt-4o-mini'),
       schema: riskAnalysisSchema,

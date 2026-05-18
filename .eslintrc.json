@@ -6,6 +6,7 @@
     "prettier"
   ],
   "rules": {},
+  "ignorePatterns": ["tests/load/**"],
   "overrides": [
     {
       "files": ["*.ts", "*.tsx"],
