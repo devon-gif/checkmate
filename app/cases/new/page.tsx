@@ -121,16 +121,16 @@ export default async function NewCasePage() {
           {isLoggedIn ? 'New risk check' : 'No account needed'}
         </span>
         <h1 className="text-2xl font-semibold tracking-tight text-white">
-          Ask Ray for a risk check
+          Ask Ray to check something suspicious
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-white/40">
-          Paste the exact wording and add a URL if one was included. Ray looks
-          for possible red flags and tells you what to watch out for.
+          Paste a suspicious text, email, link, bill, job offer, or message. Ray
+          will give you a plain-English risk report.
           {!isLoggedIn && (
             <>
               {' '}
               <span className="text-white/25">
-                Create a free account to save results.
+                Sign in to save results, or run a quick check first.
               </span>
             </>
           )}

@@ -51,7 +51,7 @@ export default function Start() {
           </div>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
-              href="/try"
+              href="/sign-up"
               className="relative inline-flex justify-center items-center h-11 px-6 rounded-xl text-title-5 text-white cursor-pointer transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
               style={{
                 background:

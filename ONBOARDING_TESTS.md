@@ -15,73 +15,79 @@ Run through every section in order with a fresh browser (no session).
 
 ---
 
-## 1. Anonymous User — Run a Check
+## 1. Homepage Start Free Trial -> Sign-Up
 
-**Goal:** Guest can run a check and see results without an account.
+**Goal:** Primary homepage CTA collects email/account details before the first saved check.
 
 Steps:
 1. Open http://localhost:3000 in an incognito/private window
-2. Click "Try a free check" in the hero
-3. Confirm you land on `/try`
-4. Paste this job scam text in the textarea:
-   ```
-   Congratulations! You have been selected for a remote data entry position at $55/hr.
-   No experience needed. We will send you a check to purchase your home office equipment.
-   Reply with your full name, address, and bank details to get started.
-   ```
-5. Leave URL blank, category set to "Not sure"
-6. Click **Ask Ray**
+2. Click **Start free trial** in the hero
+3. Confirm you land on `/sign-up`
 
 Expected:
-- [ ] Button shows "Ray is checking for common red flags…" during analysis
-- [ ] Result appears with risk score 85–98 and risk level "Very High" or "High"
-- [ ] Summary, red flags, recommended actions, and disclaimer are all visible
-- [ ] A green "Create a free account to save this result" card appears below the report
-- [ ] NO crashes, no 500 errors, no blank screen
-
----
-
-## 2. Anonymous User — Save CTA
-
-**Goal:** Guest sees a save prompt and can navigate to sign-up.
-
-Steps (continuing from Test 1):
-1. Scroll to the save CTA card below the report
-2. Confirm it reads "Create a free account to save this result"
-3. Click **Create free account**
-
-Expected:
-- [ ] Redirected to `/sign-up?next=%2Fcases%2Fnew`
 - [ ] Sign-up form is visible
+- [ ] Email and password fields are visible
+- [ ] Legal consent checkbox is visible
+- [ ] Secondary **See how Ray works** still scrolls to `#how-it-works`
 
 ---
 
-## 3. Sign-Up Flow
+## 2. Sign-Up -> Legal Acceptance
 
-**Goal:** New user can create an account.
+**Goal:** New user can create an account and accept required legal terms.
 
-Steps (continuing from Test 2):
+Steps:
 1. Enter a test email (e.g. `test+ray1@yourdomain.com`) and a password (8+ chars)
 2. Check the consent checkbox
 3. Click **Sign Up**
 
 Expected (if email confirmation is OFF):
-- [ ] Redirected to `/cases/new` (the `?next=` param is respected)
+- [ ] Legal acceptance is recorded during sign-up
 - [ ] No error toast
 
 Expected (if email confirmation is ON):
 - [ ] Toast: "Check your inbox to confirm your email address!"
-- [ ] Redirected to dashboard (unauthenticated view — sign in prompt shown)
-- [ ] After clicking the email link, session is established
+- [ ] After clicking the email link, session is established through `/api/auth/callback`
 
 ---
 
-## 4. Logged-In User — Run a Check and Save
+## 3. Legal Acceptance -> Dashboard
 
-**Goal:** Authenticated user's check saves to Supabase and links to the dashboard.
+**Goal:** Default post-signup destination is dashboard, not `/cases/new`.
+
+Steps (continuing from Test 2):
+1. Complete sign-up and legal consent
+2. Wait for redirect
+
+Expected (if email confirmation is OFF):
+- [ ] Redirected to `/dashboard`
+- [ ] Dashboard shows welcome copy or saved checks
+
+Expected (if email confirmation is ON):
+- [ ] After confirming email and signing in, user lands on `/dashboard`
+
+---
+
+## 4. Dashboard New Case -> /cases/new
+
+**Goal:** Dashboard remains the default home, and users can start a check from there.
 
 Steps:
-1. Sign in or continue from step 3 (you should be on `/cases/new`)
+1. From `/dashboard`, click **New check**, **New case**, or **Ask Ray for your first check**
+
+Expected:
+- [ ] Navigates to `/cases/new`
+- [ ] Page heading says "Ask Ray to check something suspicious"
+- [ ] Subheadline says "Paste a suspicious text, email, link, bill, job offer, or message. Ray will give you a plain-English risk report."
+
+---
+
+## 5. /cases/new Optional Quick Check Still Works
+
+**Goal:** Free check flow still works as an optional path.
+
+Steps:
+1. Navigate to `/cases/new`
 2. Paste this phishing text:
    ```
    Your EZPass account has been suspended due to an unpaid toll balance of $3.85.
@@ -92,17 +98,19 @@ Steps:
 
 Expected:
 - [ ] Report shows risk level "High" or "Very High"
-- [ ] Small "✓ Saved to your account. view full case page" line appears below the report
-- [ ] A **Dashboard** button appears in the header row of the report
+- [ ] Logged-out quick checks still show the save/sign-up prompt when appropriate
+- [ ] Page copy says "Sign in to save results, or run a quick check first."
 
 ---
 
-## 5. Dashboard — Saved Check Appears
+## 6. Logged-In Result Saves To Dashboard
 
 **Goal:** Saved checks appear in the dashboard list.
 
 Steps:
-1. Click **Dashboard** button or navigate to `/dashboard`
+1. Sign in and go to `/cases/new`
+2. Run any suspicious-message check
+3. Click **Dashboard** button or navigate to `/dashboard`
 
 Expected:
 - [ ] Page shows the check from Test 4 in the "Recent checks" list
@@ -112,7 +120,7 @@ Expected:
 
 ---
 
-## 6. Case Detail Page
+## 7. Case Detail Page
 
 **Goal:** Saved case detail page renders the full report.
 
@@ -128,7 +136,7 @@ Expected:
 
 ---
 
-## 7. Sign-In Flow (Returning User)
+## 8. Sign-In Flow (Returning User)
 
 **Goal:** Existing user can sign in and reach the dashboard.
 
@@ -143,7 +151,7 @@ Expected:
 
 ---
 
-## 8. Dashboard Empty State
+## 9. Dashboard Empty State
 
 **Goal:** New user with no checks sees the correct empty state.
 
@@ -157,7 +165,7 @@ Expected:
 
 ---
 
-## 9. Unauthenticated Dashboard Access
+## 10. Unauthenticated Dashboard Access
 
 **Goal:** Unauthenticated user who navigates directly to `/dashboard` sees sign-in CTA.
 
@@ -170,7 +178,7 @@ Expected:
 
 ---
 
-## 10. Unauthenticated Case Detail Access
+## 11. Unauthenticated Case Detail Access
 
 **Goal:** Guest who visits a `/cases/[id]` URL is redirected to sign-in.
 
@@ -183,7 +191,7 @@ Expected:
 
 ---
 
-## 11. API Smoke Tests (curl)
+## 12. API Smoke Tests (curl)
 
 Run from a terminal. Adjust `PORT` if needed.
 

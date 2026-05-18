@@ -92,7 +92,7 @@ export default function Hero() {
           {/* CTAs */}
           <div className="flex flex-wrap items-center gap-3 mb-4 max-md:mb-3">
             <Link
-              href="/try"
+              href="/sign-up"
               className="relative inline-flex justify-center items-center h-11 px-6 rounded-xl text-title-5 text-white cursor-pointer transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
               style={{
                 background: 'linear-gradient(135deg, #FF7A6B 0%, #FF9B5E 100%)',
