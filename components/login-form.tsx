@@ -30,13 +30,22 @@ export function LoginForm({
   const router = useRouter()
   // Preserve ?next= when toggling between sign-in and sign-up
   const [nextParam, setNextParam] = React.useState('')
+  const [formState, setFormState] = React.useState<{
+    email: string
+    password: string
+  }>({
+    email: '',
+    password: ''
+  })
+  const [consentChecked, setConsentChecked] = React.useState(false)
+
   React.useEffect(() => {
     const p = new URLSearchParams(window.location.search).get('next')
     setNextParam(p && p.startsWith('/') ? `?next=${encodeURIComponent(p)}` : '')
   }, [])
 
   // Guard: if Supabase is not configured, show a friendly message instead of
-  // crashing with "supabaseUrl is required!".
+  // crashing with "supabaseUrl is required!". All hooks are called above.
   if (!supabaseConfigured) {
     return (
       <div className="rounded-lg border border-white/10 bg-white/5 p-6 text-center text-sm text-white/60">
@@ -46,20 +55,9 @@ export function LoginForm({
     )
   }
 
-  // Create a Supabase client configured to use cookies — only reached when
-  // env vars are confirmed present above, so this never throws.
+  // Create a Supabase client — only reached when env vars are confirmed present.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const supabase = createClientComponentClient()
-
-  const [formState, setFormState] = React.useState<{
-    email: string
-    password: string
-  }>({
-    email: '',
-    password: ''
-  })
-
-  const [consentChecked, setConsentChecked] = React.useState(false)
 
   const signIn = async () => {
     const { email, password } = formState

@@ -25,17 +25,12 @@ export function LoginButton({
 }: LoginButtonProps) {
   const [isLoading, setIsLoading] = React.useState(false)
 
-  if (process.env.NEXT_PUBLIC_AUTH_GITHUB !== 'true') {
+  // Don't render GitHub login if disabled or Supabase is not configured
+  if (process.env.NEXT_PUBLIC_AUTH_GITHUB !== 'true' || !supabaseConfigured) {
     return null
   }
 
-  // Don't render if Supabase is not configured — avoids "supabaseUrl is required!" crash
-  if (!supabaseConfigured) {
-    return null
-  }
-
-  // Create a Supabase client configured to use cookies — only reached when
-  // env vars are confirmed present above, so this never throws.
+  // Create a Supabase client — only reached when env vars are confirmed present.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const supabase = createClientComponentClient()
 
