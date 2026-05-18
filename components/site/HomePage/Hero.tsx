@@ -9,6 +9,8 @@ function PhoneVideoDemo() {
     process.env.NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL ||
     '/videos/checkray-mobile-video.mp4'
 
+  console.log('CheckRay phone video src:', phoneVideoSrc)
+
   return (
     // Moved left from prior right-[-2rem] — now sits tighter against the orb
     <div className="absolute right-[10rem] bottom-[-2rem] max-xl:right-[6rem] max-xl:bottom-[-1.5rem] max-lg:static max-lg:mt-8 max-lg:mx-auto">
@@ -18,8 +20,8 @@ function PhoneVideoDemo() {
       <div className="relative w-[380px] max-xl:w-[330px] max-lg:w-[290px] max-md:w-[250px]">
         {/* Screen clip layer */}
         <div
-          className="absolute overflow-hidden rounded-[2.5rem] max-xl:rounded-[2.2rem] max-lg:rounded-[1.8rem] max-md:rounded-[1.5rem]"
-          style={{ top: '3%', left: '6%', right: '6%', bottom: '3%', zIndex: 10 }}
+          className="absolute z-30 overflow-hidden rounded-[2.5rem] bg-deep max-xl:rounded-[2.2rem] max-lg:rounded-[1.8rem] max-md:rounded-[1.5rem]"
+          style={{ top: '3%', left: '6%', right: '6%', bottom: '3%' }}
         >
           <video
             src={phoneVideoSrc}
@@ -27,12 +29,13 @@ function PhoneVideoDemo() {
             muted
             loop
             playsInline
-            preload="metadata"
-            className="block h-full w-full object-cover opacity-100"
-            onError={() =>
+            preload="auto"
+            className="relative z-10 block h-full w-full object-cover opacity-100"
+            onError={event =>
               console.error(
                 'CheckRay hero phone video failed to load:',
                 phoneVideoSrc,
+                event,
               )
             }
           />
@@ -45,7 +48,7 @@ function PhoneVideoDemo() {
           width={840}
           height={1700}
           priority
-          className="relative z-20 w-full h-auto pointer-events-none select-none drop-shadow-[0_48px_96px_rgba(0,0,0,0.55)]"
+          className="relative z-40 w-full h-auto pointer-events-none select-none drop-shadow-[0_48px_96px_rgba(0,0,0,0.55)]"
         />
       </div>
     </div>
