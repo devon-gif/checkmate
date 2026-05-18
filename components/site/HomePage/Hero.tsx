@@ -6,7 +6,8 @@ import { motion } from 'framer-motion'
 
 function PhoneVideoDemo() {
   const phoneVideoSrc =
-    process.env.NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL || '/videos/checkray-phone.mp4'
+    process.env.NEXT_PUBLIC_CHECKRAY_PHONE_VIDEO_URL ||
+    '/videos/checkray-mobile-video.mp4'
 
   return (
     // Moved left from prior right-[-2rem] — now sits tighter against the orb
@@ -27,8 +28,13 @@ function PhoneVideoDemo() {
             loop
             playsInline
             preload="auto"
-            className="w-full h-full object-cover"
-            onError={() => console.error('CheckRay hero video failed to load', phoneVideoSrc)}
+            className="block h-full w-full object-cover opacity-100"
+            onError={() =>
+              console.error(
+                'CheckRay hero phone video failed to load:',
+                phoneVideoSrc,
+              )
+            }
           />
         </div>
 
