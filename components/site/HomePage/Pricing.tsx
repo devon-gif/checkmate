@@ -29,11 +29,12 @@ const pricing = [
     href: '/sign-up',
     isFeatured: true,
     features: [
-      '25 checks per month',
+      'Text Ray (coming soon)',
+      'Email Ray (coming soon)',
+      'Chrome extension (coming soon)',
       'Saved check history',
-      'Safer reply drafts',
       'Weekly Scam Watch emails',
-      'Chrome extension included',
+      '25 checks per month',
       '7-day free trial'
     ]
   },
@@ -46,12 +47,10 @@ const pricing = [
     href: '/sign-up',
     isFeatured: false,
     features: [
+      'Everything in Basic',
       'Unlimited fair-use checks',
-      'Priority analysis',
-      'Saved check history',
-      'Safer reply drafts',
-      'Weekly Scam Watch emails',
-      'Chrome extension included',
+      'Priority access to new features',
+      'Best for families, job seekers, and heavy use',
       '7-day free trial'
     ]
   }
@@ -88,8 +87,7 @@ export default function Pricing() {
             Free to start. Upgrade for more.
           </div>
           <div className="mt-4 text-description">
-            Your first check is free with no account needed. Start a free trial to unlock saved
-            history, safer reply drafts, weekly scam alerts, and the Chrome extension.
+            Your first check is free with no account needed. Upgrade to reach Ray by text, email, or Chrome extension — wherever the suspicious message shows up.
           </div>
         </motion.div>
         <motion.div
@@ -182,8 +180,11 @@ export default function Pricing() {
             )
           })}
         </motion.div>
-        <div className="mt-13.5 text-center text-description max-md:mt-8 max-md:text-title-3-mobile">
-          Informational only. Ray can be wrong. Verify through official channels before acting.
+        <div className="mt-8 mb-3 text-center text-description-2 text-white/50 max-md:mt-6">
+          Most security tools make you install a suite. CheckRay lets you ask Ray wherever the suspicious message shows up.
+        </div>
+        <div className="mt-3 text-center text-description max-md:text-title-3-mobile">
+          Informational only. Ray can be wrong. Verify through official sources before acting.
         </div>
       </div>
     </div>

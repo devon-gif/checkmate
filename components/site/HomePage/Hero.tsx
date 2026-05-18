@@ -98,7 +98,7 @@ export default function Hero() {
             variants={fadeUp}
             className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5"
           >
-            Paste a text, email, link, bill, job post, or screenshot. CheckRay spots common red flags, explains the risk, and helps you decide what to do next — with a Chrome extension and weekly scam alerts coming soon.
+            Paste it, text it, email it, or check it in Chrome. Ray looks for scam signals in texts, emails, links, bills, job posts, and suspicious pages — then gives you a plain-English risk readout before you act.
           </motion.p>
 
           {/* CTAs */}

@@ -5,22 +5,28 @@ import { fadeUp, fadeIn, staggerContainer } from '@/lib/animations'
 
 const ways = [
   {
-    title: 'Check a job post',
+    title: 'Text Ray',
     description:
-      'Paste a recruiter message or job listing. Ray spots fake-check requests, vague duties, free-email recruiters, and ghost-job patterns.',
-    badge: 'Most popular' as string | null
+      'Send a suspicious message and get a risk readout back in seconds.',
+    badge: 'Coming soon' as string | null
   },
   {
-    title: 'Forward an email',
+    title: 'Email Ray',
     description:
-      'Forward a phishing-looking email and Ray reads the body for common risk signals.',
-    badge: null as string | null
+      'Forward suspicious emails before you click links, open attachments, or reply.',
+    badge: 'Coming soon' as string | null
   },
   {
-    title: 'Paste a link',
+    title: 'Use the Chrome extension',
     description:
-      'Drop a sketchy URL into CheckRay on the web. No account required for your first check.',
-    badge: null as string | null
+      'Check job posts, websites, and suspicious pages without leaving your browser.',
+    badge: 'Coming soon' as string | null
+  },
+  {
+    title: 'Paste it on the web',
+    description:
+      'Drop a message, link, screenshot, or job post into CheckRay. No account required for your first check.',
+    badge: 'Available now' as string | null
   },
   {
     title: 'Save to dashboard',
@@ -29,13 +35,7 @@ const ways = [
     badge: null as string | null
   },
   {
-    title: 'Chrome extension',
-    description:
-      'Check suspicious pages while browsing. Ray highlights risk signals and shows a fast readout right inside your browser.',
-    badge: 'Coming soon' as string | null
-  },
-  {
-    title: 'Weekly scam alerts',
+    title: 'Weekly Scam Watch',
     description:
       'Ray sends a weekly email roundup of dangerous scam patterns, ghost jobs, phishing links, and suspicious messages to watch for.',
     badge: null as string | null
@@ -59,11 +59,10 @@ export default function WaysToUse() {
         >
           <div className="label mb-3 max-md:mb-1">Ways to use</div>
           <div className="mb-4 bg-radial-white-2 bg-clip-text text-transparent text-title-1 max-lg:text-title-2 max-md:mb-3 max-md:text-title-1-mobile">
-            A risk-checking layer for every channel.
+            A scam expert in your pocket.
           </div>
           <div className="text-description">
-            Web app, dashboard, and Chrome extension. CheckRay meets you wherever the suspicious
-            thing landed.
+            Whether it came by text, email, job board, marketplace, or a random link, Ray gives you a second look before you click, pay, reply, or apply.
           </div>
         </motion.div>
         <motion.div
@@ -98,6 +97,9 @@ export default function WaysToUse() {
             </motion.div>
           ))}
         </motion.div>
+        <p className="mt-8 text-center text-[11px] leading-5 text-white/35 max-md:mt-6">
+          Text and email workflows are planned for launch / early access. Chrome extension coming soon.
+        </p>
       </div>
       <div className="max-md:hidden">
         <div className="absolute -bottom-10 left-[calc(50%-40rem)] size-80 bg-green/15 rounded-full blur-[7rem]" />
