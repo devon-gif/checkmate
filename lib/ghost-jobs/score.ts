@@ -192,13 +192,18 @@ export function scoreGhostJobRisk(
     score = Math.max(score, 91);
   }
 
+  if (hasEquipmentCheck && /deposit|mobile deposit/.test(text) && input.isRemote) {
+    score = Math.max(score, 68);
+  }
+
+  const softSignalIds = new Set<string>([
+    GHOST_JOB_SIGNAL_IDS.genericDescription,
+    GHOST_JOB_SIGNAL_IDS.noHiringTimeline,
+    GHOST_JOB_SIGNAL_IDS.reposted,
+    GHOST_JOB_SIGNAL_IDS.vagueCompany,
+  ]);
   const onlySoftSignals = signals.every((signal) =>
-    [
-      GHOST_JOB_SIGNAL_IDS.genericDescription,
-      GHOST_JOB_SIGNAL_IDS.noHiringTimeline,
-      GHOST_JOB_SIGNAL_IDS.reposted,
-      GHOST_JOB_SIGNAL_IDS.vagueCompany,
-    ].includes(signal.id as never),
+    softSignalIds.has(signal.id),
   );
 
   if (onlySoftSignals) {
@@ -347,4 +352,3 @@ function getSummary(riskLevel: GhostJobRiskLevel): string {
 function clampScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
-
