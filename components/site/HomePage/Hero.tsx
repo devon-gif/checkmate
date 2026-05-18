@@ -98,7 +98,7 @@ export default function Hero() {
             variants={fadeUp}
             className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5"
           >
-            Paste a text, email, link, bill, job post, or screenshot. CheckRay helps spot ghost jobs, recruiter scams, phishing messages, suspicious links, and other common red flags — on the web now, with a Chrome extension coming soon.
+            Paste a text, email, link, bill, job post, or screenshot. CheckRay spots common red flags, explains the risk, and helps you decide what to do next — with a Chrome extension and weekly scam alerts coming soon.
           </motion.p>
 
           {/* CTAs */}
@@ -133,7 +133,7 @@ export default function Hero() {
             variants={fadeUp}
             className="max-w-[27rem] text-[11px] leading-5 text-white/35 max-md:mb-8"
           >
-            Works for scams, phishing, fake recruiters, suspicious links, bills, and more. Ray can be wrong. Results are informational only.
+            Works for scams, phishing, fake recruiters, suspicious links, bills, and more. Ray can be wrong. Results are informational only. Always verify through official sources.
           </motion.p>
 
           <motion.div variants={fadeIn}>

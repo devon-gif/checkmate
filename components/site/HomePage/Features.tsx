@@ -6,21 +6,21 @@ import { fadeUp, fadeIn, staggerContainer } from '@/lib/animations'
 
 const features = [
   {
-    title: 'Ghost jobs & recruiters',
+    title: 'Ghost jobs & fake recruiters',
     description:
-      'Fake check requests, equipment fees, text-only recruiters, no verified company email, and vague remote offers.',
+      'Check job posts, recruiter messages, interview links, and payment or equipment requests before you apply.',
     image: '/images/features-pic-2.png'
   },
   {
-    title: 'Scam texts',
+    title: 'Phishing links & scam texts',
     description:
-      'Phishing, impersonation, urgent payment requests, suspicious package or bank alerts.',
+      'Paste suspicious messages or URLs and get a plain-English risk readout.',
     image: '/images/features-pic-1.png'
   },
   {
-    title: 'Suspicious links',
+    title: 'Suspicious bills & payments',
     description:
-      'Lookalike domains, redirect chains, shortened URLs, and risky link patterns.',
+      'Ray helps you ask for itemization, verify official channels, and avoid rushed payments.',
     image: '/images/features-pic-3.png'
   },
   {
@@ -48,12 +48,11 @@ export default function Features() {
         >
           <div className="label mb-3 max-md:mb-1">What Ray can check</div>
           <div className="mb-6 bg-radial-white-2 bg-clip-text text-transparent text-title-1 max-lg:text-title-2 max-md:mb-3 max-md:text-title-1-mobile">
-            Made for the messages that feel off.
+            Not just link protection. A second look for real-life scams.
           </div>
           <div className="text-description">
-            Forward a suspicious text, paste a link, or upload a screenshot.
-            Ray looks for common risk signals across the situations people
-            actually run into.
+            CheckRay isn&apos;t a generic antivirus or a phishing-link-only tool.
+            It&apos;s a second look for ghost jobs, scam texts, suspicious payments, and the everyday situations where something just feels off.
           </div>
         </motion.div>
         <motion.div
