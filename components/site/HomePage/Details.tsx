@@ -110,8 +110,7 @@ export default function Details() {
             Three steps. No tech skills required.
           </div>
           <div className="mx-auto max-w-150 text-description">
-            Paste a message, link, screenshot, job post, bill, or email. Ray checks for
-            common risk signals and gives you a plain-English readout.
+            Paste a message, link, screenshot, job post, bill, or email — or check suspicious pages while browsing with the Chrome extension coming soon. Ray checks for common risk signals and gives you a plain-English readout.
           </div>
         </div>
 
