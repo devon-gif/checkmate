@@ -13,7 +13,7 @@ function PhoneVideoDemo() {
 
   return (
     // Moved left from prior right-[-2rem] — now sits tighter against the orb
-    <div className="absolute right-[8.5rem] bottom-[-4.5rem] max-xl:right-[4.75rem] max-xl:bottom-[-4rem] max-lg:static max-lg:mt-10 max-lg:mx-auto">
+    <div className="absolute right-[7.25rem] bottom-[-4.5rem] max-xl:right-[3.75rem] max-xl:bottom-[-4rem] max-lg:static max-lg:mt-10 max-lg:mx-auto">
       {/* Ambient mint glow sitting behind the device */}
       <div className="absolute inset-x-[-15%] top-[20%] -z-10 h-[70%] rounded-full bg-green/20 blur-[6rem]" />
 
@@ -119,7 +119,7 @@ export default function Hero() {
       </motion.div>
 
       {/* Video orb — shifted slightly right */}
-      <div className="absolute top-16 right-[calc(50%-45.5rem)] size-178 rounded-full max-xl:size-140 max-xl:right-[calc(50%-34.75rem)] max-lg:right-[calc(50%-17rem)] max-md:top-36 max-md:right-auto max-md:left-8.5 max-md:size-133">
+      <div className="absolute top-16 right-[calc(50%-44.25rem)] size-178 rounded-full max-xl:size-140 max-xl:right-[calc(50%-33.75rem)] max-lg:right-[calc(50%-16rem)] max-md:top-36 max-md:right-auto max-md:left-8.5 max-md:size-133">
         <div className="absolute -inset-[10%] mask-radial">
           <video
             className="w-full"
