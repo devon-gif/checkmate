@@ -31,6 +31,7 @@ export function humanizeCategory(cat: string): string {
     bill_or_fee: 'Bill or fee',
     phishing_url: 'Phishing URL',
     rental_or_marketplace: 'Rental / marketplace',
+    email_or_impersonation: 'Email / impersonation',
     email: 'Email',
     unknown: 'Unknown'
   }
@@ -38,8 +39,8 @@ export function humanizeCategory(cat: string): string {
 }
 
 export function getRiskLevel(score: number): RiskLevel {
-  if (score >= 85) return 'very_high'
-  if (score >= 60) return 'high'
-  if (score >= 30) return 'medium'
+  if (score >= 75) return 'very_high'
+  if (score >= 50) return 'high'
+  if (score >= 25) return 'medium'
   return 'low'
 }

@@ -13,6 +13,14 @@ import {
   type CaseCategory,
   type RiskLevel
 } from '@/lib/checkmate-shared'
+import {
+  confidenceFromEvidence,
+  defaultMissingInformation,
+  defaultVerificationSteps,
+  evidenceFromFlags,
+  safeLowRiskSummary,
+  uniqueStrings
+} from '@/lib/analysis/accuracy-policy'
 import type { RiskAnalysis } from '@/lib/analysis/types'
 
 // ─── URL detection ────────────────────────────────────────────────────────────
@@ -31,6 +39,7 @@ interface SignalResult {
   score: number
   flags: string[]
   category: CaseCategory
+  strongSignalCount: number
 }
 
 export function runDeterministicSignals(
@@ -42,6 +51,7 @@ export function runDeterministicSignals(
   let score = 20
   const flags: string[] = []
   let category: CaseCategory = 'unknown'
+  let strongSignalCount = 0
 
   // ── High-risk payment / identity signals (+15 each) ───────────────────────
   const paymentSignals: [RegExp, string][] = [
@@ -67,6 +77,7 @@ export function runDeterministicSignals(
   for (const [pattern, flag] of paymentSignals) {
     if (pattern.test(lower)) {
       score += 15
+      strongSignalCount += 1
       flags.push(flag)
     }
   }
@@ -74,7 +85,11 @@ export function runDeterministicSignals(
   // ── Job scam signals ──────────────────────────────────────────────────────
   const jobSignals: [RegExp, string][] = [
     [/purchase\s*(your\s*)?(equipment|laptop|computer|supplies)/i, 'Asks you to purchase equipment'],
+    [/deposit\s*(the\s*)?(check|cheque)/i, 'Asks you to deposit a check'],
     [/send\s*(you\s*)?a\s*check|mail\s*(you\s*)?a\s*check/i, 'Offer to send a check upfront'],
+    [/wire\s*(the\s*)?(difference|remainder|rest)\s*back/i, 'Asks you to wire money back'],
+    [/no\s*(interview|interviews)\b|interview\s*(not\s*)?required/i, 'No interview required'],
+    [/telegram|signal|whatsapp/i, 'Moves conversation to messaging app'],
     [/@gmail\.com|@yahoo\.com|@hotmail\.com|@outlook\.com/i, 'Recruiter using free email domain'],
     [/no\s*experience\s*(required|needed)/i, 'Claims no experience required'],
     [/unlimited\s*(earning|income|potential)/i, 'Promises unlimited earnings'],
@@ -103,6 +118,8 @@ export function runDeterministicSignals(
     /\b(bit\.ly|tinyurl|t\.co|goo\.gl|ow\.ly|buff\.ly|rb\.gy|short\.io)/i
   const loginLure =
     /(verify|confirm|update|secure|alert|account|signin|login|password).*\.(com|net|org|io)/i
+  const lookalikeUrl =
+    /(support|secure|verify|account|pay|billing|toll|delivery|track|package)[-.][a-z0-9-]+\.(com|net|org|info|help)/i
 
   for (const url of urls) {
     if (suspiciousTlds.test(url)) {
@@ -116,6 +133,10 @@ export function runDeterministicSignals(
     if (loginLure.test(url)) {
       score += 10
       flags.push('URL appears to mimic a login or account verification page')
+    }
+    if (lookalikeUrl.test(url)) {
+      score += 14
+      flags.push(`URL may be an unfamiliar or lookalike domain: ${url}`)
     }
   }
 
@@ -199,6 +220,27 @@ export function runDeterministicSignals(
     }
   }
 
+  // ── Email / impersonation signals ─────────────────────────────────────────
+  const emailSignals: [RegExp, string][] = [
+    [/reply-to.{0,20}(mismatch|different)|from.{0,20}(mismatch|different)/i, 'Sender or reply-to mismatch'],
+    [/invoice.{0,40}(new|updated).{0,20}(bank|payment|wire)/i, 'Invoice or payment instructions changed'],
+    [/(ceo|boss|manager|executive).{0,40}(gift\s*card|wire|urgent)/i, 'Executive impersonation payment request'],
+    [/open\s*(the\s*)?attachment|download\s*(the\s*)?file/i, 'Unexpected attachment or download request']
+  ]
+
+  let emailScore = 0
+  for (const [pattern, flag] of emailSignals) {
+    if (lower.match(pattern)) {
+      emailScore += 12
+      flags.push(flag)
+    }
+  }
+
+  if (emailScore > 0 && category === 'unknown') {
+    score += emailScore
+    category = 'email'
+  }
+
   // ── Apply hint ────────────────────────────────────────────────────────────
   if (hint && caseCategories.includes(hint as CaseCategory) && category === 'unknown') {
     category = hint as CaseCategory
@@ -220,6 +262,7 @@ export function runDeterministicSignals(
   if ((hasSendCheck && hasWireBack) || (hasEquipmentCheck && hasWireBack)) {
     score = Math.max(score, 92)
     category = 'job_scam_or_ghost_job'
+    strongSignalCount += 3
     if (!flags.includes('Fake check or equipment check request'))
       flags.push('Fake check or equipment check request')
     if (!flags.includes('Wire money back request'))
@@ -233,6 +276,7 @@ export function runDeterministicSignals(
   // 2. Equipment purchase in job context — strong job scam signal
   if (hasEquipmentCheck && category === 'job_scam_or_ghost_job') {
     score = Math.max(score, 88)
+    strongSignalCount += 1
     if (!flags.includes('Remote job offer with suspicious payment setup'))
       flags.push('Remote job offer with suspicious payment setup')
   }
@@ -243,10 +287,20 @@ export function runDeterministicSignals(
   const hasPaymentUrl = urls.length > 0
   if (hasFinalNotice && hasSuspensionThreat && hasPaymentUrl) {
     score = Math.max(score, 85)
+    strongSignalCount += 2
     category = category === 'unknown' ? 'phishing_url' : category
   }
 
-  return { score, flags, category }
+  // Gift-card boss impersonation is a classic high-confidence pattern.
+  if (/boss|manager|ceo|supervisor/i.test(lower) && /gift\s*card/i.test(lower) && /(code|codes|right\s*now|urgent)/i.test(lower)) {
+    score = Math.max(score, 92)
+    category = 'email'
+    strongSignalCount += 2
+    flags.push('Gift card code request from alleged boss')
+    flags.push('Urgent off-channel payment request')
+  }
+
+  return { score, flags: uniqueStrings(flags), category, strongSignalCount }
 }
 
 // ─── Fallback response builder ────────────────────────────────────────────────
@@ -259,17 +313,17 @@ const categoryActions: Record<CaseCategory, string[]> = {
     'If you already shared information, contact your bank immediately.'
   ],
   job_scam_or_ghost_job: [
-    'Research the company independently before responding — search the company name plus "scam" or "review".',
+    'Research the company independently before responding.',
     "Verify the job on the company's official website, not the link provided.",
     'Never purchase equipment, software, or supplies at your own expense for a new job.',
-    'Never deposit a check and send a portion back — this is always a scam.',
+    'Do not deposit a check and send a portion back as part of hiring.',
     'Do not provide SSN, bank details, or ID documents before an official offer letter.'
   ],
   bill_or_fee: [
     'Request an itemized bill and written policy in writing.',
     'Contact the company directly using a number from their official website, not the number in the message.',
     'Ask for the name, employee ID, and direct contact of the person billing you.',
-    'Do not pay via gift card, wire transfer, Zelle, or cryptocurrency — legitimate billers do not require these.',
+    'Be cautious with gift card, wire transfer, Zelle, or cryptocurrency payment demands.',
     'Verify any claimed debt with the original creditor before paying.'
   ],
   phishing_url: [
@@ -316,14 +370,13 @@ const safeReplies: Record<CaseCategory, string> = {
 }
 
 const summaryByLevel: Record<RiskLevel, (flags: string[]) => string> = {
-  low: () =>
-    'This submission shows few risk signals. It may be legitimate, but it is always worth verifying through official channels before taking action.',
+  low: () => safeLowRiskSummary(),
   medium: flags =>
     `This submission contains possible risk signals${flags.length ? ', including: ' + flags.slice(0, 2).join('; ') : ''}. Review carefully and verify through official sources before responding or sending anything.`,
   high: flags =>
     `This submission shows multiple common red flags${flags.length ? ', including: ' + flags.slice(0, 3).join('; ') : ''}. Do not send money, personal information, or credentials until you have independently verified the sender's identity through official channels.`,
   very_high: flags =>
-    `This submission shows strong warning signs consistent with known scam patterns${flags.length ? ', including: ' + flags.slice(0, 3).join('; ') : ''}. Do not send money, gift cards, banking information, SSN, passwords, or any personal data. This may be a scam.`
+    `This submission shows strong warning signs consistent with known scam patterns${flags.length ? ', including: ' + flags.slice(0, 3).join('; ') : ''}. Do not send money, gift cards, banking information, SSN, passwords, or personal data until you verify through official channels.`
 }
 
 export function buildFallbackAnalysis(
@@ -331,19 +384,38 @@ export function buildFallbackAnalysis(
   urls: string[],
   hint?: string
 ): RiskAnalysis {
-  const { score, flags, category } = runDeterministicSignals(text, urls, hint)
+  const { score, flags, category, strongSignalCount } = runDeterministicSignals(
+    text,
+    urls,
+    hint
+  )
   const risk_level = getRiskLevel(score)
+  const missing_information = defaultMissingInformation(category)
+  const red_flags = flags.length
+    ? flags
+    : ['No major red flags found in the provided text.']
+  const verification_steps = defaultVerificationSteps(category)
 
   return {
     category,
     risk_score: score,
     risk_level,
+    confidence_level: confidenceFromEvidence({
+      score,
+      redFlags: red_flags,
+      missingInformation: missing_information,
+      strongSignalCount
+    }),
     summary: summaryByLevel[risk_level](flags),
-    red_flags: flags.length
-      ? flags
-      : ['No specific red flags detected by automated scan — does not mean safe.'],
-    recommended_actions: categoryActions[category],
+    evidence_found: evidenceFromFlags(red_flags),
+    red_flags,
+    missing_information,
+    recommended_actions: uniqueStrings([
+      ...categoryActions[category],
+      ...verification_steps
+    ]).slice(0, 6),
     safe_reply: safeReplies[category],
+    verification_steps,
     disclaimer: ANALYSIS_DISCLAIMER,
     detected_urls: urls,
     used_fallback: true
