@@ -2,85 +2,127 @@
 
 ## Prerequisites
 
-Install k6 (does not run through npm):
+Install k6 (native binary, NOT an npm package):
 
 ```bash
 # macOS
 brew install k6
 
-# Linux
+# Linux (Ubuntu/Debian)
 sudo apt-get install k6
-# or: https://k6.io/docs/getting-started/installation/
+# Full docs: https://k6.io/docs/getting-started/installation/
 ```
 
-## Quick-start
+k6 is not installed via pnpm/npm. The `pnpm run load:*` scripts are aliases
+that call `k6` directly — k6 must be in your PATH.
 
-Start the local dev/prod server first:
+---
+
+## Important: BASE_URL must match your local Next.js port
+
+Next.js dev server defaults to port **3000**, but will increment to **3002**, **3004**,
+etc. if lower ports are occupied.
+
+**Always check which port your server started on**, then pass it explicitly:
 
 ```bash
-# In one terminal:
+# If dev server started on 3000 (default):
+BASE_URL=http://localhost:3000 k6 run tests/load/smoke-homepage.js
+
+# If dev server started on 3002:
+BASE_URL=http://localhost:3002 k6 run tests/load/smoke-homepage.js
+```
+
+The `pnpm run load:*` scripts default to `http://localhost:3000`.
+If your server is on a different port, run k6 directly with `BASE_URL=...`.
+
+---
+
+## Start the server
+
+```bash
+# Development mode (slower — JIT compilation, no caching):
 pnpm run dev
-# OR for production-mode tests:
+
+# Production mode (recommended for accurate performance numbers):
 pnpm run build && pnpm run start
 ```
 
-Then in another terminal:
+> **Note on p95 thresholds**: The public-routes test uses a p95 < 2000ms threshold,
+> set for local dev. In Next.js dev mode, cold responses are slower due to JIT
+> compilation and no static optimization. For production performance validation,
+> always use `pnpm run build && pnpm run start` before running load tests.
+
+---
+
+## Running the tests
+
+### 1. Smoke — homepage only (1 VU, 30s)
 
 ```bash
-# Smallest sanity check (1 VU, 30s, homepage only)
-k6 run tests/load/smoke-homepage.js
-
-# All public marketing routes (5 VU, 60s)
-k6 run tests/load/public-routes.js
-
-# Analyzer endpoint — fallback mode only, no OpenAI calls (2 VU, 30s)
-k6 run tests/load/analyze-fallback.js
-
-# Spike test — ramp to 50 VU briefly
-k6 run tests/load/spike-public-routes.js
-
-# Soak test — 10 VU for 10 minutes
-k6 run tests/load/soak-public-routes.js
+BASE_URL=http://localhost:3000 k6 run tests/load/smoke-homepage.js
+pnpm run load:smoke   # uses localhost:3000
 ```
 
-## Override BASE_URL
+### 2. Public routes (5 VU, 60s)
 
-All tests read `BASE_URL` from the environment. Default is `http://localhost:3000`.
+Tests: `/` `/pricing` `/sign-in` `/sign-up` `/terms` `/privacy`
+`/disclaimer` `/ai-disclosure` `/acceptable-use` `/contact`
+
+Checks: status not 500, body does not include "Application error",
+"client-side exception", or "server-side exception".
 
 ```bash
-# Target a Vercel preview URL
-BASE_URL=https://checkray-git-staging-devonarcher.vercel.app k6 run tests/load/smoke-homepage.js
+BASE_URL=http://localhost:3000 k6 run tests/load/public-routes.js
+pnpm run load:public   # uses localhost:3000
 ```
 
-## npm scripts (docs — k6 is a native binary, not an npm package)
+### 3. Analyzer fallback (2 VU, 30s) — no OpenAI calls, no login required
 
-Equivalent commands exposed in package.json are not possible because k6 is a
-native binary. Run the commands above directly. See below for aliases you can
-add to your shell profile if desired:
+Sends `X-CheckRay-Test-Mode: fallback` header. In dev mode this:
+- Bypasses the usage/billing gate
+- Uses the deterministic fallback analyzer (no OpenAI call)
+- Does not require a logged-in user
+- Returns `saved: false, save_reason: "test_mode"`
+- **Never honoured in production**
 
 ```bash
-alias load:smoke="k6 run tests/load/smoke-homepage.js"
-alias load:public="k6 run tests/load/public-routes.js"
-alias load:analyze="k6 run tests/load/analyze-fallback.js"
-alias load:spike="k6 run tests/load/spike-public-routes.js"
-alias load:soak="k6 run tests/load/soak-public-routes.js"
+BASE_URL=http://localhost:3000 k6 run tests/load/analyze-fallback.js
+pnpm run load:analyze:fallback   # uses localhost:3000
 ```
+
+Expected 200 response shape:
+```json
+{
+  "saved": false,
+  "save_reason": "test_mode",
+  "used_fallback": true,
+  "report": {
+    "risk_score": 85,
+    "risk_level": "high",
+    "disclaimer": "...",
+    ...
+  }
+}
+```
+
+### 4. Spike test (ramp to 50 VU)
+
+```bash
+BASE_URL=http://localhost:3000 k6 run tests/load/spike-public-routes.js
+```
+
+### 5. Soak test (10 VU, 10 min)
+
+```bash
+BASE_URL=http://localhost:3000 k6 run tests/load/soak-public-routes.js
+```
+
+---
 
 ## Safety rules
 
-1. **Never** run load tests against production by default.
-2. **Never** run auth/signup load tests against the live Supabase project.
-3. **Never** run `analyze-fallback.js` in OpenAI mode at high VU — use fallback only.
-4. Read `PRODUCTION_LOAD_TESTING_POLICY.md` before targeting any live URL.
-
-## Adding CHECKRAY_FORCE_FALLBACK
-
-To prevent OpenAI from being called during load tests, set this env var when
-starting the server:
-
-```bash
-CHECKRAY_FORCE_FALLBACK=true pnpm run start
-```
-
-This is wired in `app/api/analyze-case/route.ts` — when set, the route skips
-the AI call and uses the deterministic fallback analyzer only.
+1. **Never** run spike/soak tests against production — see `PRODUCTION_LOAD_TESTING_POLICY.md`
+2. **Always** use `X-CheckRay-Test-Mode: fallback` when testing the analyzer — avoids OpenAI costs
+3. **Never** use real user data in test fixtures
+4. **Never** automate sign-up/sign-in flows — Supabase auth rate-limits these aggressively

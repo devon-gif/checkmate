@@ -23,7 +23,7 @@ export const options = {
   duration: '1m',
   thresholds: {
     http_req_failed: ['rate<0.01'],          // <1% HTTP failures
-    http_req_duration: ['p(95)<1500'],       // p95 <1.5s locally
+    http_req_duration: ['p(95)<2000'],       // p95 <2s in local dev (Next.js dev server is unoptimized)
     errors: ['rate<0.02']                    // <2% check failures
   }
 }

@@ -20,6 +20,9 @@ import { Rate, Trend } from 'k6/metrics'
 const errorRate = new Rate('errors')
 const analyzeDuration = new Trend('analyze_duration_ms')
 
+// Only log the first failure to avoid spamming the console
+let firstFailureLogged = false
+
 export const options = {
   vus: 2,
   duration: '30s',
@@ -34,6 +37,8 @@ const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000'
 
 // Synthetic test payloads — safe fictional scam messages.
 // Never include real user data in load test fixtures.
+// test_mode field is ignored by the server (header controls it), but
+// documents intent clearly when reviewing test logs.
 const TEST_PAYLOADS = [
   {
     input_text: "You're hired for a remote data entry role. We'll send a check for equipment. Deposit it and wire the difference back.",
@@ -94,21 +99,45 @@ export default function () {
     // body is not JSON — will fail checks below
   }
 
+  // The API always nests analysis fields under `report`.
+  // Top-level fields: saved, save_reason, case_id, report_id, used_fallback, report, access
+  const rpt = parsed && parsed.report ? parsed.report : null
+
+  // For 402 usage_limit_reached: must have clean error structure
+  const is402 = res.status === 402
+  const is200 = res.status === 200
+
   const ok = check(res, {
     'analyze: status 200 or 402': r => r.status === 200 || r.status === 402,
     'analyze: not 500': r => r.status !== 500,
     'analyze: is JSON': () => parsed !== null,
-    'analyze: has risk_score (200 only)': () =>
-      res.status !== 200 || (parsed && typeof parsed.risk_score !== 'undefined'),
-    'analyze: has risk_level (200 only)': () =>
-      res.status !== 200 || (parsed && typeof parsed.risk_level !== 'undefined'),
-    'analyze: has disclaimer (200 only)': () =>
-      res.status !== 200 || (parsed && typeof parsed.disclaimer !== 'undefined'),
+
+    // 200 checks — fields are nested under report
+    'analyze: report.risk_score present (200)': () =>
+      !is200 || (rpt !== null && typeof rpt.risk_score !== 'undefined'),
+    'analyze: report.risk_level present (200)': () =>
+      !is200 || (rpt !== null && typeof rpt.risk_level !== 'undefined'),
+    'analyze: report.disclaimer present (200)': () =>
+      !is200 || (rpt !== null && typeof rpt.disclaimer !== 'undefined'),
+
+    // 402 checks — clean usage gating response
+    'analyze: 402 has error field': () =>
+      !is402 || (parsed && typeof parsed.error !== 'undefined'),
+    'analyze: 402 has message field': () =>
+      !is402 || (parsed && typeof parsed.message !== 'undefined'),
+
+    // Safety checks — both 200 and 402
     'analyze: no secret leakage': () =>
       !FORBIDDEN_STRINGS.some(s => bodyStr.includes(s)),
     'analyze: no raw stack trace': () =>
       !bodyStr.includes('at Object.') && !bodyStr.includes('at async handlePost')
   })
+
+  // Log the first failure for easy debugging without spamming the console
+  if (!ok && !firstFailureLogged) {
+    firstFailureLogged = true
+    console.log(`[first failure] status=${res.status} body=${bodyStr.substring(0, 500)}`)
+  }
 
   errorRate.add(!ok)
   sleep(1)

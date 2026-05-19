@@ -99,6 +99,46 @@ async function handlePost(req: Request) {
     cookies: () => cookieStore
   })
 
+  // ── Test-mode bypass (non-production only) ───────────────────────────────
+  // X-CheckRay-Test-Mode: fallback header, honoured ONLY outside production.
+  // Skips billing gate + OpenAI call so load tests have zero cost side-effects.
+  // NEVER honoured in production regardless of env var or header value.
+  const isTestModeFallback =
+    process.env.NODE_ENV !== 'production' &&
+    (process.env.CHECKRAY_FORCE_FALLBACK === 'true' ||
+      req.headers.get('x-checkray-test-mode') === 'fallback')
+
+  if (isTestModeFallback) {
+    const analysis = await analyzeCase({
+      text: submittedText,
+      url: submittedUrl,
+      categoryHint,
+      forceFallback: true
+    })
+    const report = {
+      category: analysis.category,
+      risk_score: analysis.risk_score,
+      risk_level: analysis.risk_level,
+      confidence_level: analysis.confidence_level,
+      summary: analysis.summary,
+      evidence_found: analysis.evidence_found,
+      red_flags: analysis.red_flags,
+      missing_information: analysis.missing_information,
+      recommended_actions: analysis.recommended_actions,
+      verification_steps: analysis.verification_steps,
+      safe_reply: analysis.safe_reply,
+      disclaimer: analysis.disclaimer ?? ANALYSIS_DISCLAIMER
+    }
+    return NextResponse.json({
+      saved: false,
+      save_reason: 'test_mode' as const,
+      case_id: null,
+      report_id: null,
+      used_fallback: true,
+      report
+    })
+  }
+
   // ── Access / billing gate ─────────────────────────────────────────────────
   const access = await checkAccess({
     userId: session?.user?.id ?? null,
@@ -117,16 +157,7 @@ async function handlePost(req: Request) {
   }
 
   // 3. Run analysis (AI with deterministic fallback) — always, guests included
-  //
-  // Force-fallback mode: skip the AI call entirely in two cases:
-  //   a) CHECKRAY_FORCE_FALLBACK=true env var (set when running load tests)
-  //   b) X-CheckRay-Test-Mode: fallback request header in non-production
-  //
-  // This prevents load tests from generating OpenAI API costs.
-  const forceFallback =
-    process.env.CHECKRAY_FORCE_FALLBACK === 'true' ||
-    (process.env.NODE_ENV !== 'production' &&
-      req.headers.get('x-checkray-test-mode') === 'fallback')
+  const forceFallback = false
 
   const analysis = await analyzeCase({
     text: submittedText,
