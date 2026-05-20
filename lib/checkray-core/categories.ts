@@ -4,7 +4,9 @@
  * Case category constants and display helpers.
  */
 
-export const CASE_CATEGORIES = [
+import type { CaseCategory } from "./types"
+
+export const CASE_CATEGORIES: readonly CaseCategory[] = [
   "scam_text",
   "job_scam_or_ghost_job",
   "bill_or_fee",
@@ -12,9 +14,7 @@ export const CASE_CATEGORIES = [
   "rental_or_marketplace",
   "email",
   "unknown"
-] as const
-
-export type CaseCategory = (typeof CASE_CATEGORIES)[number]
+]
 
 export const CATEGORY_LABELS: Record<CaseCategory, string> = {
   scam_text: "Scam text / SMS",
