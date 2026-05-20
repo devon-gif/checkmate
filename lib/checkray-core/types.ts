@@ -38,6 +38,23 @@ export interface RayReport {
   verification_steps: string[]
   safe_reply: string
   disclaimer: string
+  /**
+   * Optional country-aware guidance block.
+   * Present when `country_code` was supplied in the request (or detected).
+   * Consumers should treat this as supplemental — not a breaking change.
+   */
+  country_context?: {
+    country_code: string
+    display_name: string
+    reporting_options: Array<{
+      label: string
+      detail: string
+      country_code: string
+      url?: string
+    }>
+    verification_steps: string[]
+    used_global_defaults: boolean
+  }
 }
 
 /**

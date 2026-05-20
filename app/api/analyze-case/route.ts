@@ -10,6 +10,7 @@ import { auth } from '@/auth'
 import { analyzeCase } from '@/lib/checkmate'
 import { caseCategories } from '@/lib/checkmate-shared'
 import { ensureDisclaimer, normalizeRiskScore, normalizeRiskLevel } from '@/lib/checkray-core'
+import { getCountryFromRequest, buildLocalizedGuidance } from '@/lib/global'
 import { type Database } from '@/lib/db_types'
 import { saveCase } from '@/lib/db/save-case'
 import { saveReport } from '@/lib/db/save-report'
@@ -25,6 +26,8 @@ const requestSchema = z.object({
   category_hint: z
     .enum([...caseCategories, 'email'] as [string, ...string[]])
     .optional(),
+  // Optional country code for localized guidance
+  country_code: z.string().min(2).max(20).optional(),
   // Legacy aliases for backwards compat
   text: z.string().min(1).max(20_000).optional(),
   url: z.string().min(1).max(2_000).optional()
@@ -68,7 +71,7 @@ async function handlePost(req: Request) {
     )
   }
 
-  const { input_text, text, input_url, url, category_hint } = parsed.data
+  const { input_text, text, input_url, url, category_hint, country_code } = parsed.data
   const submittedText = (input_text ?? text ?? '').trim()
   const submittedUrl = (input_url ?? url ?? '').trim()
   const categoryHint = category_hint?.trim()
@@ -100,6 +103,12 @@ async function handlePost(req: Request) {
     cookies: () => cookieStore
   })
 
+  // Detect country for localized guidance (non-blocking)
+  const countryCode = getCountryFromRequest({
+    requestBodyCountry: country_code ?? null,
+    acceptLanguageHeader: req.headers.get('accept-language')
+  })
+
   // ── Test-mode bypass (non-production only) ───────────────────────────────
   // X-CheckRay-Test-Mode: fallback header, honoured ONLY outside production.
   // Skips billing gate + OpenAI call so load tests have zero cost side-effects.
@@ -128,7 +137,8 @@ async function handlePost(req: Request) {
       recommended_actions: analysis.recommended_actions,
       verification_steps: analysis.verification_steps,
       safe_reply: analysis.safe_reply,
-      disclaimer: ensureDisclaimer(analysis.disclaimer)
+      disclaimer: ensureDisclaimer(analysis.disclaimer),
+      country_context: buildLocalizedGuidance(analysis.category, countryCode)
     }
     return NextResponse.json({
       saved: false,
@@ -180,7 +190,8 @@ async function handlePost(req: Request) {
     recommended_actions: analysis.recommended_actions,
     verification_steps: analysis.verification_steps,
     safe_reply: analysis.safe_reply,
-    disclaimer: ensureDisclaimer(analysis.disclaimer)
+    disclaimer: ensureDisclaimer(analysis.disclaimer),
+    country_context: buildLocalizedGuidance(analysis.category, countryCode)
   }
 
   // 4. Guest path: return result without persisting ───────────────────────────
