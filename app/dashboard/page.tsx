@@ -9,6 +9,7 @@ import { IconArrowRight, IconPlus } from '@/components/ui/icons'
 import { humanizeCategory } from '@/lib/checkmate-shared'
 import { type Database, type Json } from '@/lib/db_types'
 import { PLAN_MONTHLY_LIMIT } from '@/lib/billing/plans'
+import { hasAnyPlanPriceId } from '@/lib/billing/stripe'
 import { DashboardCards } from '@/components/checkmate/DashboardCards'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
@@ -164,7 +165,7 @@ export default async function DashboardPage({
     billingStatus = 'trialing'
   }
 
-  const stripeConfigured = Boolean(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO)
+  const stripeConfigured = hasAnyPlanPriceId()
 
   // Ensure notification_preferences row exists (no-op if already created).
   // Wrapped because a missing migration on this table must not 500 the page.
