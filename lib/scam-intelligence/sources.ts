@@ -76,3 +76,110 @@ export const SCAM_SOURCES: ScamSource[] = [
 export const EXCLUDED_SOURCES_NOTE =
   'Commercial job boards (LinkedIn/Indeed/Glassdoor/ZipRecruiter) and social ' +
   'platforms (Reddit/X/TikTok/Facebook) are intentionally excluded.'
+
+// ---------------------------------------------------------------------------
+// International sources (planned — not yet enabled)
+//
+// These sources are documented here for Phase 2 global expansion.
+// Set enabled: false until each feed is validated and legal review complete.
+// Do NOT run new crawlers until approved.
+// ---------------------------------------------------------------------------
+
+/**
+ * International scam-intelligence sources to evaluate for future ingestion.
+ *
+ * Coverage targets: UK, CA, AU, IE, EU
+ *
+ * DO NOT enable without:
+ *   1. Confirming the feed/URL is still active
+ *   2. Confirming the source permits automated access (robots.txt / ToS)
+ *   3. Legal review for cross-border data ingestion
+ *   4. Rate-limit and caching implementation to avoid hammering public sites
+ */
+export const PLANNED_INTERNATIONAL_SOURCES = [
+  // ── United Kingdom ───────────────────────────────────────────────────────
+  {
+    id: 'ncsc_uk_advisories',
+    name: 'NCSC UK Cyber Advisories',
+    landing_url: 'https://www.ncsc.gov.uk/section/keep-up-to-date/ncsc-news',
+    rss_url: 'https://www.ncsc.gov.uk/feeds/ncsc-news-and-blogs.xml',
+    source_type: 'rss',
+    trust_level: 'high',
+    enabled: false,
+    region: 'UK',
+    notes:
+      'UK National Cyber Security Centre advisories. High trust. RSS feed available. ' +
+      'Validate feed URL and check robots.txt before enabling.'
+  },
+  {
+    id: 'action_fraud_uk',
+    name: 'Action Fraud UK Alerts',
+    landing_url: 'https://www.actionfraud.police.uk/news',
+    rss_url: null,
+    source_type: 'html',
+    trust_level: 'high',
+    enabled: false,
+    region: 'UK',
+    notes:
+      'UK national fraud reporting centre. HTML-only, no RSS. Lightweight parsing required. ' +
+      'Validate ToS before enabling. Rate-limit aggressively.'
+  },
+
+  // ── Canada ───────────────────────────────────────────────────────────────
+  {
+    id: 'cafc_canada',
+    name: 'Canadian Anti-Fraud Centre Alerts',
+    landing_url: 'https://www.antifraudcentre-centreantifraude.ca/index-eng.htm',
+    rss_url: null,
+    source_type: 'html',
+    trust_level: 'high',
+    enabled: false,
+    region: 'CA',
+    notes:
+      'RCMP-linked Canadian Anti-Fraud Centre. No RSS. Assess HTML structure before enabling. ' +
+      'Bilingual (en/fr) — process English pages only in Phase 2.'
+  },
+
+  // ── Australia ─────────────────────────────────────────────────────────────
+  {
+    id: 'scamwatch_au',
+    name: 'Scamwatch Australia Alerts',
+    landing_url: 'https://www.scamwatch.gov.au/news-alerts',
+    rss_url: null,
+    source_type: 'html',
+    trust_level: 'high',
+    enabled: false,
+    region: 'AU',
+    notes:
+      'ACCC Scamwatch — Australian government scam alert site. High trust. ' +
+      'No RSS confirmed. Validate page structure before enabling.'
+  },
+  {
+    id: 'acsc_au',
+    name: 'Australian Cyber Security Centre Advisories',
+    landing_url: 'https://www.cyber.gov.au/about-us/news',
+    rss_url: 'https://www.cyber.gov.au/rss.xml',
+    source_type: 'rss',
+    trust_level: 'high',
+    enabled: false,
+    region: 'AU',
+    notes:
+      'Australian government cybersecurity advisory body. High trust. RSS may be available — validate URL before enabling.'
+  },
+
+  // ── EU / Europol ─────────────────────────────────────────────────────────
+  {
+    id: 'europol_press',
+    name: 'Europol Press Releases',
+    landing_url: 'https://www.europol.europa.eu/media-press/newsroom/news',
+    rss_url: 'https://www.europol.europa.eu/rss.xml',
+    source_type: 'rss',
+    trust_level: 'high',
+    enabled: false,
+    region: 'EU',
+    notes:
+      'Europol cybercrime and fraud press releases. EU-wide scope. ' +
+      'Validate RSS URL and confirm cybercrime-focused filtering before enabling.'
+  },
+] as const
+
