@@ -194,6 +194,113 @@ const CASES = [
   },
 ]
 
+
+// ─── Global / Country-Aware Guidance Cases ──────────────────────────────────
+// These cases verify the fallback signal engine fires correctly for
+// country-targeted inputs. The country_context block itself is assembled
+// by lib/global/ at the API layer; these tests confirm the underlying risk
+// signals are strong enough to trigger the right risk level and categories.
+
+const GLOBAL_CASES = [
+  {
+    id: 'G1',
+    name: '[UK] Phishing text — suspicious lookalike domain',
+    country_code: 'UK',
+    input: 'Royal Mail: Your parcel could not be delivered. Please pay the £1.45 redelivery fee at http://royalmail-delivery-fee.click/pay to release your package.',
+    url: 'http://royalmail-delivery-fee.click/pay',
+    hint: 'phishing_url',
+    // Expected country_context (assembled by API layer):
+    //   reporting_options: Action Fraud, 7726, report@phishing.gov.uk, contact bank
+    //   verification_steps: do not click, go to official website, forward to 7726
+    expectations: {
+      minScore: 35,
+      riskLevels: ['medium', 'high', 'very_high'],
+      mustHaveFlag: /domain|lookalike|tld/i,
+    }
+  },
+  {
+    id: 'G2',
+    name: '[US] Fake job offer with overpayment check + Western Union',
+    country_code: 'US',
+    input: "Congratulations! You have been selected for a remote customer service position at $45/hr. We will send you a cashier's check for $2,800 to purchase your home office equipment. Please deposit it and wire the remaining $1,900 to our equipment supplier via Western Union.",
+    url: '',
+    hint: 'job_scam_or_ghost_job',
+    // Expected country_context (assembled by API layer):
+    //   reporting_options: FTC ReportFraud.ftc.gov, FBI IC3 ic3.gov, 7726, contact bank
+    //   verification_steps: do not deposit check, verify on official careers page, do not pay upfront
+    expectations: {
+      minScore: 45,
+      riskLevels: ['high', 'very_high'],
+      mustHaveFlag: /check|western union/i,
+    }
+  },
+  {
+    id: 'G3',
+    name: '[EU_GENERIC] Invoice scam — bank detail change demand',
+    country_code: 'EU_GENERIC',
+    input: 'Please find attached invoice #INV-2026-887 for €4,200 due immediately. Please update the bank details to the new account and transfer within 24 hours to avoid late fees.',
+    url: '',
+    hint: 'bill_or_fee',
+    // Expected country_context (assembled by API layer):
+    //   reporting_options: national consumer protection authority, ECC, contact bank
+    //   verification_steps: contact organisation officially, do not pay via message link, verify independently
+    expectations: {
+      minScore: 10,
+      riskLevels: ['low', 'medium', 'high', 'very_high'],
+      // mustHaveFlag omitted: fallback may not fire on plain invoice text
+    }
+  },
+]
+
+const RESET2 = '\x1b[0m'
+const GREEN2 = '\x1b[32m'
+const YELLOW2 = '\x1b[33m'
+const RED2 = '\x1b[31m'
+const BOLD2 = '\x1b[1m'
+const DIM2 = '\x1b[2m'
+
+let gPassed = 0, gWarned = 0, gFailed = 0
+
+console.log(`\n${BOLD2}Global / Country-Aware Cases${RESET2}`)
+console.log(`${DIM2}Signal engine tests for country-targeted inputs — country_context assembled at API layer${RESET2}\n`)
+
+for (const tc of GLOBAL_CASES) {
+  const inputText = tc.input
+  const urls = tc.url ? detectUrls(tc.url + ' ' + tc.input) : detectUrls(tc.input)
+  const { score, risk_level, flags, category } = runSignals(inputText, urls, tc.hint)
+  const exp = tc.expectations
+  let status = 'PASS'
+  const issues = []
+
+  if (exp.minScore !== undefined && score < exp.minScore) {
+    issues.push(`score ${score} < expected min ${exp.minScore}`)
+    status = 'FAIL'
+  }
+  if (exp.riskLevels && !exp.riskLevels.includes(risk_level)) {
+    issues.push(`risk_level "${risk_level}" not in expected [${exp.riskLevels.join('/')}]`)
+    status = 'FAIL'
+  }
+  if (exp.mustHaveFlag) {
+    const matched = flags.some(f => exp.mustHaveFlag.test(f))
+    if (!matched) { issues.push(`no flag matched pattern ${exp.mustHaveFlag}`); status = 'FAIL' }
+  }
+
+  const color = status === 'PASS' ? GREEN2 : status === 'WARN' ? YELLOW2 : RED2
+  console.log(`${color}${BOLD2}[${status}]${RESET2} Case ${tc.id}: ${tc.name}`)
+  console.log(`       score=${score}  risk_level=${risk_level}  category=${category}  country=${tc.country_code}`)
+  if (flags.length) console.log(`       flags: ${flags.slice(0, 3).join(' | ')}${flags.length > 3 ? ' (+' + (flags.length - 3) + ' more)' : ''}`)
+  if (issues.length) console.log(`       ${YELLOW2}↳ ${issues.join('; ')}${RESET2}`)
+  console.log()
+
+  if (status === 'PASS') gPassed++
+  else if (status === 'WARN') gWarned++
+  else gFailed++
+}
+
+console.log(`${BOLD2}Global Results: ${GREEN2}${gPassed} passed${RESET2}  ${YELLOW2}${gWarned} warned${RESET2}  ${RED2}${gFailed} failed${RESET2} (${GLOBAL_CASES.length} total)`)
+if (gFailed > 0) process.exitCode = 1
+
+
 // ─── Runner ───────────────────────────────────────────────────────────────────
 
 const RESET = '\x1b[0m'
