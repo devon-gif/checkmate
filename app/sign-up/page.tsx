@@ -1,11 +1,21 @@
 import { auth } from '@/auth'
+import { AuthSetupNotice } from '@/components/auth-setup-notice'
 import { LoginButton } from '@/components/login-button'
 import { LoginForm } from '@/components/login-form'
 import { Separator } from '@/components/ui/separator'
+import { hasSupabasePublicEnv } from '@/lib/env'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 export default async function SignInPage() {
+  if (!hasSupabasePublicEnv()) {
+    return (
+      <div className="flex h-[calc(100vh-theme(spacing.16))] flex-col items-center justify-center py-10">
+        <AuthSetupNotice action="sign-up" />
+      </div>
+    )
+  }
+
   const cookieStore = cookies()
   const session = await auth({ cookieStore })
   // redirect to home if user is already logged in
