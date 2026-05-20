@@ -19,7 +19,7 @@ export function AuthSetupNotice({ action }: { action: 'sign-in' | 'sign-up' }) {
         Accounts are not available yet
       </h1>
       <p className="mb-6 text-sm text-white/65">
-        We're still wiring up authentication on this deployment. You can&apos;t{' '}
+        We&apos;re still wiring up authentication on this deployment. You can&apos;t{' '}
         {verb} right now, but the free scam-check on the homepage works
         without an account.
       </p>

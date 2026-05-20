@@ -1,6 +1,10 @@
 /**
  * app/admin/customers/page.tsx  — Customer list with search
+ *
+ * Force dynamic: uses Supabase service role and must not be prerendered.
  */
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { GlassCard } from '@/components/checkmate/GlassCard'

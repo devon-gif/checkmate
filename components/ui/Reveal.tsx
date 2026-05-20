@@ -70,7 +70,7 @@ export function Reveal({
       whileInView={animate}
       transition={{ delay, duration: duration ?? fallbackDuration, ease: easePremium }}
       viewport={{ amount, once }}
-      {...rest}
+      {...(rest as any)}
     >
       {children}
     </motion.div>

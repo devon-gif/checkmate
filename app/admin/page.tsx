@@ -1,6 +1,12 @@
 /**
  * app/admin/page.tsx  — Admin overview / stats dashboard
+ *
+ * Force dynamic: this page calls Supabase with the service role key and
+ * must never be statically prerendered. (Also works around a Next 13.4
+ * RSC manifest bug when a global-error boundary is present.)
  */
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@supabase/supabase-js'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 
