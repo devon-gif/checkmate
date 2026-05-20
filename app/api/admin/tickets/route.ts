@@ -9,6 +9,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { isAdminUser } from '@/lib/admin/access'
+import { safeStatus } from '@/lib/support/types'
 
 function serviceClient() {
   return createClient(
@@ -59,15 +60,15 @@ export async function PATCH(req: Request) {
     )
   }
 
-  const validStatuses = ['open', 'in_progress', 'resolved', 'closed']
-  if (!validStatuses.includes(status)) {
+  const safe = safeStatus(status)
+  if (!safe) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
   const sb = serviceClient()
   const { error } = await (sb as any)
     .from('support_tickets')
-    .update({ status })
+    .update({ status: safe })
     .eq('id', ticketId)
 
   if (error) {

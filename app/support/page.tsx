@@ -3,31 +3,46 @@
  * app/support/page.tsx — Public support / contact form
  *
  * Accessible without login. Submits to /api/support/submit.
+ * Supports `?category=` URL param to preselect a topic, e.g.
+ *   /support?category=cancellation
+ *   /support?category=refund_request
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
+import {
+  TICKET_CATEGORIES,
+  TICKET_CATEGORY_LABELS,
+  safeCategory,
+  type TicketCategory
+} from '@/lib/support/types'
 
-const CATEGORIES = [
-  { value: 'general', label: 'General question' },
-  { value: 'billing', label: 'Billing' },
-  { value: 'cancellation', label: 'Cancellation request' },
-  { value: 'bug', label: 'Bug report' },
-  { value: 'feature', label: 'Feature request' },
-  { value: 'other', label: 'Other' }
-]
+const CATEGORIES: { value: TicketCategory; label: string }[] = TICKET_CATEGORIES.map(
+  v => ({ value: v, label: TICKET_CATEGORY_LABELS[v] })
+)
 
 export default function SupportPage() {
+  const searchParams = useSearchParams()
+  const initialCategory = safeCategory(searchParams?.get('category'))
+
   const [form, setForm] = useState({
     email: '',
     subject: '',
     message: '',
-    category: 'general'
+    category: initialCategory as TicketCategory
   })
+
+  // If the user navigates between /support?category=X without a full reload,
+  // re-sync the dropdown to the new query param.
+  useEffect(() => {
+    const next = safeCategory(searchParams?.get('category'))
+    setForm(prev => (prev.category === next ? prev : { ...prev, category: next }))
+  }, [searchParams])
   const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
 
-  function update(field: keyof typeof form, value: string) {
+  function update<K extends keyof typeof form>(field: K, value: (typeof form)[K]) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
@@ -99,7 +114,7 @@ export default function SupportPage() {
                 </label>
                 <select
                   value={form.category}
-                  onChange={e => update('category', e.target.value)}
+                  onChange={e => update('category', e.target.value as TicketCategory)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none focus:border-cm-green/50"
                 >
                   {CATEGORIES.map(c => (

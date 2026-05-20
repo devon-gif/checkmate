@@ -146,7 +146,11 @@ export function PricingCards({ stripeConfigured }: Props) {
             ))}
           </ul>
           {stripeConfigured ? (
-            <TrialStartButton variant="secondary" label="Start 7-day trial" />
+            <TrialStartButton
+              variant="secondary"
+              label="Start 7-day trial"
+              plan={period === 'yearly' ? 'basic_yearly' : 'basic_monthly'}
+            />
           ) : (
             <GradientButton href="/sign-up" variant="secondary" className="w-full">
               Start 7-day trial
@@ -189,7 +193,11 @@ export function PricingCards({ stripeConfigured }: Props) {
             ))}
           </ul>
           {stripeConfigured ? (
-            <TrialStartButton variant="primary" label="Start 7-day trial" />
+            <TrialStartButton
+              variant="primary"
+              label="Start 7-day trial"
+              plan={period === 'yearly' ? 'plus_yearly' : 'plus_monthly'}
+            />
           ) : (
             <GradientButton href="/sign-up" variant="primary" className="w-full">
               Start 7-day trial
@@ -203,17 +211,35 @@ export function PricingCards({ stripeConfigured }: Props) {
 
 // ─── Trial start button (Stripe checkout) ─────────────────────────────────────
 
+type CheckoutPlanKey =
+  | 'basic_monthly'
+  | 'basic_yearly'
+  | 'plus_monthly'
+  | 'plus_yearly'
+
 function TrialStartButton({
   variant,
-  label
+  label,
+  plan
 }: {
   variant: 'primary' | 'secondary'
   label: string
+  plan: CheckoutPlanKey
 }) {
   async function handleClick() {
-    const res = await fetch('/api/billing/create-checkout-session', { method: 'POST' })
+    const res = await fetch('/api/billing/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan })
+    })
     const data = await res.json()
-    if (data.url) window.location.href = data.url
+    if (data.url) {
+      window.location.href = data.url
+    } else if (data.message) {
+      // Friendly fallback if a price ID isn't set up yet.
+      // eslint-disable-next-line no-alert
+      window.alert(data.message)
+    }
   }
 
   return (

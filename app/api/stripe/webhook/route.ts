@@ -5,9 +5,11 @@
  *
  * Events handled:
  *   checkout.session.completed          — capture customer + subscription IDs
- *   customer.subscription.created       — set status + period
- *   customer.subscription.updated       — update status + period
+ *   customer.subscription.created       — set status + period + plan
+ *   customer.subscription.updated       — update status + period + plan
  *   customer.subscription.deleted       — mark canceled
+ *   invoice.payment_succeeded           — promote to active, refresh period_end
+ *   invoice.payment_failed              — mark past_due
  *
  * Requires STRIPE_WEBHOOK_SECRET in env.
  * If Stripe env vars are absent the endpoint returns 503 without crashing.
@@ -18,7 +20,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
-import { stripe } from '@/lib/billing/stripe'
+import { stripe, planIdForPriceId } from '@/lib/billing/stripe'
 
 // ─── Service-role Supabase client ─────────────────────────────────────────────
 function serviceClient() {
@@ -110,22 +112,59 @@ export async function POST(req: Request) {
         const periodStart: number | undefined =
           subAny.current_period_start ?? sub.items?.data?.[0]?.current_period_start
 
+        // Derive canonical plan id from the subscription's first price.
+        // Falls back to checkout_plan_key metadata if the price isn't one
+        // we recognise (e.g. coupon-applied).
+        const priceId = sub.items?.data?.[0]?.price?.id ?? null
+        const planFromPrice = planIdForPriceId(priceId)
+        const checkoutKeyToPlanId: Record<string, string> = {
+          basic_monthly: 'basic',
+          basic_yearly: 'basic_yearly',
+          plus_monthly: 'plus',
+          plus_yearly: 'plus_yearly'
+        }
+        const planFromMetadata =
+          typeof sub.metadata?.checkout_plan_key === 'string'
+            ? checkoutKeyToPlanId[sub.metadata.checkout_plan_key] ?? null
+            : null
+        const resolvedPlan = planFromPrice ?? planFromMetadata
+
+        const sharedUpdate: Record<string, unknown> = {
+          provider_customer_id: customerId ?? null,
+          provider_subscription_id: sub.id,
+          status: sub.status,
+          current_period_end: periodEnd
+            ? new Date(periodEnd * 1000).toISOString()
+            : null,
+          current_period_start: periodStart
+            ? new Date(periodStart * 1000).toISOString()
+            : null,
+          cancel_at_period_end: sub.cancel_at_period_end
+        }
+        if (resolvedPlan) sharedUpdate.plan = resolvedPlan
+
         await sb
           .from('subscriptions')
-          .update({
-            provider_customer_id: customerId ?? null,
-            provider_subscription_id: sub.id,
-            status: sub.status,
-            plan: 'pro',
-            current_period_end: periodEnd
-              ? new Date(periodEnd * 1000).toISOString()
-              : null,
-            current_period_start: periodStart
-              ? new Date(periodStart * 1000).toISOString()
-              : null,
-            cancel_at_period_end: sub.cancel_at_period_end
-          } as any)
+          .update(sharedUpdate as any)
           .eq('user_id', userId)
+
+        // Mirror canonical fields into user_billing (preferred source for
+        // dashboard reads). Only update fields user_billing has.
+        await (sb as any)
+          .from('user_billing')
+          .upsert(
+            {
+              user_id: userId,
+              plan: resolvedPlan ?? undefined,
+              status: sub.status === 'active' ? 'active' : sub.status,
+              stripe_customer_id: customerId ?? undefined,
+              cancel_at_period_end: sub.cancel_at_period_end,
+              current_period_end: periodEnd
+                ? new Date(periodEnd * 1000).toISOString()
+                : null
+            },
+            { onConflict: 'user_id' }
+          )
         break
       }
 
@@ -137,6 +176,79 @@ export async function POST(req: Request) {
         await sb
           .from('subscriptions')
           .update({ status: 'canceled' } as any)
+          .eq('user_id', userId)
+
+        await (sb as any)
+          .from('user_billing')
+          .update({ status: 'canceled' })
+          .eq('user_id', userId)
+        break
+      }
+
+      case 'invoice.payment_succeeded': {
+        // Promote subscription to active and refresh period_end.
+        const inv = event.data.object as Stripe.Invoice
+        const customerId =
+          typeof inv.customer === 'string' ? inv.customer : inv.customer?.id
+        if (!customerId) break
+
+        // Find the matching local row by stripe customer id.
+        const { data: rows } = await sb
+          .from('subscriptions')
+          .select('user_id')
+          .eq('provider_customer_id', customerId)
+          .limit(1)
+        const userId = rows?.[0]?.user_id
+        if (!userId) break
+
+        const periodEnd = (inv as any).lines?.data?.[0]?.period?.end as
+          | number
+          | undefined
+
+        await sb
+          .from('subscriptions')
+          .update({
+            status: 'active',
+            current_period_end: periodEnd
+              ? new Date(periodEnd * 1000).toISOString()
+              : null
+          } as any)
+          .eq('user_id', userId)
+
+        await (sb as any)
+          .from('user_billing')
+          .update({
+            status: 'active',
+            current_period_end: periodEnd
+              ? new Date(periodEnd * 1000).toISOString()
+              : null
+          })
+          .eq('user_id', userId)
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const inv = event.data.object as Stripe.Invoice
+        const customerId =
+          typeof inv.customer === 'string' ? inv.customer : inv.customer?.id
+        if (!customerId) break
+
+        const { data: rows } = await sb
+          .from('subscriptions')
+          .select('user_id')
+          .eq('provider_customer_id', customerId)
+          .limit(1)
+        const userId = rows?.[0]?.user_id
+        if (!userId) break
+
+        await sb
+          .from('subscriptions')
+          .update({ status: 'past_due' } as any)
+          .eq('user_id', userId)
+
+        await (sb as any)
+          .from('user_billing')
+          .update({ status: 'past_due' })
           .eq('user_id', userId)
         break
       }

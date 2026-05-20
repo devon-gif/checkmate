@@ -9,6 +9,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
+import { safeCategory } from '@/lib/support/types'
+
 function serviceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,16 +50,13 @@ export async function POST(req: Request) {
     // Not logged in — proceed anonymously
   }
 
-  const validCategories = ['general', 'billing', 'cancellation', 'bug', 'feature', 'other']
-  const safeCategory = validCategories.includes(category ?? '') ? category! : 'general'
-
   const sb = serviceClient()
   const { error } = await (sb as any).from('support_tickets').insert({
     user_id: userId,
     email: resolvedEmail,
     subject: subject.trim(),
     message: message.trim(),
-    category: safeCategory,
+    category: safeCategory(category),
     status: 'open'
   })
 

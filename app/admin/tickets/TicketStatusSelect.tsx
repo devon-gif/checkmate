@@ -2,19 +2,27 @@
 
 import { useState } from 'react'
 
-const STATUSES = ['open', 'in_progress', 'resolved', 'closed'] as const
-type Status = (typeof STATUSES)[number]
+import {
+  TICKET_STATUSES,
+  TICKET_STATUS_LABELS,
+  type TicketStatus
+} from '@/lib/support/types'
 
 interface Props {
   ticketId: string
-  currentStatus: Status
+  /** Stored status — may be a legacy value like 'in_progress' for old rows. */
+  currentStatus: string
 }
 
 export function TicketStatusSelect({ ticketId, currentStatus }: Props) {
-  const [status, setStatus] = useState<Status>(currentStatus)
+  // Show legacy values as-is, but only let admins WRITE canonical statuses.
+  const initial = (TICKET_STATUSES as readonly string[]).includes(currentStatus)
+    ? (currentStatus as TicketStatus)
+    : ('open' as TicketStatus)
+  const [status, setStatus] = useState<TicketStatus>(initial)
   const [saving, setSaving] = useState(false)
 
-  async function handleChange(newStatus: Status) {
+  async function handleChange(newStatus: TicketStatus) {
     setSaving(true)
     try {
       await fetch('/api/admin/tickets', {
@@ -28,9 +36,10 @@ export function TicketStatusSelect({ ticketId, currentStatus }: Props) {
     }
   }
 
-  const colorMap: Record<Status, string> = {
+  const colorMap: Record<TicketStatus, string> = {
     open: 'text-yellow-400',
-    in_progress: 'text-blue-400',
+    waiting_on_customer: 'text-orange-400',
+    in_review: 'text-blue-400',
     resolved: 'text-green-400',
     closed: 'text-white/30'
   }
@@ -39,12 +48,12 @@ export function TicketStatusSelect({ ticketId, currentStatus }: Props) {
     <select
       value={status}
       disabled={saving}
-      onChange={e => handleChange(e.target.value as Status)}
+      onChange={e => handleChange(e.target.value as TicketStatus)}
       className={`rounded-lg border border-white/10 bg-transparent py-0.5 pl-2 pr-6 text-xs font-medium outline-none ${colorMap[status]}`}
     >
-      {STATUSES.map(s => (
+      {TICKET_STATUSES.map(s => (
         <option key={s} value={s} className="bg-neutral-900 text-white">
-          {s}
+          {TICKET_STATUS_LABELS[s]}
         </option>
       ))}
     </select>
