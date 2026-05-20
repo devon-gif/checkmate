@@ -8,7 +8,8 @@ import { z } from 'zod'
 
 import { auth } from '@/auth'
 import { analyzeCase } from '@/lib/checkmate'
-import { caseCategories, ANALYSIS_DISCLAIMER } from '@/lib/checkmate-shared'
+import { caseCategories } from '@/lib/checkmate-shared'
+import { ensureDisclaimer, normalizeRiskScore, normalizeRiskLevel } from '@/lib/checkray-core'
 import { type Database } from '@/lib/db_types'
 import { saveCase } from '@/lib/db/save-case'
 import { saveReport } from '@/lib/db/save-report'
@@ -117,8 +118,8 @@ async function handlePost(req: Request) {
     })
     const report = {
       category: analysis.category,
-      risk_score: analysis.risk_score,
-      risk_level: analysis.risk_level,
+      risk_score: normalizeRiskScore(analysis.risk_score),
+      risk_level: normalizeRiskLevel(analysis.risk_score),
       confidence_level: analysis.confidence_level,
       summary: analysis.summary,
       evidence_found: analysis.evidence_found,
@@ -127,7 +128,7 @@ async function handlePost(req: Request) {
       recommended_actions: analysis.recommended_actions,
       verification_steps: analysis.verification_steps,
       safe_reply: analysis.safe_reply,
-      disclaimer: analysis.disclaimer ?? ANALYSIS_DISCLAIMER
+      disclaimer: ensureDisclaimer(analysis.disclaimer)
     }
     return NextResponse.json({
       saved: false,
@@ -169,8 +170,8 @@ async function handlePost(req: Request) {
   // Canonical nested report shape
   const report = {
     category: analysis.category,
-    risk_score: analysis.risk_score,
-    risk_level: analysis.risk_level,
+    risk_score: normalizeRiskScore(analysis.risk_score),
+    risk_level: normalizeRiskLevel(analysis.risk_score),
     confidence_level: analysis.confidence_level,
     summary: analysis.summary,
     evidence_found: analysis.evidence_found,
@@ -179,7 +180,7 @@ async function handlePost(req: Request) {
     recommended_actions: analysis.recommended_actions,
     verification_steps: analysis.verification_steps,
     safe_reply: analysis.safe_reply,
-    disclaimer: analysis.disclaimer ?? ANALYSIS_DISCLAIMER
+    disclaimer: ensureDisclaimer(analysis.disclaimer)
   }
 
   // 4. Guest path: return result without persisting ───────────────────────────
