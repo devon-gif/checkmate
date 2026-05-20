@@ -7,6 +7,7 @@
 import Link from 'next/link'
 
 import { PricingCards } from '@/components/checkmate/PricingCards'
+import { hasAnyPlanPriceId } from '@/lib/billing/stripe'
 
 export const metadata = {
   title: 'Pricing — CheckRay',
@@ -20,7 +21,7 @@ export default function PricingPage({
   searchParams?: { billing?: string }
 }) {
   const wasCancelled = searchParams?.billing === 'cancelled'
-  const stripeConfigured = Boolean(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO)
+  const stripeConfigured = hasAnyPlanPriceId()
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 py-16 sm:px-6">
