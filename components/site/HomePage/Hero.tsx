@@ -136,6 +136,14 @@ export default function Hero() {
             Works for scams, phishing, fake recruiters, suspicious links, bills, and more.
           </motion.p>
 
+          {/* Trial note */}
+          <motion.p
+            variants={fadeUp}
+            className="text-[11px] leading-5 text-white/35 max-md:mb-8"
+          >
+            7 day free trial. No credit card required.
+          </motion.p>
+
           <motion.div variants={fadeIn}>
             <PhoneVideoDemo />
           </motion.div>
