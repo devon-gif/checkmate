@@ -242,10 +242,7 @@ export default function Details() {
               <div className="mb-2 bg-radial-white-2 bg-clip-text text-title-1 text-transparent max-xl:text-title-2 max-md:text-title-1-mobile">
                 100%
               </div>
-              <div className="max-w-72 text-description-2 text-description">
-                Informational only. Ray can be wrong. Verify through official
-                channels before acting.
-              </div>
+
             </div>
           </motion.div>
         </div>

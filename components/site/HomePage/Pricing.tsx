@@ -184,9 +184,7 @@ export default function Pricing() {
         <div className="mt-8 mb-3 text-center text-description-2 text-white/50 max-md:mt-6">
           Most security tools make you install a suite. CheckRay lets you ask Ray wherever the suspicious message shows up.
         </div>
-        <div className="mt-3 text-center text-description max-md:text-title-3-mobile">
-          Informational only. Ray can be wrong. Verify through official sources before acting.
-        </div>
+
       </div>
     </div>
   )

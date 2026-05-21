@@ -133,7 +133,7 @@ export default function Hero() {
             variants={fadeUp}
             className="max-w-[27rem] text-[11px] leading-5 text-white/35 max-md:mb-8"
           >
-            Works for scams, phishing, fake recruiters, suspicious links, bills, and more. Ray can be wrong. Results are informational only. Always verify through official sources.
+            Works for scams, phishing, fake recruiters, suspicious links, bills, and more.
           </motion.p>
 
           <motion.div variants={fadeIn}>

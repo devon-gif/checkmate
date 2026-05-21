@@ -216,10 +216,7 @@ export function NewCaseForm() {
             </select>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-white/8 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-white/30">
-              Ray can be wrong. Results are informational only, not advice.
-            </p>
+          <div className="flex flex-col gap-3 border-t border-white/8 pt-5 sm:flex-row sm:items-center sm:justify-end">
             <button
               type="submit"
               disabled={isSubmitting || (!text.trim() && !url.trim())}

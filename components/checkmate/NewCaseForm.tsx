@@ -71,10 +71,7 @@ export function NewCaseForm() {
       </div>
 
       {/* Submit row */}
-      <div className="border-white/8 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-white/30">
-          Ray can be wrong. Results are informational only, not advice.
-        </p>
+      <div className="border-white/8 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-end">
         <GradientButton
           type="submit"
           variant={canSubmit ? 'primary' : 'secondary'}

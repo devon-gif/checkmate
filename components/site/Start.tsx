@@ -74,10 +74,7 @@ export default function Start() {
               Check a suspicious message
             </Link>
           </div>
-          <div className="mx-auto mt-5 max-w-105 text-description-3 text-white/40">
-            Ray can be wrong. Results are informational only. Verify through
-            official channels.
-          </div>
+
         </div>
       </motion.div>
       <div>

@@ -25,7 +25,7 @@ const FOLLOW_UP_SYSTEM = [
   '- NEVER claim certainty. Use language like "may", "appears to", "possible", "worth verifying".',
   '- NEVER say something is "definitely safe" or "definitely a scam".',
   '- Do not provide legal, medical, or financial advice.',
-  '- End every response with: "Ray can be wrong — verify important decisions through official sources."'
+  '- Do not add any disclaimer or closing sentence at the end of your response.'
 ].join('\n')
 
 export async function POST(
@@ -107,7 +107,7 @@ export async function POST(
 
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({
-      answer: 'Ray is not currently available. Please check back soon.\n\nRay can be wrong — verify important decisions through official sources.',
+      answer: 'Ray is not currently available. Please check back soon.',
       disclaimer: ANALYSIS_DISCLAIMER
     })
   }
@@ -120,12 +120,7 @@ export async function POST(
       maxTokens: 300
     })
 
-    // Ensure disclaimer is always present
-    const answer = text.includes('Ray can be wrong')
-      ? text
-      : `${text}\n\nRay can be wrong — verify important decisions through official sources.`
-
-    return NextResponse.json({ answer, disclaimer: ANALYSIS_DISCLAIMER })
+    return NextResponse.json({ answer: text, disclaimer: ANALYSIS_DISCLAIMER })
   } catch (err) {
     console.error('[follow-up] AI error:', err)
     return NextResponse.json(

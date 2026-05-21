@@ -214,9 +214,7 @@ export function ReportDetail({ caseRow, report }: ReportDetailProps) {
                   >
                     {trustedCopied ? '✓ Copied' : 'Copy message'}
                   </button>
-                  <span className="text-[10px] text-white/20">
-                    Ray can be wrong. Verify through official sources.
-                  </span>
+
                 </div>
               </div>
             )}

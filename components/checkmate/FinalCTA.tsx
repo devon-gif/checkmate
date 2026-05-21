@@ -20,7 +20,6 @@ export function FinalCTA() {
         </h2>
         <p className="mb-10 text-base leading-relaxed text-white/50">
           One quick check can help you spot possible red flags before you act.
-          Ray can be wrong, so always verify through official channels.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4">

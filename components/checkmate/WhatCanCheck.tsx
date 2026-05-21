@@ -66,8 +66,7 @@ export function WhatCanCheck() {
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/50">
             Ray checks for risk signals in suspicious texts, links, jobs,
-            bills, and emails. Ray can be wrong. Always verify through
-            official channels before acting.
+            bills, and emails.
           </p>
         </div>
 

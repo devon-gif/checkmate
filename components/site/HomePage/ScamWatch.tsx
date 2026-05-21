@@ -69,10 +69,7 @@ export default function ScamWatch() {
                 phishing links, suspicious bills, and red flags to watch for
                 before you click, pay, reply, or apply.
               </p>
-              <p className="mt-4 text-[11px] leading-5 text-white/35">
-                Alerts are informational only. Ray can be wrong. Always verify
-                through official sources.
-              </p>
+
             </div>
 
             {/* Right: bulleted feature list */}

@@ -68,7 +68,7 @@ export function TextFirstDemo() {
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/50">
             This is a simulated demo. Ray may surface possible risk signals
-            like these, but can be wrong. Results are informational only.
+            like these. Results are informational only.
           </p>
         </div>
 
@@ -154,11 +154,7 @@ export function TextFirstDemo() {
               Draft a safer reply
             </button>
 
-            <p className="text-center text-[11px] text-white/25">
-              Ray can be wrong. Results are informational only, not legal,
-              financial, medical, or professional advice. Verify through
-              official channels before acting.
-            </p>
+
           </GlassCard>
         </div>
       </div>

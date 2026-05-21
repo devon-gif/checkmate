@@ -100,9 +100,7 @@ export function RiskDemo() {
           Draft a safe reply
         </button>
 
-        <div className="mt-3 text-center text-description-3 text-description/70">
-          CheckMate can be wrong. Verify through official channels.
-        </div>
+
       </div>
     </div>
   )

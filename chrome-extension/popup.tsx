@@ -177,8 +177,6 @@ function IndexPopup() {
           color: "rgba(230,241,238,0.35)",
           lineHeight: 1.4
         }}>
-        Informational only. Ray can be wrong. Verify through official channels
-        before acting.
       </div>
     </div>
   )
