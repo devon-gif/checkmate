@@ -2,7 +2,18 @@
 
 Last updated: May 2026
 
-This document tells AI coding agents (Codex, Claude Opus/Code, Cursor, OpenCode, etc.) how this codebase is structured, what the rules are, and what to watch out for.
+**Every AI coding agent working on CheckRay must read this file first and follow it completely.**
+
+This is the master instruction file for AI coding agents (Codex, Claude Opus/Code, Cursor, OpenCode, GitHub Copilot, etc.). It covers rules, architecture, scope guardrails, and the review workflow.
+
+Related docs (read before touching the area):
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — full system map
+- [docs/CRITICAL_FLOWS.md](docs/CRITICAL_FLOWS.md) — flows that must never break
+- [docs/SECURITY_BOUNDARIES.md](docs/SECURITY_BOUNDARIES.md) — hard security rules
+- [docs/SCHEMA_CONTRACTS.md](docs/SCHEMA_CONTRACTS.md) — stable API response shapes
+- [docs/CHANGE_REVIEW_CHECKLIST.md](docs/CHANGE_REVIEW_CHECKLIST.md) — checklist for every change
+- [docs/AI_REVIEW_WORKFLOW.md](docs/AI_REVIEW_WORKFLOW.md) — builder/reviewer process
+- [docs/PRE_DEPLOY_CHECKLIST.md](docs/PRE_DEPLOY_CHECKLIST.md) — before any production deploy
 
 ---
 
@@ -50,26 +61,53 @@ checkmate/
 
 ## Non-negotiable rules
 
-### 1. Never throw in `lib/env.ts`
-`lib/env.ts` must only warn, never throw. Marketing pages must keep rendering even if env vars are absent.
+### DEPLOY / DESTRUCTIVE COMMANDS
+- **Never deploy to Vercel** unless the user explicitly says "deploy to Vercel" or "run vercel --prod".
+- **Never run `vercel`, `vercel --prod`, or `vercel deploy`** unless explicitly authorized.
+- **Never run destructive commands** (`DROP TABLE`, `DELETE FROM` without WHERE, `rm -rf` on source files, `git push --force`).
+- **Never push to `main`** unless the user explicitly says "push to main".
+- If pushing is needed, push to a feature/dev branch only.
 
-### 2. `lib/checkmate.ts` is server-only
-It has `import 'server-only'` at the top. Never import it from a client component or from `lib/` files that might be bundled client-side.
+### SECRETS
+- **Never hardcode secrets** in any source file — no OpenAI, Stripe, Supabase, Sentry, Resend, Twilio, or Vercel keys.
+- **`SUPABASE_SERVICE_ROLE_KEY` is server-only.** It must never appear in client components, `NEXT_PUBLIC_*` vars, Chrome extension code, or any file that could be bundled client-side.
+- **Only `NEXT_PUBLIC_*` vars are client-safe.** Any variable without this prefix is server-only.
+- If you need a stub value in CI, use a clearly non-secret string (`placeholder-build-stub`) and add `# gitleaks:allow` on the same line.
 
-### 3. Supabase service role key — server only
-`SUPABASE_SERVICE_ROLE_KEY` must never reach the client bundle. Use `createRouteHandlerClient` or `createServerComponentClient` only inside `app/api/` and Server Components.
+### AUTH / BILLING / DATABASE / SECURITY
+- **Do not casually modify** `auth.ts`, `middleware.ts`, `lib/billing/access.ts`, or any Supabase migration without a clear reason and explicit user approval.
+- **RLS is the security boundary.** Every user-data table must have Row Level Security enabled. Do not add `service_role` bypasses for user-facing queries.
+- **Rate limits must stay in place.** The 25 checks/24 h limit in `app/api/analyze-case/route.ts` must not be removed or bypassed.
 
-### 4. RLS is the security boundary
-Every Supabase table has Row Level Security enabled. API routes rely on RLS — do not add `service_role` bypasses for user-facing data queries.
+### PUBLIC MARKETING PAGES
+- **Never break the homepage (`/`), pricing (`/pricing`), or legal pages.** These must render even when all env vars are absent.
+- `lib/env.ts` must only warn — **never throw**.
+- `auth.ts` must return `null` on error — **never throw**.
+- `middleware.ts` must only run on protected routes and be wrapped in try/catch.
 
-### 5. Type-check before committing
-Run `pnpm type-check` before any commit that touches TypeScript. The build must be green.
+### ANALYZER RESPONSE SHAPE
+- **Do not change the shape of `/api/analyze-case` responses** without updating `docs/SCHEMA_CONTRACTS.md` and all tests.
+- The fields `risk_score`, `risk_level`, `disclaimer`, `red_flags`, `recommended_actions`, `safe_reply`, `category`, `confidence` must always be present.
+- The disclaimer lives only in `components/footer.tsx`. Do not re-add it to API responses or UI components.
 
-### 6. No disclaimer text in product UI
-The "Ray can be wrong" legal disclaimer lives only in `components/footer.tsx`. Do not add it to individual UI components, form submit rows, or API responses.
+### LANGUAGE / TONE
+- Results are **informational only** — not legal, financial, medical, or professional advice.
+- Use cautious language: "may", "appears to", "possible", "worth verifying".
+- Never say something is "definitely safe" or "definitely a scam".
+- Never add "Ray can be wrong" text to UI components or API responses. The footer already has it.
 
-### 7. Rate limits must stay in place
-The 25 checks/24 h limit for authenticated users in `app/api/analyze-case/route.ts` must not be removed or bypassed. Guest rate limiting (IP-based) should be added before production launch (see SECURITY_CHECKLIST.md).
+### AFTER EVERY CHANGE
+- Run `pnpm type-check` — must pass with 0 errors.
+- Run `pnpm build` — must complete without errors.
+- Run `gitleaks detect --source .` — must return "no leaks found".
+- If routes changed: run `pnpm load:smoke`.
+- If analyzer changed: run `pnpm load:analyze:fallback`.
+- Summarize: exact files changed, what each change does, risk level of each change.
+
+### SCOPE
+- Prefer **small, targeted edits**. Do not refactor unrelated files.
+- If you touch a file, explain why. If the explanation is weak, don't touch it.
+- Always verify that a change fits the larger end-to-end product before committing.
 
 ---
 
@@ -126,3 +164,12 @@ pnpm load:smoke       # k6 smoke test (requires k6 installed)
 - `middleware.ts` — protects `/dashboard`, `/cases`, `/settings`, `/account`, `/billing`
 - `lib/billing/access.ts` — access tier resolution
 - `lib/env.ts` — capability flags (`hasSupabasePublicEnv()`, `hasOpenAIEnv()`, etc.)
+
+---
+
+## Reviewer prompt (use this after every AI-generated change)
+
+Copy this prompt and run it as a second AI pass before committing:
+
+> "Review the latest CheckRay changes as a senior engineer. Do not make new feature changes. Check whether the diff preserves the architecture, critical flows, auth, billing, analyzer schema, Supabase RLS/security, env handling, cost controls, and production readiness. Identify blockers, risks, missing tests, and exact files that need fixes. Reference docs/CHANGE_REVIEW_CHECKLIST.md."
+
