@@ -36,8 +36,7 @@ jobs:
           # Provide stub values so Next.js build succeeds without real secrets.
           # These are NOT real credentials — build-time stubs only.
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          # gitleaks-ignore-reason: build-time stub, not a real credential
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-not-a-real-secret
-          OPENAI_API_KEY: sk-placeholder
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-build-stub # gitleaks:allow
+          OPENAI_API_KEY: sk-placeholder # gitleaks:allow
           NEXT_PUBLIC_APP_URL: https://checkray.app
         run: pnpm build

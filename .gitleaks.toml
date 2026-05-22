@@ -17,3 +17,14 @@ paths = [
   '''(^|/)build/''',
   '''(^|/)chrome-extension/build/''',
 ]
+
+# ── CI build-time stub allowlist ─────────────────────────────────────────────
+# Allows literal placeholder strings used only in .github/workflows/ci.yml.
+# These are NOT real credentials — they exist solely to satisfy Next.js
+# build-time env requirements in CI without actual keys.
+# Scoped to .github/workflows/ only — does NOT allow real secrets elsewhere.
+[[rules]]
+id = "ci-build-stubs"
+description = "Allow known CI build-time placeholder values in workflow files"
+regex = '''placeholder-build-stub|sk-placeholder'''
+allowlist.paths = ['''.github/workflows/.*\.(yml|yaml)$''']
