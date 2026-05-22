@@ -1,6 +1,9 @@
-# DEPLOY_CHECKLIST.md — CheckRay Vercel Deploy Checklist
+# DEPLOY_CHECKLIST.md — CheckRay Deploy Checklist
 
 Last updated: May 2026
+
+> **Deployment policy:** Preview deploys happen automatically via Vercel on every push.
+> **Production deploys are manual only** — trigger via Vercel Dashboard or `vercel --prod` after the checklist below is complete.
 
 ---
 
@@ -102,6 +105,32 @@ In Supabase Dashboard → Table Editor, confirm all tables exist:
 - [ ] legal_versions
 - [ ] user_legal_acceptances
 - [ ] notification_preferences
+
+---
+
+## CI gates (must be green before promoting to production)
+
+| Check | Workflow | How to run locally |
+|---|---|---|
+| TypeScript type-check | `.github/workflows/ci.yml` | `pnpm type-check` |
+| Next.js build | `.github/workflows/ci.yml` | `pnpm build` |
+| Secret scan | `.github/workflows/gitleaks.yml` | `gitleaks detect --source .` |
+| Playwright E2E | `.github/workflows/playwright.yml` | `pnpm exec playwright test` |
+| k6 load smoke | `.github/workflows/load-smoke.yml` | `pnpm load:smoke` |
+
+```bash
+# Run all local checks before promoting
+pnpm type-check && pnpm build && pnpm exec playwright test
+```
+
+---
+
+## Observability — verify before going live
+
+- [ ] **Sentry** — `SENTRY_DSN` set in Vercel env; test with `throw new Error('sentry-test')` in a route, confirm event appears in Sentry dashboard.
+- [ ] **Vercel Runtime Logs** — visit Vercel Dashboard → Logs → confirm API routes are logging and not 500ing.
+- [ ] **Supabase logs** — Supabase Dashboard → Logs → API/Postgres; confirm queries are landing.
+- [ ] **Stripe webhook logs** — Stripe Dashboard → Developers → Webhooks → confirm `/api/billing/webhook` is receiving events (when Stripe is live).
 
 ---
 

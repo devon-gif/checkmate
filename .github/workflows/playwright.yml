@@ -1,0 +1,67 @@
+name: Playwright E2E
+
+on:
+  # Run automatically on every push to main (after Vercel preview deploy).
+  # Also available as a manual trigger against any URL.
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Target base URL (e.g. https://checkray.app)'
+        required: false
+        default: 'http://localhost:3000'
+
+jobs:
+  playwright:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE_URL: ${{ github.event.inputs.base_url || 'http://localhost:3000' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start dev server (if testing locally)
+        if: ${{ env.BASE_URL == 'http://localhost:3000' }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+        run: pnpm dev &
+        # Give dev server time to be ready
+      - name: Wait for server
+        if: ${{ env.BASE_URL == 'http://localhost:3000' }}
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run Playwright tests
+        run: pnpm exec playwright test
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

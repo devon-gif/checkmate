@@ -1,6 +1,54 @@
-# MVP_TEST_PLAN.md — CheckRay MVP Manual Test Plan
+# MVP_TEST_PLAN.md — CheckRay MVP Test Plan
 
 Last updated: May 2026
+
+Covers both **automated** (Playwright, k6, analyzer eval) and **manual** smoke tests.
+Run the automated suite after every deploy. Run manual tests before investor / friend demos.
+
+---
+
+## Automated test suite
+
+### Playwright E2E (`tests/e2e/smoke.spec.ts`)
+
+```bash
+# Install once
+pnpm add -D @playwright/test
+pnpm exec playwright install --with-deps chromium
+
+# Run against local dev server
+pnpm dev &
+pnpm exec playwright test
+
+# Run against a Vercel preview URL
+BASE_URL=https://checkray-git-branch.vercel.app pnpm exec playwright test
+```
+
+Covered test IDs: A, B, C, D, E, F, J, K (auth skipped unless `TEST_USER_EMAIL` env is set).
+See `tests/e2e/smoke.spec.ts` for full specs.
+
+### Analyzer eval (`pnpm test:analyzer`)
+
+Runs `scripts/test-analyzer.mjs` against the canonical fake-check scam input and a set of known-safe messages.
+Expected: canonical input scores `very_high` (92–98). Safe messages score `≤20`.
+
+```bash
+pnpm test:analyzer
+```
+
+### k6 load tests
+
+```bash
+pnpm load:smoke          # 5 VUs × 30 s — verify homepage doesn’t 500 under load
+pnpm load:public         # public routes
+pnpm load:analyze:fallback  # analyze route with deterministic fallback
+```
+
+See `tests/load/` for scripts and `PRODUCTION_LOAD_TESTING_POLICY.md` for thresholds.
+
+---
+
+## Manual smoke tests
 
 A short, high-signal manual smoke test for the CheckRay MVP. Run before
 every investor / friend demo and after every Vercel deploy.
