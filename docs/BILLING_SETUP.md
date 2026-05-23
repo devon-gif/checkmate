@@ -9,11 +9,12 @@ bundle.
 | Plan | Monthly | Yearly | Checks/month |
 |---|---|---|---|
 | Free | $0 | — | 1 |
-| Basic | $9.99 | $95.88 ($7.99/mo equivalent) | 25 |
-| Plus | $19.99 | $191.88 ($15.99/mo equivalent) | Unlimited (fair-use) |
+| Basic | $4.99 | $47.88 ($3.99/mo equivalent) | 10 |
+| Plus | $9.99 | $95.88 ($7.99/mo equivalent) | 50 |
+| Family | $19.99 | $191.88 ($15.99/mo equivalent) | Unlimited (fair-use) |
 
 Plan IDs (used internally on `user_billing.plan` and `subscriptions.plan`):
-`free`, `trial`, `basic`, `basic_yearly`, `plus`, `plus_yearly`.
+`free`, `trial`, `basic`, `basic_yearly`, `plus`, `plus_yearly`, `family`, `family_yearly`.
 
 Source of truth: `@/lib/billing/plans.ts`.
 

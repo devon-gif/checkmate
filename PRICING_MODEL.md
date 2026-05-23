@@ -17,34 +17,44 @@
 
 ---
 
-### Basic — $9.99/month | $95.88/year (Save 20%, equiv. $7.99/month)
+### Basic — $4.99/month | $47.88/year (Save 20%, equiv. $3.99/month)
 
-- 25 checks per month
-- Saved check history
+- 10 checks per month
+- Saved reports
 - Safer reply drafts
 - Dashboard
-- Weekly scam alerts
-- Chrome extension included *(coming soon)*
+- Weekly Scam Watch emails
 - Email support
 - 7-day free trial (no credit card required)
 - CTA: "Start 7-day trial"
 
 ---
 
-### Plus — $19.99/month | $191.88/year (Save 20%, equiv. $15.99/month)
+### Plus — $9.99/month | $95.88/year (Save 20%, equiv. $7.99/month)
 
-- Unlimited fair-use checks
-- Saved check history
-- Safer reply drafts
-- Priority analysis
-- Dashboard
-- Weekly scam alerts
-- Chrome extension included *(coming soon)*
-- Priority support
+- 50 checks per month
+- Everything in Basic
+- Chrome extension access
+- Trusted Circle sharing
+- More detailed verification steps
+- Email & text workflows *(early access when available)*
 - 7-day free trial (no credit card required)
 - CTA: "Start 7-day trial"
 
 > **Note:** "Unlimited plans are subject to fair-use limits to prevent abuse."
+
+---
+
+### Family — $19.99/month | $191.88/year (Save 20%, equiv. $15.99/month)
+
+- Unlimited fair-use checks
+- Everything in Plus
+- Family & trusted contact support
+- Priority access to new features
+- Best for parents, job seekers, and heavy use
+- Call Ray access *(coming soon)*
+- 7-day free trial (no credit card required)
+- CTA: "Start 7-day trial"
 
 ---
 
@@ -62,12 +72,14 @@
 
 | Plan           | Checks/month     |
 |----------------|-----------------|
-| free           | 1               |
+| free           | 1                |
 | trial          | unlimited        |
-| basic          | 25              |
-| basic_yearly   | 25              |
-| plus           | unlimited (fair-use) |
-| plus_yearly    | unlimited (fair-use) |
+| basic          | 10               |
+| basic_yearly   | 10               |
+| plus           | 50               |
+| plus_yearly    | 50               |
+| family         | unlimited (fair-use) |
+| family_yearly  | unlimited (fair-use) |
 
 Defined in `lib/billing/plans.ts` → `PLAN_MONTHLY_LIMIT`.
 

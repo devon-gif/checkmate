@@ -125,7 +125,7 @@ update public.user_billing
 set status = 'active', plan = 'basic'
 where user_id = '<your-user-id>';
 
--- Ensure usage_events has fewer than 25 check_created rows this month
+-- Ensure usage_events has fewer than 10 check_created rows this month
 delete from public.usage_events
 where user_id = '<your-user-id>'
   and event_type = 'check_created'
@@ -143,18 +143,18 @@ where user_id = '<your-user-id>'
 
 ---
 
-## 7. Basic plan user hits 25-check monthly cap
+## 7. Basic plan user hits 10-check monthly cap
 
-**Setup:** Manually set a Basic user to 25 checks this month:
+**Setup:** Manually set a Basic user to 10 checks this month:
 ```sql
 update public.user_billing
 set status = 'active', plan = 'basic'
 where user_id = '<your-user-id>';
 
--- Insert 25 check_created events this month (adjust count as needed)
+-- Insert 10 check_created events this month (adjust count as needed)
 insert into public.usage_events (user_id, event_type, created_at)
 select '<your-user-id>', 'check_created', now()
-from generate_series(1, 25);
+from generate_series(1, 10);
 ```
 
 **Steps:**
@@ -163,7 +163,7 @@ from generate_series(1, 25);
 
 **Expected:**
 - `POST /api/analyze-case` returns `HTTP 402`
-- Inline blocked UI shown: "You've reached your 25 checks/month limit. Upgrade to Plus for unlimited checks."
+- Inline blocked UI shown: "You've reached your 10 checks/month limit. Upgrade to Plus for more checks."
 
 ---
 
