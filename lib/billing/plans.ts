@@ -8,7 +8,7 @@
 
 // ─── Plan identifiers ─────────────────────────────────────────────────────────
 
-export type PlanId = 'free' | 'basic' | 'basic_yearly' | 'plus' | 'plus_yearly' | 'trial'
+export type PlanId = 'free' | 'basic' | 'basic_yearly' | 'plus' | 'plus_yearly' | 'family' | 'family_yearly' | 'trial'
 
 // ─── Monthly check limits ─────────────────────────────────────────────────────
 
@@ -16,10 +16,12 @@ export type PlanId = 'free' | 'basic' | 'basic_yearly' | 'plus' | 'plus_yearly' 
 export const PLAN_MONTHLY_LIMIT: Record<PlanId, number | null> = {
   free: 1,
   trial: null, // unlimited during trial window
-  basic: 25,
-  basic_yearly: 25,
-  plus: null,
-  plus_yearly: null
+  basic: 10,
+  basic_yearly: 10,
+  plus: 50,
+  plus_yearly: 50,
+  family: null,
+  family_yearly: null
 }
 
 // ─── Pricing (in USD) ─────────────────────────────────────────────────────────
@@ -41,12 +43,18 @@ export const PLAN_PRICING: Partial<Record<PlanId, PlanPrice>> = {
     yearlySavingsLabel: null
   },
   basic: {
+    monthly: 4.99,
+    yearly: 47.88,
+    monthlyEquivalent: 3.99,
+    yearlySavingsLabel: 'Save 20%'
+  },
+  plus: {
     monthly: 9.99,
     yearly: 95.88,
     monthlyEquivalent: 7.99,
     yearlySavingsLabel: 'Save 20%'
   },
-  plus: {
+  family: {
     monthly: 19.99,
     yearly: 191.88,
     monthlyEquivalent: 15.99,
@@ -76,15 +84,15 @@ export const CANCELLATION_OFFERS: Record<'basic' | 'plus', [CancellationOffer, C
   basic: [
     {
       label: 'Stay at a discount',
-      offerDescription: 'Stay for $6.99/month',
-      discountedMonthly: 6.99,
+      offerDescription: 'Stay for $3.49/month',
+      discountedMonthly: 3.49,
       durationMonths: null,
       stripeCouponEnvKey: 'STRIPE_COUPON_BASIC_SAVE_1'
     },
     {
       label: 'Try our lowest price',
-      offerDescription: '$2.99/month for 3 months',
-      discountedMonthly: 2.99,
+      offerDescription: '$1.99/month for 3 months',
+      discountedMonthly: 1.99,
       durationMonths: 3,
       stripeCouponEnvKey: 'STRIPE_COUPON_BASIC_SAVE_2'
     }
@@ -92,15 +100,15 @@ export const CANCELLATION_OFFERS: Record<'basic' | 'plus', [CancellationOffer, C
   plus: [
     {
       label: 'Stay at a discount',
-      offerDescription: 'Stay for $12.99/month',
-      discountedMonthly: 12.99,
+      offerDescription: 'Stay for $6.99/month',
+      discountedMonthly: 6.99,
       durationMonths: null,
       stripeCouponEnvKey: 'STRIPE_COUPON_PLUS_SAVE_1'
     },
     {
       label: 'Try our lowest price',
-      offerDescription: '$8.99/month for 3 months',
-      discountedMonthly: 8.99,
+      offerDescription: '$4.99/month for 3 months',
+      discountedMonthly: 4.99,
       durationMonths: 3,
       stripeCouponEnvKey: 'STRIPE_COUPON_PLUS_SAVE_2'
     }

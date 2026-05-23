@@ -116,7 +116,7 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
                     </span>
                   )}
                 </p>
-                <p className="mt-0.5 text-xs text-white/40">25 checks per month.</p>
+                <p className="mt-0.5 text-xs text-white/40">{checksLimit != null ? `${checksLimit} checks per month.` : 'Checks included.'}</p>
               </>
             )
             // Generic active (unknown plan)

@@ -12,7 +12,7 @@ import { hasAnyPlanPriceId } from '@/lib/billing/stripe'
 export const metadata = {
   title: 'Pricing — CheckRay',
   description:
-    'Free check, Basic at $9.99/mo, Plus at $19.99/mo. 7-day free trial. No contracts.'
+    'Free check, Basic at $4.99/mo, Plus at $9.99/mo, Family at $19.99/mo. 7-day free trial. No contracts.'
 }
 
 export default function PricingPage({
@@ -31,11 +31,13 @@ export default function PricingPage({
           Simple pricing
         </span>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          Protect yourself before you reply
+          Simple protection before you click, pay, reply, or apply.
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-white/50">
-          One free check a month. A 7-day trial when you sign up. Then pick the
-          plan that fits. No contracts, cancel any time.
+          Start free, then choose the level of Ray that fits how often you need a second look. No contracts, cancel any time.
+        </p>
+        <p className="mx-auto mt-3 max-w-xl text-sm text-white/35">
+          Text it. Email it. Check it in Chrome. Ray gives you a plain-English risk readout before you act.
         </p>
         {wasCancelled && (
           <p className="mt-4 text-sm text-yellow-400">

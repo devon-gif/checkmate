@@ -45,12 +45,20 @@ export function PricingCards({ stripeConfigured }: Props) {
     ? PLAN_PRICING.plus!.monthlyEquivalent!
     : PLAN_PRICING.plus!.monthly!
 
+  const familyPrice = period === 'yearly'
+    ? PLAN_PRICING.family!.monthlyEquivalent!
+    : PLAN_PRICING.family!.monthly!
+
   const basicBilled = period === 'yearly'
     ? `Billed $${PLAN_PRICING.basic!.yearly}/year`
     : 'Billed monthly'
 
   const plusBilled = period === 'yearly'
     ? `Billed $${PLAN_PRICING.plus!.yearly}/year`
+    : 'Billed monthly'
+
+  const familyBilled = period === 'yearly'
+    ? `Billed $${PLAN_PRICING.family!.yearly}/year`
     : 'Billed monthly'
 
   return (
@@ -83,7 +91,7 @@ export function PricingCards({ stripeConfigured }: Props) {
       </div>
 
       {/* Cards grid */}
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {/* Free */}
         <GlassCard className="flex flex-col gap-6 p-6">
           <div>
@@ -132,11 +140,12 @@ export function PricingCards({ stripeConfigured }: Props) {
           </div>
           <ul className="flex flex-1 flex-col gap-2">
             {[
-              '25 checks per month',
-              'Saved check history',
+              '10 checks per month',
+              'Basic risk score',
+              'Basic red flags',
+              'Saved reports',
               'Safer reply drafts',
-              'Dashboard',
-              'Email support',
+              'Weekly Scam Watch emails',
               '7-day free trial'
             ].map(f => (
               <li key={f} className="flex items-start gap-2 text-sm text-white/60">
@@ -178,12 +187,12 @@ export function PricingCards({ stripeConfigured }: Props) {
           </div>
           <ul className="flex flex-1 flex-col gap-2">
             {[
-              'Unlimited fair-use checks',
-              'Saved check history',
-              'Safer reply drafts',
-              'Priority analysis',
-              'Dashboard',
-              'Priority support',
+              '50 checks per month',
+              'Everything in Basic',
+              'Chrome extension access',
+              'Trusted Circle sharing',
+              'More detailed verification steps',
+              'Email & text workflows (early access)',
               '7-day free trial'
             ].map(f => (
               <li key={f} className="flex items-start gap-2 text-sm text-white/60">
@@ -204,6 +213,50 @@ export function PricingCards({ stripeConfigured }: Props) {
             </GradientButton>
           )}
         </GlassCard>
+
+        {/* Family / Unlimited */}
+        <GlassCard className="flex flex-col gap-6 p-6">
+          <div>
+            <h2 className="text-base font-semibold text-white">Family</h2>
+            <div className="mt-1 flex items-end gap-1">
+              <span className="text-3xl font-bold text-white">
+                ${familyPrice.toFixed(2)}
+              </span>
+              <span className="mb-0.5 text-sm text-white/40">/ month</span>
+            </div>
+            <p className="mt-0.5 text-xs text-white/30">{familyBilled}</p>
+            <p className="mt-1 text-sm text-white/40">
+              For families and heavy use — unlimited checks, shared protection.
+            </p>
+          </div>
+          <ul className="flex flex-1 flex-col gap-2">
+            {[
+              'Unlimited fair-use checks',
+              'Everything in Plus',
+              'Family & trusted contact support',
+              'Priority access to new features',
+              'Best for parents, job seekers, heavy use',
+              'Call Ray access (coming soon)',
+              '7-day free trial'
+            ].map(f => (
+              <li key={f} className="flex items-start gap-2 text-sm text-white/60">
+                <CheckIcon />
+                {f}
+              </li>
+            ))}
+          </ul>
+          {stripeConfigured ? (
+            <TrialStartButton
+              variant="secondary"
+              label="Start 7-day trial"
+              plan={period === 'yearly' ? 'family_yearly' : 'family_monthly'}
+            />
+          ) : (
+            <GradientButton href="/sign-up" variant="secondary" className="w-full">
+              Start 7-day trial
+            </GradientButton>
+          )}
+        </GlassCard>
       </div>
     </div>
   )
@@ -216,6 +269,8 @@ type CheckoutPlanKey =
   | 'basic_yearly'
   | 'plus_monthly'
   | 'plus_yearly'
+  | 'family_monthly'
+  | 'family_yearly'
 
 function TrialStartButton({
   variant,

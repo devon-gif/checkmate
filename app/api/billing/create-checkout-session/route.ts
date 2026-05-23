@@ -25,7 +25,9 @@ const VALID_PLANS: CheckoutPlanKey[] = [
   'basic_monthly',
   'basic_yearly',
   'plus_monthly',
-  'plus_yearly'
+  'plus_yearly',
+  'family_monthly',
+  'family_yearly'
 ]
 
 export async function POST(req: Request) {

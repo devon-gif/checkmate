@@ -14,44 +14,57 @@ const pricing = [
     href: '/try',
     isFeatured: false,
     features: [
-      '1 free check/month',
-      'Risk score and red flags',
-      'Plain-English suggested next step',
+      '1 check/month',
+      'Basic risk score',
+      'Basic red flags',
       'No account required'
     ]
   },
   {
     id: 'basic',
     title: 'BASIC',
-    price: '9.99',
-    priceNote: 'or $7.99/mo billed yearly',
+    price: '4.99',
+    priceNote: 'or $3.99/mo billed yearly',
     cta: 'Start free trial',
     href: '/sign-up',
     isFeatured: true,
     features: [
-      'Text Ray (coming soon)',
-      'Email Ray (coming soon)',
-      'Chrome extension (coming soon)',
-      'Saved check history',
+      '10 checks per month',
       'Weekly Scam Watch emails',
-      '25 checks per month',
+      'Saved reports',
+      'Safer reply drafts',
       '7-day free trial'
     ]
   },
   {
     id: 'plus',
     title: 'PLUS',
+    price: '9.99',
+    priceNote: 'or $7.99/mo billed yearly',
+    cta: 'Start free trial',
+    href: '/sign-up',
+    isFeatured: false,
+    features: [
+      '50 checks per month',
+      'Chrome extension access',
+      'Email & text workflows (early access)',
+      'Trusted Circle sharing',
+      '7-day free trial'
+    ]
+  },
+  {
+    id: 'family',
+    title: 'FAMILY',
     price: '19.99',
     priceNote: 'or $15.99/mo billed yearly',
     cta: 'Start free trial',
     href: '/sign-up',
     isFeatured: false,
     features: [
-      'Everything in Basic',
       'Unlimited fair-use checks',
+      'Family & trusted contact support',
       'Priority access to new features',
-      'Trusted Circle sharing',
-      'Best for families, job seekers, and heavy use',
+      'Call Ray access (coming soon)',
       '7-day free trial'
     ]
   }
@@ -85,10 +98,10 @@ export default function Pricing() {
         >
           <div className="label mb-3 max-md:mb-1.5">Pricing</div>
           <div className="bg-radial-white-2 bg-clip-text text-transparent text-title-1 max-lg:text-title-2 max-md:text-title-1-mobile">
-            Free to start. Upgrade for more.
+            Simple protection before you click, pay, reply, or apply.
           </div>
           <div className="mt-4 text-description">
-            Your first check is free with no account needed. Upgrade to reach Ray by text, email, or Chrome extension — wherever the suspicious message shows up.
+            Start free, then choose the level of Ray that fits how often you need a second look.
           </div>
         </motion.div>
         <motion.div
@@ -182,7 +195,7 @@ export default function Pricing() {
           })}
         </motion.div>
         <div className="mt-8 mb-3 text-center text-description-2 text-white/50 max-md:mt-6">
-          Most security tools make you install a suite. CheckRay lets you ask Ray wherever the suspicious message shows up.
+          Text it. Email it. Check it in Chrome. Ray gives you a plain-English risk readout before you act.
         </div>
 
       </div>

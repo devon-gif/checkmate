@@ -31,6 +31,8 @@ export type CheckoutPlanKey =
   | 'basic_yearly'
   | 'plus_monthly'
   | 'plus_yearly'
+  | 'family_monthly'
+  | 'family_yearly'
 
 /**
  * Resolve a plan key → Stripe price ID at call-time. Reading env at call-
@@ -54,6 +56,10 @@ export function getPriceIdForPlan(plan: CheckoutPlanKey): string | null {
       return process.env.STRIPE_PLUS_MONTHLY_PRICE_ID ?? null
     case 'plus_yearly':
       return process.env.STRIPE_PLUS_YEARLY_PRICE_ID ?? null
+    case 'family_monthly':
+      return process.env.STRIPE_FAMILY_MONTHLY_PRICE_ID ?? null
+    case 'family_yearly':
+      return process.env.STRIPE_FAMILY_YEARLY_PRICE_ID ?? null
   }
 }
 
@@ -71,7 +77,9 @@ export function planIdForPriceId(priceId: string | null | undefined): string | n
     [process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO, 'basic'], // legacy alias
     [process.env.STRIPE_BASIC_YEARLY_PRICE_ID, 'basic_yearly'],
     [process.env.STRIPE_PLUS_MONTHLY_PRICE_ID, 'plus'],
-    [process.env.STRIPE_PLUS_YEARLY_PRICE_ID, 'plus_yearly']
+    [process.env.STRIPE_PLUS_YEARLY_PRICE_ID, 'plus_yearly'],
+    [process.env.STRIPE_FAMILY_MONTHLY_PRICE_ID, 'family'],
+    [process.env.STRIPE_FAMILY_YEARLY_PRICE_ID, 'family_yearly']
   ]
   for (const [envValue, planId] of map) {
     if (envValue && envValue === priceId) return planId
@@ -90,6 +98,8 @@ export function hasAnyPlanPriceId(): boolean {
       process.env.STRIPE_BASIC_YEARLY_PRICE_ID ||
       process.env.STRIPE_PLUS_MONTHLY_PRICE_ID ||
       process.env.STRIPE_PLUS_YEARLY_PRICE_ID ||
+      process.env.STRIPE_FAMILY_MONTHLY_PRICE_ID ||
+      process.env.STRIPE_FAMILY_YEARLY_PRICE_ID ||
       process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO
   )
 }
