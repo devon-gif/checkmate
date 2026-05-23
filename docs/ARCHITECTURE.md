@@ -142,8 +142,8 @@ See [SCHEMA_CONTRACTS.md](SCHEMA_CONTRACTS.md) for the stable response shape.
 |---|---|---|
 | Anonymous | 1 free check | Tracked by fingerprint in `anonymous_checks` |
 | Trial | Unlimited | 7-day window from signup (see `user_billing`) |
-| Basic | 25/month | Enforced via `usage_events` count |
-| Plus | Unlimited (fair use) | No monthly hard cap |
+| Basic | 10/month | Enforced via `usage_events` count |
+| Plus | 50/month | Hard cap via `usage_events` count |
 | Expired | Blocked | Redirected to upgrade prompt |
 
 ---

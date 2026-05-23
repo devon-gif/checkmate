@@ -76,8 +76,9 @@ In Stripe Dashboard → Customer Portal:
 - [ ] Run `stripe listen --forward-to localhost:3000/api/billing/webhook`
 - [ ] Complete test checkout → verify `user_billing.status = 'active'`
 - [ ] Open customer portal → cancel → verify `user_billing.status = 'canceled'`
-- [ ] Verify Basic plan enforces 25 checks/month after upgrade
-- [ ] Verify Plus plan allows unlimited checks
+- [ ] Verify Basic plan enforces 10 checks/month after upgrade
+- [ ] Verify Plus plan enforces 50 checks/month
+- [ ] Verify Family plan allows unlimited fair-use checks
 
 ## 7. Remaining tasks
 
@@ -170,7 +171,7 @@ In Stripe Dashboard → Customer Portal:
 
 - [ ] Add "Cancel subscription" link to `BillingStatusCard`
 - [ ] Show current plan name and renewal date
-- [ ] Show usage meter: X / 25 checks this month (Basic)
+- [ ] Show usage meter: X / 10 checks this month (Basic), X / 50 checks (Plus)
 
 ---
 
