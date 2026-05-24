@@ -115,3 +115,53 @@ After the Reviewer finishes:
 | [SCHEMA_CONTRACTS.md](SCHEMA_CONTRACTS.md) | Stable API and data shapes |
 | [CHANGE_REVIEW_CHECKLIST.md](CHANGE_REVIEW_CHECKLIST.md) | Pre-merge checklist |
 | [PRE_DEPLOY_CHECKLIST.md](PRE_DEPLOY_CHECKLIST.md) | Before any production deploy |
+
+---
+
+## Why we are not adding enterprise AI code review tools yet
+
+We have evaluated tools like **CodeRabbit, Greptile, Qodo (formerly Codium), Graphite Reviewer, and SonarQube/Sonar Cloud**. They are deliberately **not** installed on CheckRay today.
+
+Reasons:
+
+- **Stage:** CheckRay is a solo-developer MVP with one active maintainer. There is no PR queue to triage, no second reviewer to coordinate with, and no signed paying-customer base where a regression costs revenue. The marginal benefit of a hosted AI reviewer is low at this stage.
+- **Existing guardrails already cover the same surface area.** The current workflow is:
+  - The Builder/Reviewer two-pass prompt in this document (`AI_REVIEW_WORKFLOW.md`).
+  - `AGENTS.md` master rules + per-area docs (`ARCHITECTURE.md`, `CRITICAL_FLOWS.md`, `SECURITY_BOUNDARIES.md`, `SCHEMA_CONTRACTS.md`).
+  - `CHANGE_REVIEW_CHECKLIST.md` run before every merge.
+  - `pnpm type-check` and `pnpm build` on every change.
+  - **Gitleaks** pre-commit hook and CI job for secret scanning.
+  - **k6** smoke + public-routes + analyzer-fallback load tests.
+  - **Playwright** smoke specs.
+  - **Sentry** for runtime error catching.
+  - **Dependabot** for dependency updates.
+- **Cost and noise:** Hosted reviewers charge per-seat or per-PR and tend to generate review comments that overlap with our existing checklist. At solo-developer scale that is mostly noise.
+- **Data / privacy:** External reviewers require granting a third party read access to the full repo. Until we have a security review process and a clear DPA/SOC2 posture, we keep code in-house.
+- **Lock-in risk:** Adopting a heavyweight reviewer now would couple our process to that vendor before we know which review patterns actually catch real CheckRay bugs.
+
+**Conclusion:** Keep using the in-house AI Reviewer prompt + checklist + automated CI checks. Revisit this decision against the explicit triggers below.
+
+---
+
+## When to upgrade to AI PR review tools
+
+Re-evaluate adopting **CodeRabbit / Greptile / Qodo / Graphite** (or equivalent) once **any two** of these triggers are true:
+
+| Trigger | Why it matters |
+|---|---|
+| **2+ active developers** contributing code regularly | Human + AI reviewer coverage stops being enough; PR queue needs automated triage. |
+| **100–200+ paying customers** on Stripe | A regression now has real revenue impact; an extra AI reviewer is cheap insurance. |
+| **Frequent production bugs** (multiple Sentry-tracked regressions per month, or repeat hotfixes) | The current guardrails are leaking; a different reviewer perspective may catch what we miss. |
+| **Stripe / webhook complexity grows** (multiple plans, proration, refunds, dunning logic) | Billing code is the highest-blast-radius surface; we want a second AI pass on every diff. |
+| **Chrome extension ships to the Chrome Web Store** | Extension review is asynchronous and a bad release stays live for users until rollback; pre-merge review must be tighter. |
+| **Security / privacy review needed** (SOC2-lite, customer security questionnaire, EU users) | We will need a documented external review process; an AI reviewer with logged comments is part of that story. |
+| **Multichannel (SMS / email / Call Ray) goes live** | More integration surfaces, more places to leak PII, more reasons to have automated review. |
+
+When two or more triggers fire, evaluate tools in this order:
+
+1. **Free / OSS first.** Re-run the in-house Reviewer prompt across a CodeRabbit free-tier or Greptile free trial on a single PR. Compare findings to what the human reviewer + checklist already caught.
+2. **Privacy review.** Confirm the vendor's data handling — code retention, training opt-out, region.
+3. **Run in advisory mode first.** Enable comments-only (no required status checks) for two weeks before making it a merge gate.
+4. **Document the decision** in `docs/TOOLING_DECISIONS.md` (date, trigger that fired, tool selected, scope) so future agents understand the change.
+
+Until then, the in-house Builder/Reviewer prompt in this document is the canonical second pair of eyes.

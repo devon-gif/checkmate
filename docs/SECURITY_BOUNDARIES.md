@@ -117,7 +117,64 @@ Every table in the `users`, `cases`, `risk_reports`, `case_messages`, `usage_eve
 
 ---
 
-## 9. Dependency security
+## 9. Stripe billing and webhook integrity
+
+**Rule:** The Stripe webhook route (`/api/stripe/webhook` and any future billing webhook) must verify the signature using `stripe.webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET)` before doing any work. If `STRIPE_WEBHOOK_SECRET` is missing or the signature does not verify, the route must return `400` and do nothing else.
+
+**Rule:** Webhook handlers must be **idempotent**. The same `event.id` arriving twice must produce the same final state in `user_billing` / `subscriptions`. Use Stripe's `event.id` (and/or the subscription's `current_period_end` and status) as the dedup signal. Do not double-credit usage on retries.
+
+**Rule:** `user_billing` and `subscriptions` writes from webhooks must use the service-role client (RLS bypass) because there is no user session in a webhook — but the write key must be derived from the Stripe event payload, never from a request body field the caller could spoof.
+
+**Rule:** Never trust a `plan`, `price_id`, `customer_id`, or `user_id` value that came from the client. Resolve the plan from Stripe (`invoice.lines.data[].price.id` or `subscription.items.data[].price.id`) and resolve the `user_id` from the Stripe customer record's metadata that we set at checkout creation time.
+
+**Rule:** Checkout session creation must require an authenticated user and must embed `{ user_id, plan }` in `client_reference_id` and subscription metadata so the webhook can match the Stripe event back to a CheckRay user.
+
+**Rule:** Never log full Stripe event payloads (they include customer email, last4, country). Log only `event.id`, `event.type`, and the derived `user_id`.
+
+---
+
+## 10. Saved reports and cross-tenant isolation
+
+**Rule:** Routes that read a saved case or risk report by ID (`/cases/[id]`, `/api/cases/[id]/...`, `/share/[id]`) must:
+
+- For authenticated routes: filter by **both** `id` and `user_id = auth.uid()` — never trust RLS alone as the only safety net. RLS is the floor, not the only check.
+- For public `/share/[id]`: only return cases that have an explicit `is_public = true` (or equivalent share token) flag. A raw `case_id` lookup with no share-flag check is a cross-tenant leak.
+
+**Rule:** Do not add a "lookup case by id" helper that does not also take a `user_id` (or an explicit `{ allowPublic: true }` opt-in). Convenience helpers that drop the tenant filter cause the worst class of bug we can ship.
+
+**Rule:** Follow-up chat (`case_messages`) and any feature that joins on `case_id` must re-verify the case owner — RLS on `case_messages` alone is not enough if the join path can bypass it.
+
+---
+
+## 11. Admin and support privacy
+
+**Rule:** Admin routes (`/admin/*` and `/api/admin/*`) require **both** an authenticated session **and** an explicit admin check against `ADMIN_EMAILS` (or `profiles.is_admin = true`). The check must run server-side before any DB read. Client-side admin gating is UX only and never a security boundary.
+
+**Rule:** Support tickets and `support_tickets.body` content are treated as **PII**. They can contain forwarded scam messages, names, phone numbers, account numbers, and email addresses.
+- Do not log ticket bodies.
+- Do not include ticket bodies in Sentry breadcrumbs.
+- Do not return other users' tickets from any non-admin route.
+- Do not include ticket content in URL query parameters or analytics events.
+
+**Rule:** Admin views that list user data (tickets, cases, billing) must paginate and must never expose `auth.users.email` or other Supabase-managed PII to a non-admin user, even transiently in a server-rendered HTML response that could be cached.
+
+**Rule:** When an admin updates a ticket status or notes, the writing user must be recorded (`updated_by = auth.uid()`). This is for audit, not for display to the end user.
+
+---
+
+## 12. OpenAI usage and cost controls
+
+**Rule:** Every code path that calls OpenAI must be **gated by an authenticated rate limit** or the documented anonymous single-check path. There is no "internal debug" endpoint that bypasses the limit.
+
+**Rule:** The 25 checks / 24 h limit in `app/api/analyze-case/route.ts` is a security boundary, not a soft UX limit. Removing or widening it requires an explicit change to this doc and `AGENTS.md`.
+
+**Rule:** Background jobs, scheduled tasks, and admin tools that call OpenAI must have a hard per-run cap and must use the cheapest model that satisfies the task (`CHECKMATE_ANALYZER_MODEL` default = `gpt-4o-mini`).
+
+**Rule:** If an analyzer call fails (timeout, rate limit, 5xx), the deterministic fallback in `lib/checkmate.ts` must run instead of returning an error. Never let an OpenAI outage break the product or the saved-case write path.
+
+---
+
+## 13. Dependency security
 
 **Rule:** Dependabot is configured to auto-PR patch/minor updates weekly.
 
