@@ -42,13 +42,38 @@ Work through [CRITICAL_FLOWS.md](CRITICAL_FLOWS.md). For each affected area:
   - [ ] If yes: are server-only secrets kept out of client code?
   - [ ] If yes: are they documented in `AGENTS.md` env table?
 - [ ] Is `SUPABASE_SERVICE_ROLE_KEY` used anywhere it wasn't before?
-  - [ ] If yes: is it behind a proper admin auth check?
+  - [ ] If yes: is it behind a proper admin auth check (server-side, before any DB read)?
 - [ ] Does any new code reference a private env var in a Client Component or public page?
 - [ ] Were any new Supabase tables added?
   - [ ] If yes: do they have RLS enabled with correct policies?
 - [ ] Are there any new server logs that could capture PII or sensitive report content?
 - [ ] Does the diff expose any new attack surfaces (unvalidated input, open redirects, SSRF)?
 - [ ] Does `gitleaks detect` pass cleanly on the current branch?
+
+### C.1 Cross-tenant isolation (saved reports + chat)
+
+- [ ] Any new route or helper that reads `cases` / `risk_reports` / `case_messages` by ID filters by **both** `id` and `user_id = auth.uid()` (not RLS alone)?
+- [ ] Any new `/share/[id]` style public route requires an explicit `is_public` / share-token check before returning data?
+- [ ] No "lookup by id" helper was added that drops the tenant filter?
+
+### C.2 Admin and support privacy
+
+- [ ] Every new `/admin/*` or `/api/admin/*` route checks both session **and** `ADMIN_EMAILS` (or `profiles.is_admin`) server-side?
+- [ ] No new code path logs `support_tickets.body` content, user emails, or ticket bodies into Sentry breadcrumbs?
+- [ ] Admin list views paginate and avoid leaking `auth.users.email` to non-admin contexts?
+
+### C.3 Stripe webhooks (if billing touched)
+
+- [ ] Webhook route verifies signature with `STRIPE_WEBHOOK_SECRET` before any work?
+- [ ] Handler is idempotent on `event.id` (replaying the same event does not double-write)?
+- [ ] `user_id` and `plan` are derived from Stripe data + checkout metadata, never from a client-supplied field?
+- [ ] No full Stripe event payload is logged (only `event.id`, `event.type`, derived `user_id`)?
+
+### C.4 OpenAI / cost controls
+
+- [ ] No new code path calls OpenAI outside the rate-limited `analyze-case` route (or the documented anonymous single-check path)?
+- [ ] The 25 checks / 24 h limit in `app/api/analyze-case/route.ts` is still enforced and not bypassed by a new flag/header?
+- [ ] If OpenAI fails, the deterministic fallback in `lib/checkmate.ts` still runs (no `throw` that breaks the route)?
 
 ---
 
