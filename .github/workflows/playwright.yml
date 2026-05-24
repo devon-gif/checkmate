@@ -9,6 +9,27 @@ on:
         description: 'Target base URL (e.g. https://checkray.app)'
         required: false
         default: 'http://localhost:3000'
+  # workflow_call allows other workflows to invoke this one and passes
+  # the secrets declaration that the GitHub Actions linter requires to
+  # validate secrets.* context references without false-positive warnings.
+  workflow_call:
+    inputs:
+      base_url:
+        description: 'Target base URL'
+        type: string
+        required: false
+        default: 'http://localhost:3000'
+    secrets:
+      NEXT_PUBLIC_SUPABASE_URL:
+        required: false
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        required: false
+      OPENAI_API_KEY:
+        required: false
+      TEST_USER_EMAIL:
+        required: false
+      TEST_USER_PASSWORD:
+        required: false
 
 jobs:
   playwright:
@@ -16,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      BASE_URL: ${{ github.event.inputs.base_url || 'http://localhost:3000' }}
+      BASE_URL: ${{ github.event.inputs.base_url || inputs.base_url || 'http://localhost:3000' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
