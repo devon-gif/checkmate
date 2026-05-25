@@ -33,7 +33,11 @@ export function NewCaseForm() {
   const [categoryHint, setCategoryHint] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
-  const [blockedReason, setBlockedReason] = useState<{ message: string; status: AccessStatus } | null>(null)
+  const [blockedReason, setBlockedReason] = useState<{
+    message: string
+    status: AccessStatus
+    plan: string | null
+  } | null>(null)
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -57,7 +61,11 @@ export function NewCaseForm() {
       if (response.status === 402) {
         setBlockedReason({
           message: payload.message ?? 'Access limit reached.',
-          status: (payload.access?.accessStatus ?? 'blocked') as AccessStatus
+          status: (payload.access?.accessStatus ?? 'blocked') as AccessStatus,
+          plan:
+            typeof payload.access?.plan === 'string'
+              ? payload.access.plan
+              : null
         })
         return
       }
@@ -109,20 +117,26 @@ export function NewCaseForm() {
   return (
     <div className="space-y-8">
       {/* Blocked gate — shown when 402 is returned mid-session */}
-      {blockedReason && (
+      {blockedReason && (() => {
+        const isAnon = blockedReason.status === 'anonymous_used'
+        const isFreeOverLimit =
+          blockedReason.status === 'expired' && blockedReason.plan === 'free'
+        const icon = isAnon ? '🔒' : isFreeOverLimit ? '📅' : '⏰'
+        const title = isAnon
+          ? "You've used your free check"
+          : isFreeOverLimit
+            ? "You've used your free check this month"
+            : 'Your trial has ended'
+        return (
         <div className="flex flex-col items-center gap-5 py-6 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-2xl">
-            {blockedReason.status === 'anonymous_used' ? '🔒' : '⏰'}
+            {icon}
           </div>
           <div>
-            <p className="text-base font-medium text-white">
-              {blockedReason.status === 'anonymous_used'
-                ? "You've used your free check"
-                : 'Your trial has ended'}
-            </p>
+            <p className="text-base font-medium text-white">{title}</p>
             <p className="mt-1 text-sm text-white/50">{blockedReason.message}</p>
           </div>
-          {blockedReason.status === 'anonymous_used' ? (
+          {isAnon ? (
             <div className="flex flex-col gap-2 sm:flex-row">
               <a
                 href="/sign-up"
@@ -148,7 +162,8 @@ export function NewCaseForm() {
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Input form — hidden once a result or block is showing */}
       {!result && !blockedReason && (

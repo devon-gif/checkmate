@@ -44,7 +44,6 @@ export interface AccessResult {
 /** Browser cookie name used to identify anonymous visitors. */
 export const ANON_COOKIE_NAME = 'checkray_anonymous_id'
 
-const TRIAL_DAYS = 7
 const ANON_LIMIT = 1
 
 // ─── Service-role Supabase client ─────────────────────────────────────────────
@@ -159,37 +158,61 @@ async function checkAccessInner({
 
   let row: any = billing
 
-  // Auto-create a trial row for new users
+  // ── First-check / no-billing-row path ──────────────────────────────────
+  //
+  // New signed-up users have no `user_billing` row yet. We treat them as
+  // Free immediately (1 check / month) and try to create the row on the
+  // side. The insert is BEST-EFFORT: if it fails (table missing on this
+  // env, RLS surprise, FK race against auth.users replication, transient
+  // network blip), we log and continue. The user MUST still be able to
+  // use their first free check — historically this branch raised
+  // "Could not initialise your trial" which locked everyone out, which
+  // is the production bug this is fixing.
+  //
+  // We deliberately do NOT seed a 7-day trial here. Trials are managed
+  // upstream (Stripe Checkout `subscription_data.trial_period_days`) so
+  // we don't need to pre-create a trial state from app code. Existing
+  // 'trialing' rows in production are still honoured by the branch
+  // further down.
   if (!row) {
-    const now = new Date()
-    const trialEnds = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
+    try {
+      const { data: created, error: insertError } = await sb
+        .from('user_billing' as any)
+        .insert({
+          user_id: userId,
+          plan: 'free',
+          status: 'inactive'
+        })
+        .select()
+        .maybeSingle()
 
-    const { data: created, error: insertError } = await sb
-      .from('user_billing' as any)
-      .insert({
-        user_id: userId,
-        plan: 'trial',
-        status: 'trialing',
-        trial_started_at: now.toISOString(),
-        trial_ends_at: trialEnds.toISOString()
-      })
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('[billing/access] Failed to create user_billing row:', insertError)
-      return {
-        canAnalyze: false,
-        accessStatus: 'blocked',
-        plan: null,
-        checksUsed: 0,
-        checksLimit: null,
-        reason:
-          'Could not initialise your trial. Please try signing out and back in.'
+      if (insertError) {
+        console.error(
+          '[billing/access] user_billing insert failed (non-fatal):',
+          insertError.message
+        )
+      } else if (created) {
+        row = created
       }
+    } catch (err) {
+      console.error(
+        '[billing/access] user_billing insert threw (non-fatal):',
+        err instanceof Error ? err.message : String(err)
+      )
     }
 
-    row = created
+    // If persistence failed (or returned nothing), synthesize an in-memory
+    // row so the rest of this function never reads through null. The Free
+    // quota branch below uses `usage_events` as the source of truth, so an
+    // un-persisted row still produces the right answer.
+    if (!row) {
+      row = {
+        user_id: userId,
+        plan: 'free',
+        status: 'inactive',
+        trial_ends_at: null
+      }
+    }
   }
 
   const now = new Date()

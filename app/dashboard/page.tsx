@@ -146,28 +146,28 @@ export default async function DashboardPage({
   //
   // Status mapping (keep in sync with lib/billing/access.ts checkAccess):
   //   - 'active'    paid subscription in good standing
-  //   - 'trialing'  inside the open 7-day trial window
-  //   - 'free'      logged-in user with no active sub and no open trial —
-  //                 entitled to the Free plan's 1 check/month
+  //   - 'trialing'  inside an open trial window
+  //   - 'free'      no active sub, no open trial — entitled to the Free
+  //                 plan's 1 check / month. This is the default for new
+  //                 signed-up users; we surface "Free 0 / 1" immediately
+  //                 instead of "Checking plan status".
   //   - 'expired'   has hit a hard cap and needs to upgrade
-  //   - 'unknown'   row hasn't been created yet (first visit) — gate is
-  //                 permissive, the row is auto-created on first check
+  //   - 'unknown'   reserved for genuine "we couldn't fetch the row"
+  //                 errors; not used for the new-user case any more.
   const subAny = (userBillingRow ?? billingRow) as any
-  let billingStatus: BillingStatus = 'unknown'
+  let billingStatus: BillingStatus = 'free'
   if (subAny?.status === 'active') {
     billingStatus = 'active'
   } else if (subAny?.status === 'trialing') {
     const trialEnd = subAny.trial_ends_at ? new Date(subAny.trial_ends_at) : null
-    // Trial row exists; if the window is open use 'trialing', otherwise the
-    // user has been downgraded to Free (checkAccess writes plan='free' the
-    // next time it runs).
+    // Trial row exists; if the window is open use 'trialing', otherwise
+    // the user has effectively been downgraded to Free.
     billingStatus = trialEnd && new Date() < trialEnd ? 'trialing' : 'free'
-  } else if (subAny?.plan === 'free' || subAny) {
-    // Any inactive/canceled state with a billing row is Free until upgraded.
-    billingStatus = 'free'
   } else {
-    // No row yet — first visit. The next analyzer call auto-creates a trial.
-    billingStatus = 'unknown'
+    // Any other state — no row, inactive, canceled, past_due — render as
+    // Free until the user upgrades. The access gate enforces the 1 / mo
+    // cap; this is purely the dashboard's friendly default.
+    billingStatus = 'free'
   }
 
   const stripeConfigured = hasAnyPlanPriceId()
