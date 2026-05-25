@@ -29,14 +29,20 @@ export default async function NewCasePage() {
   // ── Blocked gate ──────────────────────────────────────────────────────────
   if (!access.canAnalyze) {
     const isAnonBlocked = access.accessStatus === 'anonymous_used'
-    const isTrialExpired = access.accessStatus === 'expired'
+    // 'expired' now covers two distinct cases:
+    //   - Free user who has used their 1 check this month → soft prompt
+    //   - Anything else (legacy hard expiry) → "trial ended" prompt
+    const isFreeMonthlyUsed =
+      access.accessStatus === 'expired' && access.plan === 'free'
+    const isTrialExpired =
+      access.accessStatus === 'expired' && access.plan !== 'free'
 
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
         <GlassCard className="flex flex-col items-center gap-6 p-10 text-center">
           {/* Icon */}
           <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-white/5 text-3xl">
-            {isAnonBlocked ? '🔒' : '⏰'}
+            {isAnonBlocked ? '🔒' : isFreeMonthlyUsed ? '📅' : '⏰'}
           </div>
 
           {isAnonBlocked && (
@@ -81,8 +87,30 @@ export default async function NewCasePage() {
             </>
           )}
 
+          {isFreeMonthlyUsed && (
+            <>
+              <div>
+                <h2 className="text-xl font-semibold text-white">
+                  You&apos;ve used your free check this month
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-white/50">
+                  You&apos;re on the Free plan (1 check / month). Upgrade to
+                  Basic, Plus, or Family for more.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <GradientButton href="/pricing" variant="primary">
+                  View plans
+                </GradientButton>
+                <GradientButton href="/dashboard" variant="secondary">
+                  Back to dashboard
+                </GradientButton>
+              </div>
+            </>
+          )}
+
           {/* Fallback for other blocked states */}
-          {!isAnonBlocked && !isTrialExpired && (
+          {!isAnonBlocked && !isTrialExpired && !isFreeMonthlyUsed && (
             <>
               <div>
                 <h2 className="text-xl font-semibold text-white">

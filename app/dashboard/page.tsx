@@ -114,17 +114,9 @@ export default async function DashboardPage({
       )
     : 0
 
-  // Usage: checks in the last 24 h (for stats card)
-  const FREE_TIER_DAILY_LIMIT = 25
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-  const { count: checksUsedToday } = await supabase
-    .from('usage_events')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', session.user.id)
-    .eq('event_type', 'check_created')
-    .gte('created_at', since24h)
-
-  // Usage: checks this calendar month (for billing card)
+  // Usage: checks this calendar month (used by both the top stats grid and the
+  // billing status card). The previous "Free checks today / 25" stat was stale
+  // — the access gate is monthly, not daily.
   const now = new Date()
   const since1stOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const { count: checksUsedThisMonth } = await supabase
@@ -150,19 +142,32 @@ export default async function DashboardPage({
     .eq('user_id', session.user.id)
     .maybeSingle()
 
-  // Prefer user_billing row; fall back to subscriptions
+  // Prefer user_billing row; fall back to subscriptions.
+  //
+  // Status mapping (keep in sync with lib/billing/access.ts checkAccess):
+  //   - 'active'    paid subscription in good standing
+  //   - 'trialing'  inside the open 7-day trial window
+  //   - 'free'      logged-in user with no active sub and no open trial —
+  //                 entitled to the Free plan's 1 check/month
+  //   - 'expired'   has hit a hard cap and needs to upgrade
+  //   - 'unknown'   row hasn't been created yet (first visit) — gate is
+  //                 permissive, the row is auto-created on first check
   const subAny = (userBillingRow ?? billingRow) as any
   let billingStatus: BillingStatus = 'unknown'
   if (subAny?.status === 'active') {
     billingStatus = 'active'
   } else if (subAny?.status === 'trialing') {
     const trialEnd = subAny.trial_ends_at ? new Date(subAny.trial_ends_at) : null
-    billingStatus = trialEnd && new Date() < trialEnd ? 'trialing' : 'expired'
-  } else if (subAny) {
-    billingStatus = 'expired'
+    // Trial row exists; if the window is open use 'trialing', otherwise the
+    // user has been downgraded to Free (checkAccess writes plan='free' the
+    // next time it runs).
+    billingStatus = trialEnd && new Date() < trialEnd ? 'trialing' : 'free'
+  } else if (subAny?.plan === 'free' || subAny) {
+    // Any inactive/canceled state with a billing row is Free until upgraded.
+    billingStatus = 'free'
   } else {
-    // No row yet — first visit, trial will be created on first check
-    billingStatus = 'trialing'
+    // No row yet — first visit. The next analyzer call auto-creates a trial.
+    billingStatus = 'unknown'
   }
 
   const stripeConfigured = hasAnyPlanPriceId()
@@ -207,13 +212,20 @@ export default async function DashboardPage({
         </GradientButton>
       </section>
 
-      {/* Stats */}
+      {/* Stats — monthly limit, sourced from PLAN_MONTHLY_LIMIT so it always
+          matches the access gate. `null` = unlimited (Family / open trial). */}
       <DashboardCards
         total={total}
         highRisk={highRisk}
         averageScore={averageScore}
-        checksUsed={checksUsedToday ?? 0}
-        checksLimit={FREE_TIER_DAILY_LIMIT}
+        checksUsed={checksUsedThisMonth ?? 0}
+        checksLimit={
+          billingStatus === 'trialing'
+            ? null
+            : PLAN_MONTHLY_LIMIT[
+                (subAny?.plan ?? 'free') as keyof typeof PLAN_MONTHLY_LIMIT
+              ] ?? 1
+        }
       />
 
       {/* Billing status */}
@@ -221,9 +233,13 @@ export default async function DashboardPage({
         status={billingStatus}
         trialEndsAt={subAny?.trial_ends_at ?? null}
         stripeConfigured={stripeConfigured}
-        plan={subAny?.plan ?? null}
+        plan={subAny?.plan ?? 'free'}
         checksUsed={checksUsedThisMonth ?? 0}
-        checksLimit={PLAN_MONTHLY_LIMIT[subAny?.plan as keyof typeof PLAN_MONTHLY_LIMIT] ?? null}
+        checksLimit={
+          PLAN_MONTHLY_LIMIT[
+            (subAny?.plan ?? 'free') as keyof typeof PLAN_MONTHLY_LIMIT
+          ] ?? null
+        }
       />
 
       {/* Weekly Scam Watch preference */}
