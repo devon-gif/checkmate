@@ -37,6 +37,9 @@ export function LoginForm({
     password: ''
   })
   const [consentChecked, setConsentChecked] = React.useState(false)
+  // Tracks the specific "already registered" case so we can show an inline
+  // banner with actionable Sign In / Reset Password links instead of a plain toast.
+  const [alreadyRegistered, setAlreadyRegistered] = React.useState(false)
 
   React.useEffect(() => {
     const p = new URLSearchParams(window.location.search).get('next')
@@ -106,7 +109,17 @@ export function LoginForm({
 
     if (error) {
       setIsLoading(false)
-      toast.error(error.message)
+      // Supabase returns "User already registered" when the email exists.
+      // Show a persistent inline banner with actionable links rather than
+      // a dismissable toast that the user might miss.
+      if (
+        action === 'sign-up' &&
+        error.message.toLowerCase().includes('user already registered')
+      ) {
+        setAlreadyRegistered(true)
+      } else {
+        toast.error(error.message)
+      }
       return
     }
 
@@ -129,12 +142,10 @@ export function LoginForm({
               value={formState.email}
               placeholder="you@example.com"
               autoComplete="email"
-              onChange={e =>
-                setFormState(prev => ({
-                  ...prev,
-                  email: e.target.value
-                }))
-              }
+              onChange={e => {
+                setAlreadyRegistered(false)
+                setFormState(prev => ({ ...prev, email: e.target.value }))
+              }}
               className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
             />
           </div>
@@ -165,6 +176,38 @@ export function LoginForm({
               disabled={isLoading}
               className="text-white/50"
             />
+          </div>
+        )}
+
+        {/* TODO: add /reset-password route (Supabase resetPasswordForEmail flow)
+             so the link below can point to a real page. For now it is omitted. */}
+        {alreadyRegistered && (
+          <div
+            role="alert"
+            className="mt-5 rounded-xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3.5 text-sm"
+          >
+            <p className="font-medium text-yellow-300">
+              That email already has a CheckRay account.
+            </p>
+            <p className="mt-1 text-white/50">
+              Sign in instead, or reset your password if you&apos;ve forgotten it.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                href={`/sign-in${nextParam}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-cm-green/30 bg-cm-green/10 px-3 py-1.5 text-xs font-semibold text-cm-green transition hover:bg-cm-green/20"
+              >
+                Sign in
+              </Link>
+              {/* Uncomment once /reset-password is built:
+              <Link
+                href="/reset-password"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/60 transition hover:border-white/20 hover:text-white/80"
+              >
+                Reset password
+              </Link>
+              */}
+            </div>
           </div>
         )}
 
