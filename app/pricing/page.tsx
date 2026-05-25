@@ -18,9 +18,11 @@ export const metadata = {
 export default function PricingPage({
   searchParams
 }: {
-  searchParams?: { billing?: string }
+  searchParams?: { billing?: string; checkout?: string }
 }) {
-  const wasCancelled = searchParams?.billing === 'cancelled'
+  const wasCancelled =
+    searchParams?.checkout === 'cancelled' ||
+    searchParams?.billing === 'cancelled'
   const stripeConfigured = hasAnyPlanPriceId()
 
   return (

@@ -42,24 +42,12 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleUpgrade() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/billing/create-checkout-session', {
-        method: 'POST'
-      })
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        setError(data.message ?? 'Could not start checkout. Please try again.')
-        setLoading(false)
-      }
-    } catch {
-      setError('Network error. Please try again.')
-      setLoading(false)
-    }
+  // The upgrade flow on the dashboard sends the user to /pricing so they
+  // pick a plan + billing interval explicitly. The actual Stripe Checkout
+  // POST happens from the pricing card buttons. This avoids a "what does
+  // Upgrade subscribe me to?" UX trap that the old direct-POST had.
+  function handleUpgrade() {
+    window.location.href = '/pricing'
   }
 
   async function handlePortal() {

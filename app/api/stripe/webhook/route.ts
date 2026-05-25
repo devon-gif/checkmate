@@ -99,7 +99,7 @@ export async function POST(req: Request) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
-        const userId = sub.metadata?.supabase_user_id
+        const userId = sub.metadata?.supabase_user_id ?? sub.metadata?.user_id
         if (!userId) break
 
         const customerId =
@@ -113,21 +113,35 @@ export async function POST(req: Request) {
           subAny.current_period_start ?? sub.items?.data?.[0]?.current_period_start
 
         // Derive canonical plan id from the subscription's first price.
-        // Falls back to checkout_plan_key metadata if the price isn't one
-        // we recognise (e.g. coupon-applied).
+        // Two metadata-based fallbacks exist for when the price ID lookup
+        // misses (e.g. coupon-applied prices, or new price IDs the
+        // deployment hasn't picked up yet):
+        //   1. legacy `checkout_plan_key` field e.g. 'basic_monthly'
+        //   2. new `plan` + `interval` pair from create-checkout-session
         const priceId = sub.items?.data?.[0]?.price?.id ?? null
         const planFromPrice = planIdForPriceId(priceId)
         const checkoutKeyToPlanId: Record<string, string> = {
           basic_monthly: 'basic',
           basic_yearly: 'basic_yearly',
           plus_monthly: 'plus',
-          plus_yearly: 'plus_yearly'
+          plus_yearly: 'plus_yearly',
+          family_monthly: 'family',
+          family_yearly: 'family_yearly'
         }
-        const planFromMetadata =
+        const planFromCheckoutKey =
           typeof sub.metadata?.checkout_plan_key === 'string'
             ? checkoutKeyToPlanId[sub.metadata.checkout_plan_key] ?? null
             : null
-        const resolvedPlan = planFromPrice ?? planFromMetadata
+        const planFromPlanInterval = (() => {
+          const base =
+            typeof sub.metadata?.plan === 'string' ? sub.metadata.plan : null
+          const interval =
+            sub.metadata?.interval === 'yearly' ? 'yearly' : 'monthly'
+          if (!base || !['basic', 'plus', 'family'].includes(base)) return null
+          return interval === 'yearly' ? `${base}_yearly` : base
+        })()
+        const resolvedPlan =
+          planFromPrice ?? planFromCheckoutKey ?? planFromPlanInterval
 
         const sharedUpdate: Record<string, unknown> = {
           provider_customer_id: customerId ?? null,
@@ -170,9 +184,27 @@ export async function POST(req: Request) {
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
-        const userId = sub.metadata?.supabase_user_id
+        // On deletion we look up by metadata first, falling back to the
+        // Stripe customer ID — necessary because portal-driven cancellations
+        // may not propagate our metadata into the deletion event.
+        let userId =
+          sub.metadata?.supabase_user_id ?? sub.metadata?.user_id ?? null
+        if (!userId) {
+          const customerId =
+            typeof sub.customer === 'string' ? sub.customer : sub.customer?.id
+          if (customerId) {
+            const { data: rows } = await sb
+              .from('subscriptions')
+              .select('user_id')
+              .eq('provider_customer_id', customerId)
+              .limit(1)
+            userId = rows?.[0]?.user_id ?? null
+          }
+        }
         if (!userId) break
 
+        // Downgrade — do NOT delete saved cases/reports. The user keeps
+        // their history; the Free plan still gives them 1 check / month.
         await sb
           .from('subscriptions')
           .update({ status: 'canceled' } as any)
@@ -180,7 +212,7 @@ export async function POST(req: Request) {
 
         await (sb as any)
           .from('user_billing')
-          .update({ status: 'canceled' })
+          .update({ status: 'inactive', plan: 'free' })
           .eq('user_id', userId)
         break
       }

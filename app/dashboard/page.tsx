@@ -35,7 +35,7 @@ function asStringArray(value: Json) {
 export default async function DashboardPage({
   searchParams
 }: {
-  searchParams?: { billing?: string }
+  searchParams?: { billing?: string; checkout?: string }
 }) {
   const cookieStore = cookies()
   const session = await auth({ cookieStore })
@@ -185,7 +185,7 @@ export default async function DashboardPage({
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       {/* Billing success banner */}
-      {searchParams?.billing === 'success' && (
+      {(searchParams?.checkout === 'success' || searchParams?.billing === 'success') && (
         <div className="rounded-xl border border-cm-green/30 bg-cm-green/10 px-4 py-3 text-sm text-cm-green">
           Your subscription is now active. Welcome to CheckRay.
         </div>

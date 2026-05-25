@@ -30,6 +30,10 @@ const VALID_PLANS: CheckoutPlanKey[] = [
   'family_yearly'
 ]
 
+const VALID_BASE_PLANS = ['basic', 'plus', 'family'] as const
+type BasePlan = (typeof VALID_BASE_PLANS)[number]
+type Interval = 'monthly' | 'yearly'
+
 export async function POST(req: Request) {
   // Guard: Stripe not configured
   if (!stripe) {
@@ -39,24 +43,50 @@ export async function POST(req: Request) {
     )
   }
 
-  // Parse plan param. Default to basic_monthly so legacy callers that
-  // POST with no body keep working.
-  let plan: CheckoutPlanKey = 'basic_monthly'
+  // ── Parse plan + interval from the request body. ─────────────────────────
+  //
+  // Two body shapes are accepted for backwards compatibility:
+  //   1. { plan: 'basic_monthly' }                       — legacy combined key
+  //   2. { plan: 'basic', interval: 'monthly' | 'yearly' } — new explicit form
+  //
+  // Empty body falls back to basic / monthly so old callers (the previous
+  // "Upgrade now" button with no payload) keep working without changes.
+  let combined: CheckoutPlanKey = 'basic_monthly'
+  let basePlan: BasePlan = 'basic'
+  let interval: Interval = 'monthly'
+
   try {
-    const body = await req.json().catch(() => ({}))
-    if (typeof body.plan === 'string' && (VALID_PLANS as string[]).includes(body.plan)) {
-      plan = body.plan as CheckoutPlanKey
+    const body = await req.json().catch(() => ({} as Record<string, unknown>))
+
+    if (
+      typeof body.plan === 'string' &&
+      (VALID_PLANS as string[]).includes(body.plan)
+    ) {
+      // Legacy combined key like 'basic_monthly'.
+      combined = body.plan as CheckoutPlanKey
+      const idx = combined.lastIndexOf('_')
+      basePlan = combined.slice(0, idx) as BasePlan
+      interval = combined.slice(idx + 1) as Interval
+    } else if (
+      typeof body.plan === 'string' &&
+      (VALID_BASE_PLANS as readonly string[]).includes(body.plan)
+    ) {
+      // New explicit form { plan, interval }.
+      basePlan = body.plan as BasePlan
+      interval =
+        body.interval === 'yearly' ? 'yearly' : 'monthly'
+      combined = `${basePlan}_${interval}` as CheckoutPlanKey
     }
   } catch {
-    // Empty body is fine — fall back to default.
+    // Empty body is fine — fall back to the defaults above.
   }
 
-  const priceId = getPriceIdForPlan(plan)
+  const priceId = getPriceIdForPlan(combined)
   if (!priceId) {
     return NextResponse.json(
       {
         error: 'price_not_configured',
-        message: `The ${plan} price is not set up yet. Please contact support.`
+        message: `The ${combined} price is not set up yet. Please contact support.`
       },
       { status: 503 }
     )
@@ -66,7 +96,15 @@ export async function POST(req: Request) {
   const cookieStore = cookies()
   const session = await auth({ cookieStore })
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
+    // Send the client to /sign-up while preserving the pricing-page intent.
+    return NextResponse.json(
+      {
+        error: 'Unauthorized.',
+        message: 'You must be signed in to start checkout.',
+        redirect_to: '/sign-up?next=/pricing'
+      },
+      { status: 401 }
+    )
   }
 
   const userId = session.user.id
@@ -102,28 +140,36 @@ export async function POST(req: Request) {
       .eq('user_id', userId)
   }
 
-  // Create checkout session
+  // Create checkout session.
+  //
+  // Metadata is duplicated onto both the Checkout Session AND
+  // subscription_data so the webhook can recover user / plan / interval
+  // from either the `checkout.session.completed` event or the
+  // `customer.subscription.created` event, whichever fires first.
+  //
+  // We carry BOTH the legacy `supabase_user_id` / `checkout_plan_key`
+  // fields (existing webhook handler reads these) AND the new
+  // `user_id` / `plan` / `interval` fields requested by the spec.
+  const subscriptionMetadata = {
+    supabase_user_id: userId,
+    user_id: userId,
+    checkout_plan_key: combined,
+    plan: basePlan,
+    interval
+  } as const
+
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    // Pass user_id + plan in metadata so the webhook can update the DB.
-    // The plan key is also embedded so a price-ID lookup miss in the
-    // webhook still has a fallback source of truth.
     subscription_data: {
-      metadata: {
-        supabase_user_id: userId,
-        checkout_plan_key: plan
-      },
+      metadata: subscriptionMetadata,
       trial_period_days: undefined // trial is managed in our DB, not Stripe
     },
-    metadata: {
-      supabase_user_id: userId,
-      checkout_plan_key: plan
-    },
+    metadata: subscriptionMetadata,
     client_reference_id: userId,
-    success_url: `${APP_URL}/dashboard?billing=success`,
-    cancel_url: `${APP_URL}/pricing?billing=cancelled`
+    success_url: `${APP_URL}/dashboard?checkout=success`,
+    cancel_url: `${APP_URL}/pricing?checkout=cancelled`
   })
 
   return NextResponse.json({ url: checkoutSession.url })

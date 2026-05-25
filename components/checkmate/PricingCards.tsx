@@ -282,18 +282,46 @@ function TrialStartButton({
   plan: CheckoutPlanKey
 }) {
   async function handleClick() {
-    const res = await fetch('/api/billing/create-checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan })
-    })
-    const data = await res.json()
-    if (data.url) {
-      window.location.href = data.url
-    } else if (data.message) {
-      // Friendly fallback if a price ID isn't set up yet.
+    // Split the combined plan key (e.g. 'basic_monthly') into the new
+    // explicit { plan, interval } body shape the route prefers. The route
+    // still accepts the legacy combined form, but this is the canonical
+    // way going forward.
+    const idx = plan.lastIndexOf('_')
+    const basePlan = plan.slice(0, idx)
+    const interval = plan.slice(idx + 1)
+
+    try {
+      const res = await fetch('/api/billing/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: basePlan, interval })
+      })
+
+      // 401 → not signed in. Route to sign-up while preserving the user's
+      // intent to land back on /pricing. Use the route's hint if present.
+      if (res.status === 401) {
+        const data = await res.json().catch(() => ({}))
+        window.location.href =
+          typeof data.redirect_to === 'string'
+            ? data.redirect_to
+            : '/sign-up?next=/pricing'
+        return
+      }
+
+      const data = await res.json().catch(() => ({}))
+      if (data.url) {
+        window.location.href = data.url
+        return
+      }
+
+      // Friendly fallback if Stripe / a price ID is not configured.
       // eslint-disable-next-line no-alert
-      window.alert(data.message)
+      window.alert(
+        data.message ?? 'Checkout is not available right now. Please try again.'
+      )
+    } catch {
+      // eslint-disable-next-line no-alert
+      window.alert('Network error. Please try again.')
     }
   }
 
