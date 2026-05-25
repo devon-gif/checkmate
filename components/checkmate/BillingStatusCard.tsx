@@ -11,12 +11,12 @@
  * subscription row to the client.
  */
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
 
-export type BillingStatus = 'trialing' | 'active' | 'expired' | 'unknown'
+export type BillingStatus = 'trialing' | 'active' | 'free' | 'expired' | 'unknown'
 
 interface Props {
   status: BillingStatus
@@ -82,112 +82,176 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
 
   const daysLeft = trialEndsAt ? daysUntil(trialEndsAt) : null
 
+  // Resolve which plan branch to render. Treat the yearly SKUs the same as
+  // their monthly equivalents — the user-facing copy doesn't differ.
+  const isPlus = plan === 'plus' || plan === 'plus_yearly'
+  const isBasic = plan === 'basic' || plan === 'basic_yearly'
+  const isFamily = plan === 'family' || plan === 'family_yearly'
+
+  // Dot color: green for active subscription, yellow for trialing, neutral
+  // for free/unknown (not an alarming red — the user still has access),
+  // red only for hard expired states.
+  const dotColor =
+    status === 'active'
+      ? 'bg-cm-green shadow-[0_0_6px_theme(colors.cm-green)]'
+      : status === 'trialing'
+        ? 'bg-yellow-400 shadow-[0_0_6px_theme(colors.yellow.400)]'
+        : status === 'expired'
+          ? 'bg-red-500 shadow-[0_0_6px_theme(colors.red.500)]'
+          : 'bg-white/40'
+
+  // ── Per-status header block. EXACTLY ONE branch renders — no fallthrough
+  // doubles like the previous version had for `unknown`.
+  let header: ReactNode = null
+
+  if (status === 'active' && isFamily) {
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">Family plan</p>
+        <p className="mt-0.5 text-xs text-white/40">
+          Unlimited fair-use checks. Family / trusted-contact support coming soon.
+        </p>
+      </>
+    )
+  } else if (status === 'active' && isPlus) {
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">
+          Plus plan
+          {checksLimit != null && (
+            <span className="ml-2 text-xs font-normal text-white/50">
+              {checksUsed}/{checksLimit} checks this month
+            </span>
+          )}
+        </p>
+        <p className="mt-0.5 text-xs text-white/40">
+          {checksLimit != null
+            ? `${checksLimit} checks per month.`
+            : '50 checks per month.'}
+        </p>
+      </>
+    )
+  } else if (status === 'active' && isBasic) {
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">
+          Basic plan
+          {checksLimit != null && (
+            <span className="ml-2 text-xs font-normal text-white/50">
+              {checksUsed}/{checksLimit} checks this month
+            </span>
+          )}
+        </p>
+        <p className="mt-0.5 text-xs text-white/40">
+          {checksLimit != null
+            ? `${checksLimit} checks per month.`
+            : 'Checks included.'}
+        </p>
+      </>
+    )
+  } else if (status === 'active') {
+    // Active but unknown plan (e.g. webhook race) — generic copy.
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">Plan active</p>
+        <p className="mt-0.5 text-xs text-white/40">Risk checks included.</p>
+      </>
+    )
+  } else if (status === 'trialing') {
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">
+          Free trial
+          {daysLeft !== null && (
+            <span className="ml-1.5 text-yellow-400">
+              {daysLeft === 0
+                ? '— expires today'
+                : `— ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
+            </span>
+          )}
+        </p>
+        <p className="mt-0.5 text-xs text-white/40">
+          Unlimited checks during your trial. Subscribe to continue after it ends.
+        </p>
+      </>
+    )
+  } else if (status === 'expired') {
+    // Trial ended OR free-tier monthly limit reached. Either way the user is
+    // on the Free plan now — soft messaging, not "blocked forever".
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">
+          Your trial ended. You&apos;re now on Free.
+        </p>
+        <p className="mt-0.5 text-xs text-white/40">
+          You still get 1 check per month. Upgrade to Basic, Plus, or Family for more.
+        </p>
+      </>
+    )
+  } else if (status === 'free') {
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">
+          Free plan
+          {checksLimit != null && (
+            <span className="ml-2 text-xs font-normal text-white/50">
+              {checksUsed}/{checksLimit} checks this month
+            </span>
+          )}
+        </p>
+        <p className="mt-0.5 text-xs text-white/40">
+          1 check per month. Upgrade to Basic, Plus, or Family for more.
+        </p>
+      </>
+    )
+  } else {
+    // status === 'unknown' — single safe branch, no double-render. The card
+    // appears while plan status is being determined (e.g. first-page load
+    // before the user_billing row is created).
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">Checking plan status</p>
+        <p className="mt-0.5 text-xs text-white/40">One moment…</p>
+      </>
+    )
+  }
+
+  // Action button: subscribed users get the portal, everyone else gets an
+  // upgrade CTA (or a placeholder note while Stripe is still being wired up).
+  const action = status === 'active' ? (
+    <GradientButton
+      variant="secondary"
+      onClick={handlePortal}
+      disabled={loading || !stripeConfigured}
+    >
+      {loading ? 'Loading...' : 'Manage billing'}
+    </GradientButton>
+  ) : stripeConfigured ? (
+    <GradientButton
+      variant="primary"
+      onClick={handleUpgrade}
+      disabled={loading}
+    >
+      {loading ? 'Loading...' : 'Upgrade'}
+    </GradientButton>
+  ) : (
+    <span className="rounded-lg border border-white/10 px-4 py-2 text-xs text-white/30">
+      Billing not configured yet
+    </span>
+  )
+
   return (
     <GlassCard className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3">
-        {/* Status dot */}
-        <span
-          className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${
-            status === 'active'
-              ? 'bg-cm-green shadow-[0_0_6px_theme(colors.cm-green)]'
-              : status === 'trialing'
-                ? 'bg-yellow-400 shadow-[0_0_6px_theme(colors.yellow.400)]'
-                : 'bg-red-500 shadow-[0_0_6px_theme(colors.red.500)]'
-          }`}
-        />
-
+        <span className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${dotColor}`} />
         <div>
-          {status === 'active' && (() => {
-            const isPlus = plan === 'plus' || plan === 'plus_yearly'
-            const isBasic = plan === 'basic' || plan === 'basic_yearly'
-            if (isPlus) return (
-              <>
-                <p className="text-sm font-medium text-white">Plus plan</p>
-                <p className="mt-0.5 text-xs text-white/40">Unlimited fair-use checks included.</p>
-              </>
-            )
-            if (isBasic) return (
-              <>
-                <p className="text-sm font-medium text-white">
-                  Basic plan
-                  {checksLimit != null && (
-                    <span className="ml-2 text-xs font-normal text-white/50">
-                      {checksUsed}/{checksLimit} checks this month
-                    </span>
-                  )}
-                </p>
-                <p className="mt-0.5 text-xs text-white/40">{checksLimit != null ? `${checksLimit} checks per month.` : 'Checks included.'}</p>
-              </>
-            )
-            // Generic active (unknown plan)
-            return (
-              <>
-                <p className="text-sm font-medium text-white">Plan active</p>
-                <p className="mt-0.5 text-xs text-white/40">Unlimited risk checks included.</p>
-              </>
-            )
-          })()}
-
-          {status === 'unknown' && (
-            <>
-              <p className="text-sm font-medium text-white">Free</p>
-              <p className="mt-0.5 text-xs text-white/40">1 check per month. Start a free trial to unlock more.</p>
-            </>
-          )}
-
-          {status === 'trialing' && (
-            <>
-              <p className="text-sm font-medium text-white">
-                Free trial
-                {daysLeft !== null && (
-                  <span className="ml-1.5 text-yellow-400">
-                    {daysLeft === 0
-                      ? '— expires today'
-                      : `— ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
-                  </span>
-                )}
-              </p>
-              <p className="mt-0.5 text-xs text-white/40">
-                Unlimited checks during your trial. Subscribe to continue after it ends.
-              </p>
-            </>
-          )}
-
-          {(status === 'expired' || status === 'unknown') && (
-            <>
-              <p className="text-sm font-medium text-red-400">Trial ended</p>
-              <p className="mt-0.5 text-xs text-white/40">
-                Subscribe to continue running checks with CheckRay.
-              </p>
-            </>
-          )}
-
+          {header}
           {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
         </div>
       </div>
 
-      <div className="flex-shrink-0">
-        {status === 'active' ? (
-          <GradientButton
-            variant="secondary"
-            onClick={handlePortal}
-            disabled={loading || !stripeConfigured}
-          >
-            {loading ? 'Loading...' : 'Manage billing'}
-          </GradientButton>
-        ) : stripeConfigured ? (
-          <GradientButton
-            variant="primary"
-            onClick={handleUpgrade}
-            disabled={loading}
-          >
-            {loading ? 'Loading...' : 'Upgrade to Pro'}
-          </GradientButton>
-        ) : (
-          <span className="rounded-lg border border-white/10 px-4 py-2 text-xs text-white/30">
-            Billing not configured yet
-          </span>
-        )}
+      <div className="flex flex-shrink-0 flex-col items-end gap-1">
+        {action}
         <a
           href="/support?category=cancellation"
           className="text-xs text-white/30 transition hover:text-white/60 underline underline-offset-2"

@@ -25,7 +25,8 @@ export type AccessStatus =
   | 'anonymous_used'    // anonymous, free check already consumed — must sign up
   | 'trialing'          // logged in, trial window open
   | 'active'            // logged in, paid subscription active
-  | 'expired'           // logged in, trial ended or subscription canceled
+  | 'free'              // logged in, free plan, monthly quota remaining
+  | 'expired'           // logged in, free/paid plan with no quota left (upgrade prompt)
   | 'blocked'           // catch-all for any other blocked state
 
 export interface AccessResult {
@@ -251,31 +252,54 @@ async function checkAccessInner({
       }
     }
 
-    // Trial window has closed — update status
+    // Trial window has closed — downgrade to Free plan (1 check/month) instead
+    // of fully blocking. The Free branch below counts usage_events and decides
+    // whether the user has quota remaining this month.
     await sb
       .from('user_billing' as any)
-      .update({ status: 'inactive' })
+      .update({ status: 'inactive', plan: 'free' })
       .eq('user_id', userId)
+    row.status = 'inactive'
+    row.plan = 'free'
+    // fall through to the Free path
+  }
 
+  // ── Free path ────────────────────────────────────────────────────────────
+  // Reached when:
+  //   - user_billing.status is not 'active' and not an open trial, OR
+  //   - user_billing.plan was explicitly set to 'free'
+  // Free users get 1 check/month from PLAN_MONTHLY_LIMIT.free, counted from
+  // usage_events. Over-limit returns 402 with an upgrade prompt — the
+  // analyze-case route checks canAnalyze before any OpenAI call.
+  const freeLimit = PLAN_MONTHLY_LIMIT.free ?? 1
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const { count: freeUsed } = await sb
+    .from('usage_events' as any)
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('event_type', 'check_created')
+    .gte('created_at', monthStart)
+  const used = freeUsed ?? 0
+
+  if (used >= freeLimit) {
     return {
       canAnalyze: false,
       accessStatus: 'expired',
-      plan: 'trial',
-      checksUsed: 0,
-      checksLimit: null,
-      trialEndsAt: row.trial_ends_at,
-      reason: 'Your free trial has ended. Upgrade to continue using CheckRay.'
+      plan: 'free',
+      checksUsed: used,
+      checksLimit: freeLimit,
+      trialEndsAt: row.trial_ends_at ?? null,
+      reason: `You've used your free check for this month. Upgrade to Basic, Plus, or Family for more.`
     }
   }
 
-  // Any other status (canceled, past_due, inactive)
   return {
-    canAnalyze: false,
-    accessStatus: 'expired',
-    plan: planId,
-    checksUsed: 0,
-    checksLimit: null,
-    reason: 'Your subscription is inactive. Upgrade to continue using CheckRay.'
+    canAnalyze: true,
+    accessStatus: 'free',
+    plan: 'free',
+    checksUsed: used,
+    checksLimit: freeLimit,
+    trialEndsAt: row.trial_ends_at ?? null
   }
 }
 

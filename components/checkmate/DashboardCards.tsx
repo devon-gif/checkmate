@@ -4,8 +4,13 @@ interface DashboardCardsProps {
   total: number
   highRisk: number
   averageScore: number
+  /** Checks the user has run this calendar month. */
   checksUsed: number
-  checksLimit: number
+  /**
+   * Monthly check limit for the user's current plan.
+   * `null` means unlimited fair-use (e.g. Family plan or active trial).
+   */
+  checksLimit: number | null
 }
 
 interface StatCardProps {
@@ -51,17 +56,30 @@ export function DashboardCards({
   checksUsed,
   checksLimit
 }: DashboardCardsProps) {
-  const remaining = Math.max(checksLimit - checksUsed, 0)
-  const nearLimit = checksUsed >= checksLimit * 0.8
+  // Unlimited plans (Family, open trial) come through as checksLimit === null.
+  // For those we skip the fraction display and just show the running count.
+  const isUnlimited = checksLimit === null
+  const remaining = isUnlimited
+    ? null
+    : Math.max((checksLimit as number) - checksUsed, 0)
+  const nearLimit =
+    !isUnlimited && checksUsed >= (checksLimit as number) * 0.8
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard label="Total cases" value={total} />
       <StatCard label="High risk" value={highRisk} accent={highRisk > 0} />
       <StatCard label="Average risk score" value={averageScore} />
       <StatCard
-        label="Free checks today"
-        value={`${checksUsed} / ${checksLimit}`}
-        sub={remaining > 0 ? `${remaining} remaining` : 'Limit reached today'}
+        label="Checks this month"
+        value={isUnlimited ? `${checksUsed}` : `${checksUsed} / ${checksLimit}`}
+        sub={
+          isUnlimited
+            ? 'Unlimited fair-use'
+            : remaining! > 0
+              ? `${remaining} remaining`
+              : 'Monthly limit reached'
+        }
         warn={nearLimit}
       />
     </div>
