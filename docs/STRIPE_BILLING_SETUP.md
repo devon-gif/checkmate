@@ -29,6 +29,60 @@ to a 503 "billing not configured" response.
 | `STRIPE_RETENTION_PROMO_CODE_ID` | Server | Promo code wrapper for the same coupon. Same note as above. |
 | `NEXT_PUBLIC_APP_URL` | Public | Canonical URL — `https://checkray.app` in prod, `http://localhost:3000` in dev. Used for Stripe redirect URLs (`success_url`, `cancel_url`, portal `return_url`). |
 
+## 7-day free trial for paid plans
+
+All Basic, Plus, and Family Checkout sessions are created with
+`subscription_data.trial_period_days = 7`. Concretely:
+
+- **Card is required at Checkout** — Stripe collects the payment method
+  even though no charge is made on day zero.
+  (`payment_method_collection: 'always'` makes this explicit.)
+- **No charge is taken on day zero.** The user gets immediate paid-plan
+  access for 7 days.
+- **Stripe auto-charges on day 7** unless the user cancels through the
+  Customer Portal before then.
+- **`customer.subscription.created`** fires with `status = 'trialing'`
+  and `trial_end` set. The webhook stores this status on `user_billing`
+  along with `trial_ends_at = ISO(trial_end)`.
+- **`customer.subscription.updated`** fires when the trial converts
+  to `active` (or `past_due` if the charge fails). The webhook propagates
+  the status change so `BillingStatusCard` flips from "Plus trial" to
+  "Plus plan" without intervention.
+- **The Free plan is never a Stripe subscription.** It exists only in
+  `user_billing` (`plan='free', status='inactive'`) and gets 1 check /
+  month from the in-app gate. Cancelling a paid subscription via the
+  portal downgrades the user to Free via the
+  `customer.subscription.deleted` handler.
+
+### What "trialing grants paid access" means in code
+
+`lib/billing/access.ts` treats `user_billing.status === 'trialing'` as
+the equivalent of `'active'` for the resolved plan: a Plus trial gets
+50 / mo, a Basic trial gets 10 / mo, a Family trial is unlimited
+fair-use. This is what makes the dashboard render "Plus trial / 0 / 50
+checks this month" and what lets the user actually run those checks.
+
+Legacy in-app `plan === 'trial'` rows (from the pre-Stripe era) still
+get unlimited usage during their window; the access gate distinguishes
+between the two by reading `row.plan`.
+
+### Cancellation through the Customer Portal
+
+When a user cancels inside the portal, Stripe fires:
+
+- `customer.subscription.updated` with `cancel_at_period_end = true` —
+  the webhook stores this flag; the subscription remains active /
+  trialing until the period ends.
+- At period end, `customer.subscription.deleted` fires. The webhook sets
+  `user_billing.status = 'inactive', plan = 'free'` so the user
+  downgrades cleanly to Free (1 check / month) without losing any saved
+  cases or reports.
+
+If the user's trial card charge fails on day 7, Stripe will fire
+`invoice.payment_failed` and `customer.subscription.updated` with
+`status = 'past_due'`. The webhook stores `past_due`; the dashboard
+surfaces this state through the standard expired / over-limit copy.
+
 ## Stripe product / price mapping
 
 The combined Checkout key → canonical `user_billing.plan` value the

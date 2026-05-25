@@ -119,7 +119,7 @@ export function PricingCards({ stripeConfigured }: Props) {
             ))}
           </ul>
           <GradientButton href="/cases/new" variant="secondary" className="w-full">
-            Try your free check
+            Try one free check
           </GradientButton>
         </GlassCard>
 
@@ -157,14 +157,17 @@ export function PricingCards({ stripeConfigured }: Props) {
           {stripeConfigured ? (
             <TrialStartButton
               variant="secondary"
-              label="Start 7-day trial"
+              label="Start 7-day free trial"
               plan={period === 'yearly' ? 'basic_yearly' : 'basic_monthly'}
             />
           ) : (
             <GradientButton href="/sign-up" variant="secondary" className="w-full">
-              Start 7-day trial
+              Start 7-day free trial
             </GradientButton>
           )}
+          <p className="-mt-2 text-center text-[11px] text-white/35">
+            Card required. Cancel anytime before day 7.
+          </p>
         </GlassCard>
 
         {/* Plus */}
@@ -204,14 +207,17 @@ export function PricingCards({ stripeConfigured }: Props) {
           {stripeConfigured ? (
             <TrialStartButton
               variant="primary"
-              label="Start 7-day trial"
+              label="Start 7-day free trial"
               plan={period === 'yearly' ? 'plus_yearly' : 'plus_monthly'}
             />
           ) : (
             <GradientButton href="/sign-up" variant="primary" className="w-full">
-              Start 7-day trial
+              Start 7-day free trial
             </GradientButton>
           )}
+          <p className="-mt-2 text-center text-[11px] text-white/35">
+            Card required. Cancel anytime before day 7.
+          </p>
         </GlassCard>
 
         {/* Family / Unlimited */}
@@ -248,14 +254,17 @@ export function PricingCards({ stripeConfigured }: Props) {
           {stripeConfigured ? (
             <TrialStartButton
               variant="secondary"
-              label="Start 7-day trial"
+              label="Start 7-day free trial"
               plan={period === 'yearly' ? 'family_yearly' : 'family_monthly'}
             />
           ) : (
             <GradientButton href="/sign-up" variant="secondary" className="w-full">
-              Start 7-day trial
+              Start 7-day free trial
             </GradientButton>
           )}
+          <p className="-mt-2 text-center text-[11px] text-white/35">
+            Card required. Cancel anytime before day 7.
+          </p>
         </GlassCard>
       </div>
     </div>

@@ -187,7 +187,9 @@ export default async function DashboardPage({
       {/* Billing success banner */}
       {(searchParams?.checkout === 'success' || searchParams?.billing === 'success') && (
         <div className="rounded-xl border border-cm-green/30 bg-cm-green/10 px-4 py-3 text-sm text-cm-green">
-          Your subscription is now active. Welcome to CheckRay.
+          {billingStatus === 'trialing'
+            ? 'Your 7-day trial is active. Welcome to CheckRay.'
+            : 'Your subscription is now active. Welcome to CheckRay.'}
         </div>
       )}
 
@@ -213,21 +215,28 @@ export default async function DashboardPage({
               <IconPlus className="h-4 w-4" />
               New check
             </GradientButton>
-            {/* Upgrade CTA — routes to Stripe checkout if configured, otherwise /pricing */}
-            <UpgradeButton stripeConfigured={stripeConfigured} />
+            {/* "Upgrade now" is hidden for active subscribers and paid trial
+                users — they manage their plan via BillingStatusCard's
+                "Manage billing" portal CTA instead. Only Free / unknown /
+                expired states see this button. */}
+            {billingStatus !== 'active' && billingStatus !== 'trialing' && (
+              <UpgradeButton stripeConfigured={stripeConfigured} />
+            )}
           </div>
         </div>
       </section>
 
       {/* Stats — monthly limit, sourced from PLAN_MONTHLY_LIMIT so it always
-          matches the access gate. `null` = unlimited (Family / open trial). */}
+          matches the access gate. `null` = unlimited (Family or legacy
+          in-app `plan === 'trial'`). Paid trial users see their paid
+          plan's limit during the trial — not "unlimited". */}
       <DashboardCards
         total={total}
         highRisk={highRisk}
         averageScore={averageScore}
         checksUsed={checksUsedThisMonth ?? 0}
         checksLimit={
-          billingStatus === 'trialing'
+          billingStatus === 'trialing' && subAny?.plan === 'trial'
             ? null
             : PLAN_MONTHLY_LIMIT[
                 (subAny?.plan ?? 'free') as keyof typeof PLAN_MONTHLY_LIMIT

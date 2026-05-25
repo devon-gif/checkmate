@@ -158,14 +158,24 @@ export async function POST(req: Request) {
     interval
   } as const
 
+  // 7-day free trial for all paid subscriptions (Basic / Plus / Family).
+  // Stripe will auto-charge after the trial window unless the user cancels.
+  // Free plan is not a Stripe subscription at all, so it never reaches here.
+  const TRIAL_PERIOD_DAYS = 7
+
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: {
       metadata: subscriptionMetadata,
-      trial_period_days: undefined // trial is managed in our DB, not Stripe
+      trial_period_days: TRIAL_PERIOD_DAYS
     },
+    // Card is required so Stripe can auto-charge when the trial ends.
+    // 'always' tells Stripe to collect a payment method even for trial-only
+    // sessions; this is the default for subscription mode but we set it
+    // explicitly so future Stripe API changes don't quietly skip card entry.
+    payment_method_collection: 'always',
     metadata: subscriptionMetadata,
     client_reference_id: userId,
     success_url: `${APP_URL}/dashboard?checkout=success`,

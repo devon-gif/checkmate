@@ -257,27 +257,91 @@ async function checkAccessInner({
     }
   }
 
-  // Trialing — check whether trial window is still open
+  // Trialing — Stripe-managed trial OR legacy in-app trial.
+  //
+  // For Stripe paid trials, the webhook writes:
+  //   user_billing.status = 'trialing'
+  //   user_billing.plan   = 'basic' | 'basic_yearly' | 'plus' | ... | 'family_yearly'
+  //   user_billing.trial_ends_at = ISO from Stripe `sub.trial_end`
+  //
+  // During the trial window the user gets the PAID plan's monthly limit
+  // (e.g. Plus trial → 50/mo). Family trials are unlimited fair-use.
+  //
+  // For legacy rows where plan = 'trial', the trial is unlimited during
+  // the window (preserves prior behaviour).
   if (row.status === 'trialing') {
     const trialEnd = row.trial_ends_at ? new Date(row.trial_ends_at) : null
-    if (trialEnd && now < trialEnd) {
-      const daysLeft = Math.ceil(
-        (trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      )
+    // If trial_ends_at is missing (e.g. an older row written before the
+    // webhook started persisting it), assume the trial is still open;
+    // Stripe's next `customer.subscription.updated` will correct us when
+    // the trial flips to active or canceled.
+    const trialOpen = trialEnd ? now < trialEnd : true
+
+    if (trialOpen) {
+      const trialingPlanId = (row.plan ?? 'trial') as PlanId
+      const trialMonthlyLimit = PLAN_MONTHLY_LIMIT[trialingPlanId] ?? null
+
+      // Count this month's usage when a hard cap applies. Unlimited plans
+      // (legacy 'trial', Family) skip the count to save a query.
+      let trialUsedThisMonth = 0
+      if (trialMonthlyLimit !== null) {
+        const monthStart = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          1
+        ).toISOString()
+        const { count } = await sb
+          .from('usage_events' as any)
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('event_type', 'check_created')
+          .gte('created_at', monthStart)
+        trialUsedThisMonth = count ?? 0
+      }
+
+      if (
+        trialMonthlyLimit !== null &&
+        trialUsedThisMonth >= trialMonthlyLimit
+      ) {
+        return {
+          canAnalyze: false,
+          accessStatus: 'blocked',
+          plan: trialingPlanId,
+          checksUsed: trialUsedThisMonth,
+          checksLimit: trialMonthlyLimit,
+          trialEndsAt: row.trial_ends_at ?? null,
+          reason: `You've used all ${trialMonthlyLimit} checks for this month. Your limit resets at the start of next month.`
+        }
+      }
+
+      const daysLeft = trialEnd
+        ? Math.max(
+            0,
+            Math.ceil(
+              (trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+            )
+          )
+        : null
+
       return {
         canAnalyze: true,
         accessStatus: 'trialing',
-        plan: 'trial',
-        checksUsed: 0,
-        checksLimit: null,
-        trialEndsAt: row.trial_ends_at,
-        reason: `Trial active — ${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining.`
+        plan: trialingPlanId,
+        checksUsed: trialUsedThisMonth,
+        checksLimit: trialMonthlyLimit,
+        trialEndsAt: row.trial_ends_at ?? null,
+        reason:
+          daysLeft !== null
+            ? `Trial active — ${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining.`
+            : 'Trial active.'
       }
     }
 
-    // Trial window has closed — downgrade to Free plan (1 check/month) instead
-    // of fully blocking. The Free branch below counts usage_events and decides
-    // whether the user has quota remaining this month.
+    // Trial window has closed — downgrade to Free plan (1 check/month)
+    // instead of fully blocking. Stripe will eventually fire a
+    // subscription.updated to either 'active' (charge succeeded) or
+    // 'canceled' (deleted); the webhook handles those. This local
+    // downgrade is a defence in case our DB cache is stale.
     await sb
       .from('user_billing' as any)
       .update({ status: 'inactive', plan: 'free' })

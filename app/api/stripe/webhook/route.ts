@@ -111,6 +111,13 @@ export async function POST(req: Request) {
           subAny.current_period_end ?? sub.items?.data?.[0]?.current_period_end
         const periodStart: number | undefined =
           subAny.current_period_start ?? sub.items?.data?.[0]?.current_period_start
+        // `trial_end` is set by Stripe when the sub is in trial. Surface it
+        // into `user_billing.trial_ends_at` so the access gate and the
+        // dashboard can show "Trial ends DATE" and grant paid-plan limits
+        // for the trial window. (Without this, the access gate would see
+        // status='trialing' with no end timestamp and close the trial.)
+        const trialEnd: number | undefined =
+          (sub as any).trial_end ?? undefined
 
         // Derive canonical plan id from the subscription's first price.
         // Two metadata-based fallbacks exist for when the price ID lookup
@@ -163,22 +170,26 @@ export async function POST(req: Request) {
           .eq('user_id', userId)
 
         // Mirror canonical fields into user_billing (preferred source for
-        // dashboard reads). Only update fields user_billing has.
+        // dashboard reads). `trial_ends_at` is written from Stripe's
+        // `trial_end` only when present — we deliberately don't overwrite
+        // an existing trial_ends_at with null when Stripe sends an
+        // updated event after the trial converted to active.
+        const userBillingPayload: Record<string, unknown> = {
+          user_id: userId,
+          plan: resolvedPlan ?? undefined,
+          status: sub.status === 'active' ? 'active' : sub.status,
+          stripe_customer_id: customerId ?? undefined,
+          cancel_at_period_end: sub.cancel_at_period_end,
+          current_period_end: periodEnd
+            ? new Date(periodEnd * 1000).toISOString()
+            : null
+        }
+        if (trialEnd != null) {
+          userBillingPayload.trial_ends_at = new Date(trialEnd * 1000).toISOString()
+        }
         await (sb as any)
           .from('user_billing')
-          .upsert(
-            {
-              user_id: userId,
-              plan: resolvedPlan ?? undefined,
-              status: sub.status === 'active' ? 'active' : sub.status,
-              stripe_customer_id: customerId ?? undefined,
-              cancel_at_period_end: sub.cancel_at_period_end,
-              current_period_end: periodEnd
-                ? new Date(periodEnd * 1000).toISOString()
-                : null
-            },
-            { onConflict: 'user_id' }
-          )
+          .upsert(userBillingPayload, { onConflict: 'user_id' })
         break
       }
 

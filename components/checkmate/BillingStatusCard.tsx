@@ -146,23 +146,70 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
       </>
     )
   } else if (status === 'trialing') {
-    header = (
-      <>
-        <p className="text-sm font-medium text-white">
-          Free trial
-          {daysLeft !== null && (
-            <span className="ml-1.5 text-yellow-400">
-              {daysLeft === 0
-                ? '— expires today'
-                : `— ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
-            </span>
-          )}
-        </p>
-        <p className="mt-0.5 text-xs text-white/40">
-          Unlimited checks during your trial. Subscribe to continue after it ends.
-        </p>
-      </>
-    )
+    // Paid trial (Basic/Plus/Family) or legacy unlimited in-app trial.
+    // Show plan-specific copy + paid plan limit, falling back to the
+    // generic "Free trial / unlimited" copy only for legacy rows where
+    // plan === 'trial'.
+    const trialPlanName = isFamily
+      ? 'Family'
+      : isPlus
+        ? 'Plus'
+        : isBasic
+          ? 'Basic'
+          : null
+    const trialEndDateLabel =
+      trialEndsAt && !Number.isNaN(new Date(trialEndsAt).getTime())
+        ? new Date(trialEndsAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })
+        : null
+
+    if (trialPlanName) {
+      header = (
+        <>
+          <p className="text-sm font-medium text-white">
+            {trialPlanName} trial
+            {checksLimit != null && (
+              <span className="ml-2 text-xs font-normal text-white/50">
+                {checksUsed}/{checksLimit} checks this month
+              </span>
+            )}
+            {daysLeft !== null && (
+              <span className="ml-1.5 text-yellow-400">
+                {daysLeft === 0
+                  ? '— ends today'
+                  : `— ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
+              </span>
+            )}
+          </p>
+          <p className="mt-0.5 text-xs text-white/40">
+            {trialEndDateLabel
+              ? `Trial ends ${trialEndDateLabel}. Card on file — Stripe charges automatically unless you cancel.`
+              : 'Card on file — Stripe charges automatically unless you cancel.'}
+          </p>
+        </>
+      )
+    } else {
+      header = (
+        <>
+          <p className="text-sm font-medium text-white">
+            Free trial
+            {daysLeft !== null && (
+              <span className="ml-1.5 text-yellow-400">
+                {daysLeft === 0
+                  ? '— expires today'
+                  : `— ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
+              </span>
+            )}
+          </p>
+          <p className="mt-0.5 text-xs text-white/40">
+            Unlimited checks during your trial. Subscribe to continue after it ends.
+          </p>
+        </>
+      )
+    }
   } else if (status === 'expired') {
     // Trial ended OR free-tier monthly limit reached. Either way the user is
     // on the Free plan now — soft messaging, not "blocked forever".
@@ -205,9 +252,13 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
     )
   }
 
-  // Action button: subscribed users get the portal, everyone else gets an
-  // upgrade CTA (or a placeholder note while Stripe is still being wired up).
-  const action = status === 'active' ? (
+  // Action button: subscribed users get the portal. Paid trial users
+  // (Stripe `trialing` on Basic/Plus/Family) get the portal too — they
+  // are paying customers in trial, not free users, so they should manage
+  // billing rather than see an "Upgrade now" CTA.
+  const isPaidTrial =
+    status === 'trialing' && (isBasic || isPlus || isFamily)
+  const action = status === 'active' || isPaidTrial ? (
     <GradientButton
       variant="secondary"
       onClick={handlePortal}
