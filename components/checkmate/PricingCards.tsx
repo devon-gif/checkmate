@@ -96,11 +96,11 @@ export function PricingCards({ stripeConfigured }: Props) {
         <GlassCard className="flex flex-col gap-6 p-6">
           <div>
             <h2 className="text-base font-semibold text-white">Free</h2>
-            <div className="mt-1 flex items-end gap-1">
-              <span className="text-3xl font-bold text-white">$0</span>
-              <span className="mb-0.5 text-sm text-white/40">/ month</span>
+            <div className="mt-2 flex min-h-[3rem] items-end gap-1">
+              <span className="text-4xl font-bold leading-none text-white">$0</span>
+              <span className="mb-0.5 text-sm text-white/40">/mo</span>
             </div>
-            <p className="mt-1 text-sm text-white/40">
+            <p className="mt-1.5 text-sm text-white/40">
               Try CheckRay without signing up.
             </p>
           </div>
@@ -127,14 +127,14 @@ export function PricingCards({ stripeConfigured }: Props) {
         <GlassCard className="flex flex-col gap-6 p-6">
           <div>
             <h2 className="text-base font-semibold text-white">Basic</h2>
-            <div className="mt-1 flex items-end gap-1">
-              <span className="text-3xl font-bold text-white">
+            <div className="mt-2 flex min-h-[3rem] items-end gap-1">
+              <span className="text-4xl font-bold leading-none text-white">
                 ${basicPrice.toFixed(2)}
               </span>
-              <span className="mb-0.5 text-sm text-white/40">/ month</span>
+              <span className="mb-0.5 text-sm text-white/40">/mo</span>
             </div>
-            <p className="mt-0.5 text-xs text-white/30">{basicBilled}</p>
-            <p className="mt-1 text-sm text-white/40">
+            <p className="mt-1 text-xs text-white/30">{basicBilled}</p>
+            <p className="mt-1.5 text-sm text-white/40">
               For individuals who need regular checks.
             </p>
           </div>
@@ -174,14 +174,14 @@ export function PricingCards({ stripeConfigured }: Props) {
               Most popular
             </span>
             <h2 className="text-base font-semibold text-white">Plus</h2>
-            <div className="mt-1 flex items-end gap-1">
-              <span className="text-3xl font-bold text-white">
+            <div className="mt-2 flex min-h-[3rem] items-end gap-1">
+              <span className="text-4xl font-bold leading-none text-white">
                 ${plusPrice.toFixed(2)}
               </span>
-              <span className="mb-0.5 text-sm text-white/40">/ month</span>
+              <span className="mb-0.5 text-sm text-white/40">/mo</span>
             </div>
-            <p className="mt-0.5 text-xs text-white/30">{plusBilled}</p>
-            <p className="mt-1 text-sm text-white/40">
+            <p className="mt-1 text-xs text-white/30">{plusBilled}</p>
+            <p className="mt-1.5 text-sm text-white/40">
               For power users who want maximum protection.
             </p>
           </div>
@@ -218,14 +218,14 @@ export function PricingCards({ stripeConfigured }: Props) {
         <GlassCard className="flex flex-col gap-6 p-6">
           <div>
             <h2 className="text-base font-semibold text-white">Family</h2>
-            <div className="mt-1 flex items-end gap-1">
-              <span className="text-3xl font-bold text-white">
+            <div className="mt-2 flex min-h-[3rem] items-end gap-1">
+              <span className="text-4xl font-bold leading-none text-white">
                 ${familyPrice.toFixed(2)}
               </span>
-              <span className="mb-0.5 text-sm text-white/40">/ month</span>
+              <span className="mb-0.5 text-sm text-white/40">/mo</span>
             </div>
-            <p className="mt-0.5 text-xs text-white/30">{familyBilled}</p>
-            <p className="mt-1 text-sm text-white/40">
+            <p className="mt-1 text-xs text-white/30">{familyBilled}</p>
+            <p className="mt-1.5 text-sm text-white/40">
               For families and heavy use — unlimited checks, shared protection.
             </p>
           </div>

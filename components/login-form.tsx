@@ -3,7 +3,6 @@
 import * as React from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-import { Button } from '@/components/ui/button'
 import { IconSpinner } from '@/components/ui/icons'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -122,65 +121,75 @@ export function LoginForm({
     <div {...props}>
       <form onSubmit={handleOnSubmit}>
         <fieldset className="flex flex-col gap-y-4">
-          <div className="flex flex-col gap-y-1">
-            <Label>Email</Label>
+          <div className="flex flex-col gap-y-1.5">
+            <Label className="text-sm font-medium text-white/70">Email</Label>
             <Input
               name="email"
               type="email"
               value={formState.email}
+              placeholder="you@example.com"
+              autoComplete="email"
               onChange={e =>
                 setFormState(prev => ({
                   ...prev,
                   email: e.target.value
                 }))
               }
+              className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
             />
           </div>
-          <div className="flex flex-col gap-y-1">
-            <Label>Password</Label>
+          <div className="flex flex-col gap-y-1.5">
+            <Label className="text-sm font-medium text-white/70">Password</Label>
             <Input
               name="password"
               type="password"
               value={formState.password}
+              placeholder="••••••••"
+              autoComplete={action === 'sign-in' ? 'current-password' : 'new-password'}
               onChange={e =>
                 setFormState(prev => ({
                   ...prev,
                   password: e.target.value
                 }))
               }
+              className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
             />
           </div>
         </fieldset>
 
         {action === 'sign-up' && (
-          <div className="mt-4">
+          <div className="mt-5">
             <ConsentCheckbox
               checked={consentChecked}
               onCheckedChange={setConsentChecked}
               disabled={isLoading}
+              className="text-white/50"
             />
           </div>
         )}
 
-        <div className="mt-4 flex items-center">
-          <Button
+        <div className="mt-5 flex flex-col gap-3">
+          <button
+            type="submit"
             disabled={isLoading || (action === 'sign-up' && !consentChecked)}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cm-green px-6 py-3 text-sm font-semibold text-cm-bg shadow-[0_0_24px_rgba(122,226,207,0.3)] transition-all hover:bg-cm-green/90 hover:shadow-[0_0_36px_rgba(122,226,207,0.45)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
-            {isLoading && <IconSpinner className="mr-2 animate-spin" />}
-            {action === 'sign-in' ? 'Sign In' : 'Sign Up'}
-          </Button>
-          <p className="ml-4">
+            {isLoading && <IconSpinner className="animate-spin" />}
+            {action === 'sign-in' ? 'Sign In' : 'Create Account'}
+          </button>
+
+          <p className="text-center text-sm text-white/40">
             {action === 'sign-in' ? (
               <>
                 Don&apos;t have an account?{' '}
-                <Link href={`/sign-up${nextParam}`} className="font-medium">
+                <Link href={`/sign-up${nextParam}`} className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green">
                   Sign Up
                 </Link>
               </>
             ) : (
               <>
                 Already have an account?{' '}
-                <Link href={`/sign-in${nextParam}`} className="font-medium">
+                <Link href={`/sign-in${nextParam}`} className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green">
                   Sign In
                 </Link>
               </>
