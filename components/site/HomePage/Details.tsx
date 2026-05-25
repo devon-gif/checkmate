@@ -214,12 +214,16 @@ export default function Details() {
               </IconTile>
               <div className="flex items-end gap-4 max-md:flex-col max-md:items-start max-md:gap-2">
                 <div className="bg-radial-white-2 bg-clip-text text-title-1 text-transparent max-xl:text-title-2 max-md:text-title-1-mobile">
-                  ~3s
+                  ~3 seconds
                 </div>
                 <div className="pb-3 text-title-4 text-description max-xl:pb-2 max-md:pb-0 max-md:text-title-2-mobile">
-                  Average risk readout
+                  Average first readout
                 </div>
               </div>
+              <p className="relative z-[2] mt-4 max-w-sm text-sm leading-relaxed text-description">
+                Ray gives you a fast risk score, red flags, and safer next steps — before you reply, click, pay, or apply.
+                <span className="ml-2 text-xs opacity-50">Complex cases may take longer.</span>
+              </p>
             </div>
           </motion.div>
 
@@ -239,10 +243,15 @@ export default function Details() {
               className="pointer-events-none absolute -right-6 top-0 w-48 opacity-50 max-md:w-40"
             />
             <div className="relative z-[2]">
-              <div className="mb-2 bg-radial-white-2 bg-clip-text text-title-1 text-transparent max-xl:text-title-2 max-md:text-title-1-mobile">
-                100%
+              <div className="mb-1 bg-radial-white-2 bg-clip-text text-title-1 text-transparent max-xl:text-title-2 max-md:text-title-1-mobile">
+                Second opinion
               </div>
-
+              <div className="mb-3 text-title-4 text-description max-md:text-title-2-mobile">
+                Not a guarantee — a safer pause
+              </div>
+              <p className="text-sm leading-relaxed text-description">
+                CheckRay helps you slow down, spot common scam patterns, and verify through official sources before acting.
+              </p>
             </div>
           </motion.div>
         </div>
