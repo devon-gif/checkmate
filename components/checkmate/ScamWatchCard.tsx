@@ -36,19 +36,22 @@ export function ScamWatchCard({ initialEnabled }: ScamWatchCardProps) {
     <GlassCard className="px-5 py-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-base">📬</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base" aria-hidden>📬</span>
             <h3 className="text-sm font-semibold text-white">
               Ray&apos;s Weekly Scam Watch
             </h3>
+            <span className="rounded-full border border-cm-green/25 bg-cm-green/8 px-2 py-0.5 text-[11px] font-medium text-cm-green">
+              Included on paid plans
+            </span>
           </div>
           <p className="mt-1.5 max-w-lg text-xs leading-5 text-white/45">
-            Get weekly email updates about dangerous scams, ghost jobs,
-            phishing links, suspicious bills, and new red flags to watch for.
+            Get weekly email updates about dangerous scams, ghost jobs, phishing
+            links, suspicious bills, and new red flags to watch for.
           </p>
         </div>
 
-        {/* Toggle — labelled "Send me weekly scam alerts" for a11y */}
+        {/* Toggle — labelled for a11y */}
         <button
           type="button"
           role="switch"

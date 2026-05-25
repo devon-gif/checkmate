@@ -4,7 +4,6 @@ import { cookies } from 'next/headers'
 
 import { auth } from '@/auth'
 import { CaseRiskBadge } from '@/components/case-risk-badge'
-import { LegalDisclaimer } from '@/components/legal-disclaimer'
 import { IconArrowRight, IconPlus } from '@/components/ui/icons'
 import { humanizeCategory } from '@/lib/checkmate-shared'
 import { type Database, type Json } from '@/lib/db_types'
@@ -18,6 +17,7 @@ import {
   type BillingStatus
 } from '@/components/checkmate/BillingStatusCard'
 import { ScamWatchCard } from '@/components/checkmate/ScamWatchCard'
+import { UpgradeButton } from '@/components/checkmate/UpgradeButton'
 import {
   ensureNotificationPreferences,
   getNotificationPreferences
@@ -184,32 +184,39 @@ export default async function DashboardPage({
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header row */}
-      <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          {searchParams?.billing === 'success' && (
-            <div className="mb-4 rounded-xl border border-cm-green/30 bg-cm-green/10 px-4 py-3 text-sm text-cm-green">
-              Your Pro subscription is now active. Welcome to CheckRay Pro.
-            </div>
-          )}
-          <span className="mb-3 inline-block rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/50">
-            CheckRay dashboard
-          </span>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
-            {total === 0
-              ? `Welcome to CheckRay`
-              : `Your risk checks`}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-white/40">
-            {total === 0
-              ? `Ask Ray to check a suspicious text, email, job offer, bill, link, or rental listing. Results save here automatically.`
-              : `Review active cases, risk signals Ray noticed, and suggested next steps.`}
-          </p>
+      {/* Billing success banner */}
+      {searchParams?.billing === 'success' && (
+        <div className="rounded-xl border border-cm-green/30 bg-cm-green/10 px-4 py-3 text-sm text-cm-green">
+          Your subscription is now active. Welcome to CheckRay.
         </div>
-        <GradientButton href="/cases/new" variant="primary">
-          <IconPlus className="mr-1.5 h-4 w-4" />
-          New check
-        </GradientButton>
+      )}
+
+      {/* Hero row */}
+      <section className="relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-white/[0.03] to-transparent px-6 py-8 sm:px-8">
+        {/* Ambient glow */}
+        <div aria-hidden className="pointer-events-none absolute right-0 top-0 h-64 w-64 -translate-y-1/4 translate-x-1/4 rounded-full bg-cm-green/8 blur-[80px]" />
+        <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-cm-green/25 bg-cm-green/8 px-3 py-1 text-xs font-medium text-cm-green">
+              <span className="h-1.5 w-1.5 rounded-full bg-cm-green" />
+              CheckRay dashboard
+            </span>
+            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+              Welcome back to CheckRay
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-white/45">
+              Ask Ray to check suspicious texts, emails, job offers, bills, links, and rental listings before you click, pay, reply, or apply.
+            </p>
+          </div>
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-3">
+            <GradientButton href="/cases/new" variant="primary">
+              <IconPlus className="h-4 w-4" />
+              New check
+            </GradientButton>
+            {/* Upgrade CTA — routes to Stripe checkout if configured, otherwise /pricing */}
+            <UpgradeButton stripeConfigured={stripeConfigured} />
+          </div>
+        </div>
       </section>
 
       {/* Stats — monthly limit, sourced from PLAN_MONTHLY_LIMIT so it always
@@ -335,7 +342,10 @@ export default async function DashboardPage({
         )}
       </GlassCard>
 
-      <LegalDisclaimer variant="default" className="mb-4" />
+      {/* Disclaimer */}
+      <p className="mb-4 rounded-xl border border-white/6 bg-white/[0.02] px-4 py-3 text-xs leading-relaxed text-white/25">
+        CheckRay can be wrong. Results are informational only — not legal, financial, medical, or professional advice. Always verify through official sources before acting.
+      </p>
     </div>
   )
 }

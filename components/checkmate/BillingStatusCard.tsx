@@ -180,27 +180,28 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
     // on the Free plan now — soft messaging, not "blocked forever".
     header = (
       <>
-        <p className="text-sm font-medium text-white">
+        <p className="text-sm font-semibold text-white">
           Your trial ended. You&apos;re now on Free.
         </p>
-        <p className="mt-0.5 text-xs text-white/40">
-          You still get 1 check per month. Upgrade to Basic, Plus, or Family for more.
+        <p className="mt-1 text-xs leading-relaxed text-white/45">
+          You still get 1 check per month. Upgrade to Basic, Plus, or Family for more checks, saved reports, and weekly Scam Watch.
         </p>
       </>
     )
   } else if (status === 'free') {
     header = (
       <>
-        <p className="text-sm font-medium text-white">
+        <p className="text-sm font-semibold text-white">
           Free plan
           {checksLimit != null && (
-            <span className="ml-2 text-xs font-normal text-white/50">
-              {checksUsed}/{checksLimit} checks this month
+            <span className="ml-2 text-xs font-normal text-white/45">
+              {checksUsed} / {checksLimit} check{checksLimit === 1 ? '' : 's'} this month
             </span>
           )}
         </p>
-        <p className="mt-0.5 text-xs text-white/40">
-          1 check per month. Upgrade to Basic, Plus, or Family for more.
+        <p className="mt-1 text-xs leading-relaxed text-white/45">
+          You get 1 check per month. Upgrade for more checks, saved reports,
+          weekly Scam Watch, and priority features.
         </p>
       </>
     )
@@ -227,17 +228,21 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
       {loading ? 'Loading...' : 'Manage billing'}
     </GradientButton>
   ) : stripeConfigured ? (
-    <GradientButton
-      variant="primary"
+    <button
+      type="button"
       onClick={handleUpgrade}
       disabled={loading}
+      className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.35)] transition-all hover:brightness-110 hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {loading ? 'Loading...' : 'Upgrade'}
-    </GradientButton>
+      {loading ? 'Loading...' : 'Upgrade now'}
+    </button>
   ) : (
-    <span className="rounded-lg border border-white/10 px-4 py-2 text-xs text-white/30">
-      Billing not configured yet
-    </span>
+    <a
+      href="/pricing"
+      className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.35)] transition-all hover:brightness-110 hover:shadow-[0_0_30px_rgba(249,115,22,0.5)]"
+    >
+      Upgrade now
+    </a>
   )
 
   return (

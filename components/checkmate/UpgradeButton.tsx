@@ -3,61 +3,75 @@
 /**
  * components/checkmate/UpgradeButton.tsx
  *
- * Small client component that starts a Stripe Checkout session.
- * Used on the pricing page for the Pro tier CTA.
+ * Orange "Upgrade now" CTA.
+ *
+ * - If Stripe is configured: calls /api/billing/create-checkout-session.
+ * - If Stripe is not configured yet: links safely to /pricing.
+ *
+ * Used in both the dashboard hero and on the pricing page.
+ * No Stripe backend routes are modified here.
  */
 
 import { useState } from 'react'
-
-import { GradientButton } from '@/components/checkmate/GradientButton'
+import Link from 'next/link'
 
 interface Props {
   stripeConfigured: boolean
+  /** Optional label override — defaults to "Upgrade now". */
+  label?: string
+  /** Optional additional class names. */
+  className?: string
 }
 
-export function UpgradeButton({ stripeConfigured }: Props) {
+export function UpgradeButton({ stripeConfigured, label = 'Upgrade now', className = '' }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const baseClass =
+    `inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.35)] transition-all hover:brightness-110 hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] ${className}`
+
   async function handleClick() {
-    if (!stripeConfigured) return
     setLoading(true)
     setError(null)
     try {
       const res = await fetch('/api/billing/create-checkout-session', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
       })
       const data = await res.json()
       if (data.url) {
         window.location.href = data.url
       } else {
-        setError(data.message ?? 'Could not start checkout. Please try again.')
-        setLoading(false)
+        // Endpoint responded but no URL — fall back to pricing.
+        setError(data.message ?? null)
+        window.location.href = '/pricing'
       }
     } catch {
-      setError('Network error. Please try again.')
+      window.location.href = '/pricing'
+    } finally {
       setLoading(false)
     }
   }
 
   if (!stripeConfigured) {
     return (
-      <span className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl border border-white/10 px-6 py-3 text-sm text-white/30">
-        Billing not configured yet
-      </span>
+      <Link href="/pricing" className={baseClass}>
+        {label}
+      </Link>
     )
   }
 
   return (
     <div className="flex flex-col gap-1.5">
-      <GradientButton
-        variant="primary"
+      <button
+        type="button"
         onClick={handleClick}
         disabled={loading}
-        className="w-full"
+        className={`${baseClass} disabled:cursor-not-allowed disabled:opacity-50`}
       >
-        {loading ? 'Loading...' : 'Upgrade to Pro'}
-      </GradientButton>
+        {loading ? 'Loading...' : label}
+      </button>
       {error && <p className="text-center text-xs text-red-400">{error}</p>}
     </div>
   )
