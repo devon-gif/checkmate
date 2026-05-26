@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 import { cn } from '@/lib/utils'
+import { AdminFooterLink } from '@/components/admin-footer-link'
 
 const CURRENT_YEAR = 2026
 
@@ -162,6 +163,11 @@ export function Footer({ className }: { className?: string }) {
                 )}
               </React.Fragment>
             ))}
+            {/* Admin-only "Admin tools" link. The component renders its
+                own divider when present, and returns null for normal
+                users — so non-admins see no trace of it in the DOM. */}
+            {/* @ts-expect-error Async Server Component */}
+            <AdminFooterLink />
           </div>
         </div>
       </div>

@@ -48,3 +48,33 @@ export async function requireAdmin(): Promise<void> {
     redirect('/dashboard')
   }
 }
+
+// ─── Admin billing test mode ──────────────────────────────────────────────
+//
+// The admin billing test panel at /admin/billing-test lets a whitelisted
+// admin flip their own user_billing row through every plan state for
+// dashboard / access-gate testing without going through Stripe Checkout.
+// It is doubly gated:
+//
+//   1. ENABLE_ADMIN_BILLING_TEST_TOOLS=true must be set server-side.
+//   2. The signed-in user's email must be in ADMIN_EMAILS.
+//
+// Both checks must pass — the flag alone is not enough, and the
+// allowlist alone is not enough. NEVER use a NEXT_PUBLIC_ prefix on
+// either of these — they are server-only and must not be exposed in
+// the client bundle.
+
+/** True when admin billing test tools are enabled by the server env flag. */
+export function isAdminBillingTestEnabled(): boolean {
+  return process.env.ENABLE_ADMIN_BILLING_TEST_TOOLS === 'true'
+}
+
+/**
+ * Returns true only when BOTH the feature flag is on AND the current
+ * session belongs to a user in ADMIN_EMAILS. Used by the admin footer
+ * link visibility check and the page/route gates.
+ */
+export async function canUseAdminBillingTest(): Promise<boolean> {
+  if (!isAdminBillingTestEnabled()) return false
+  return isAdminUser()
+}
