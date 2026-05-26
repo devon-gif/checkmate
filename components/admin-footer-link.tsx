@@ -19,16 +19,19 @@ export async function AdminFooterLink() {
   const allowed = await canUseAdminBillingTest()
   if (!allowed) return null
 
+  // Standalone bar rendered AFTER <Footer/> in app/layout.tsx. We don't
+  // sit inside the footer DOM any more — that file is in the client
+  // bundle via chat-panel→FooterText and would refuse our server-only
+  // import. Visible to admins only; non-admins render `null` above.
   return (
-    <>
-      <div className="w-0.25 h-4 mx-6 bg-white/20 max-md:hidden" />
+    <div className="border-t border-yellow-400/15 bg-yellow-400/[0.03] px-4 py-2 text-center">
       <Link
         href="/admin/billing-test"
-        className="text-description-3 text-yellow-300/70 transition-colors hover:text-yellow-200"
+        className="text-xs font-medium text-yellow-300/80 transition-colors hover:text-yellow-200"
         title="Admin billing test panel (admin-only)"
       >
         Admin tools
       </Link>
-    </>
+    </div>
   )
 }
