@@ -5,10 +5,11 @@
  * MVP approach: email whitelist via ADMIN_EMAILS env var.
  *
  * Usage:
- *   const ok   = await isAdminUser()
- *   await requireAdmin()   // redirects to /dashboard if not admin
+ *   const access = await getAdminAccess()
+ *   await requireAdmin()
  *
  * To add yourself as admin, set in .env.local:
+ *   ENABLE_ADMIN_TOOLS=true
  *   ADMIN_EMAILS=you@example.com,colleague@example.com
  */
 import 'server-only'

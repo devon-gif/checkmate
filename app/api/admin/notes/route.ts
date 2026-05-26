@@ -5,8 +5,6 @@
  */
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { auth } from '@/auth'
 import { getAdminAccess } from '@/lib/admin/access'
 
 function serviceClient() {
@@ -38,15 +36,10 @@ export async function POST(req: Request) {
     )
   }
 
-  // Get current admin user id for attribution
-  const cookieStore = cookies()
-  const session = await auth({ cookieStore })
-  const adminUserId = session?.user?.id ?? null
-
   const sb = serviceClient()
   const { error } = await (sb as any).from('support_notes').insert({
     user_id: userId,
-    admin_user_id: adminUserId,
+    admin_user_id: access.userId,
     note: note.trim()
   })
 

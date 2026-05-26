@@ -7,8 +7,6 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { AddNoteForm } from './AddNoteForm'
-import { cookies } from 'next/headers'
-import { auth } from '@/auth'
 import { requireAdmin } from '@/lib/admin/access'
 
 function adminClient() {
@@ -23,7 +21,7 @@ export default async function AdminCustomerDetailPage({
 }: {
   params: { id: string }
 }) {
-  await requireAdmin()
+  const admin = await requireAdmin()
 
   const userId = params.id
   const sb = adminClient()
@@ -64,11 +62,6 @@ export default async function AdminCustomerDetailPage({
       .order('created_at', { ascending: false })
       .limit(10)
   ])
-
-  // Current admin email for note attribution
-  const cookieStore = cookies()
-  const session = await auth({ cookieStore })
-  const adminEmail = session?.user?.email ?? 'unknown'
 
   return (
     <div className="space-y-8">
@@ -238,7 +231,7 @@ export default async function AdminCustomerDetailPage({
             ))
           )}
         </div>
-        <AddNoteForm userId={userId} adminEmail={adminEmail} />
+        <AddNoteForm userId={userId} adminEmail={admin.email} />
       </GlassCard>
     </div>
   )
