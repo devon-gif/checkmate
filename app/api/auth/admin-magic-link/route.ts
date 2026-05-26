@@ -63,7 +63,22 @@ export async function POST(req: Request) {
     )
   }
 
-  const redirectTo = new URL('/api/auth/callback', appBaseUrl(req))
+  // Point Supabase at the CLIENT-SIDE `/auth/callback` bridge, not the
+  // server-only `/api/auth/callback` route.
+  //
+  // Supabase magic links may come back with `?code=…` (PKCE flow) or
+  // `#access_token=…` (implicit / hash flow). Hash fragments never reach
+  // the server, so a route handler can't establish the session for them.
+  // The client component at /auth/callback handles BOTH shapes and then
+  // navigates to ?next=.
+  //
+  // ⚠ Supabase project setting requirement (one-time, in dashboard):
+  //   Authentication → URL Configuration → Redirect URLs must include
+  //     https://checkray.app/auth/callback
+  //     http://localhost:3000/auth/callback
+  //   If those entries are missing, Supabase silently falls back to the
+  //   project's Site URL and the magic link will land in the wrong place.
+  const redirectTo = new URL('/auth/callback', appBaseUrl(req))
   redirectTo.searchParams.set('next', '/admin')
 
   const { error } = await supabase.auth.signInWithOtp({

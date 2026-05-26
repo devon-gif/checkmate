@@ -18,9 +18,14 @@ export function AdminLoginForm() {
 
   const isLoading = isEmailLoading || isGoogleLoading
 
+  // Both magic-link and Google OAuth flows MUST land on the client-side
+  // `/auth/callback` page (NOT the server-only `/api/auth/callback`).
+  // Supabase may send the session back as a URL hash (#access_token=…)
+  // which only client-side JS can read. The /auth/callback page handles
+  // both `?code=` and hash shapes, then navigates to ?next=.
   function adminCallbackUrl() {
-    const callbackUrl = new URL('/api/auth/callback', window.location.origin)
-    callbackUrl.searchParams.set('next', '/admin/login')
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    callbackUrl.searchParams.set('next', '/admin')
     return callbackUrl.toString()
   }
 

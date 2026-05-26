@@ -78,8 +78,8 @@ export async function getAdminAccess(): Promise<AdminAccess> {
 
 /**
  * Call this at the top of any admin server component or route handler.
- * Redirects to the admin login if unauthenticated and hides admin tools
- * when disabled or forbidden.
+ * Redirects to the admin login if unauthenticated; hides admin tools
+ * (404) when disabled or the email is not on the allowlist.
  */
 export async function requireAdmin(): Promise<{ userId: string; email: string }> {
   const access = await getAdminAccess()
@@ -117,4 +117,14 @@ export async function requireAdmin(): Promise<{ userId: string; email: string }>
 export async function canUseAdminBillingTest(): Promise<boolean> {
   const access = await getAdminAccess()
   return access.ok
+}
+
+/**
+ * Legacy alias for `areAdminToolsEnabled()` retained so any older call
+ * sites that imported `isAdminBillingTestEnabled` keep compiling.
+ *
+ * @deprecated use areAdminToolsEnabled
+ */
+export function isAdminBillingTestEnabled(): boolean {
+  return areAdminToolsEnabled()
 }
