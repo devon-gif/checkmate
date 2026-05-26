@@ -16,7 +16,13 @@ import { useState, type ReactNode } from 'react'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
 
-export type BillingStatus = 'trialing' | 'active' | 'free' | 'expired' | 'unknown'
+export type BillingStatus =
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'free'
+  | 'expired'
+  | 'unknown'
 
 interface Props {
   status: BillingStatus
@@ -29,6 +35,8 @@ interface Props {
   checksUsed?: number
   /** Monthly check limit (null = unlimited) */
   checksLimit?: number | null
+  /** true when the current billing row has a real Stripe customer id */
+  hasStripeCustomer?: boolean
 }
 
 function daysUntil(iso: string): number {
@@ -38,7 +46,15 @@ function daysUntil(iso: string): number {
   )
 }
 
-export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan, checksUsed = 0, checksLimit }: Props) {
+export function BillingStatusCard({
+  status,
+  trialEndsAt,
+  stripeConfigured,
+  plan,
+  checksUsed = 0,
+  checksLimit,
+  hasStripeCustomer = false
+}: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -84,6 +100,8 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
       ? 'bg-cm-green shadow-[0_0_6px_theme(colors.cm-green)]'
       : status === 'trialing'
         ? 'bg-yellow-400 shadow-[0_0_6px_theme(colors.yellow.400)]'
+        : status === 'past_due'
+          ? 'bg-orange-500 shadow-[0_0_6px_theme(colors.orange.500)]'
         : status === 'expired'
           ? 'bg-red-500 shadow-[0_0_6px_theme(colors.red.500)]'
           : 'bg-white/40'
@@ -143,6 +161,30 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
       <>
         <p className="text-sm font-medium text-white">Plan active</p>
         <p className="mt-0.5 text-xs text-white/40">Risk checks included.</p>
+      </>
+    )
+  } else if (status === 'past_due') {
+    const planName = isFamily
+      ? 'Family'
+      : isPlus
+        ? 'Plus'
+        : isBasic
+          ? 'Basic'
+          : 'Paid'
+    header = (
+      <>
+        <p className="text-sm font-semibold text-white">
+          Payment issue on {planName}
+          {checksLimit != null && (
+            <span className="ml-2 text-xs font-normal text-white/50">
+              {checksUsed}/{checksLimit} checks this month
+            </span>
+          )}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-orange-200/75">
+          Your billing status is past due. Update your payment method to keep
+          your paid access active.
+        </p>
       </>
     )
   } else if (status === 'trialing') {
@@ -258,14 +300,25 @@ export function BillingStatusCard({ status, trialEndsAt, stripeConfigured, plan,
   // billing rather than see an "Upgrade now" CTA.
   const isPaidTrial =
     status === 'trialing' && (isBasic || isPlus || isFamily)
-  const action = status === 'active' || isPaidTrial ? (
+  const canOpenPortal =
+    (status === 'active' || status === 'past_due' || isPaidTrial) &&
+    stripeConfigured &&
+    hasStripeCustomer
+
+  const isPaidState = status === 'active' || status === 'past_due' || isPaidTrial
+
+  const action = canOpenPortal ? (
     <GradientButton
       variant="secondary"
       onClick={handlePortal}
-      disabled={loading || !stripeConfigured}
+      disabled={loading}
     >
       {loading ? 'Loading...' : 'Manage billing'}
     </GradientButton>
+  ) : isPaidState ? (
+    <span className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-white/45">
+      Manage billing unavailable
+    </span>
   ) : stripeConfigured ? (
     <button
       type="button"

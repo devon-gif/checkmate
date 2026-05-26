@@ -14,6 +14,7 @@ import {
   TICKET_CATEGORY_LABELS,
   type TicketCategory
 } from '@/lib/support/types'
+import { requireAdmin } from '@/lib/admin/access'
 
 function adminClient() {
   return createClient(
@@ -44,6 +45,8 @@ export default async function AdminTicketsPage({
 }: {
   searchParams?: { status?: string; category?: string }
 }) {
+  await requireAdmin()
+
   const sb = adminClient()
   const statusFilter = searchParams?.status ?? 'open'
   const categoryFilter = searchParams?.category ?? 'all'

@@ -129,7 +129,7 @@ export default async function DashboardPage({
   // Billing status
   const { data: billingRow } = await supabase
     .from('subscriptions' as any)
-    .select('status, trial_ends_at, plan')
+    .select('status, trial_ends_at, plan, stripe_customer_id')
     .eq('user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -138,7 +138,7 @@ export default async function DashboardPage({
   // Also check user_billing (preferred, created by access.ts on first check)
   const { data: userBillingRow } = await supabase
     .from('user_billing' as any)
-    .select('status, trial_ends_at, plan')
+    .select('status, trial_ends_at, plan, stripe_customer_id')
     .eq('user_id', session.user.id)
     .maybeSingle()
 
@@ -147,6 +147,7 @@ export default async function DashboardPage({
   // Status mapping (keep in sync with lib/billing/access.ts checkAccess):
   //   - 'active'    paid subscription in good standing
   //   - 'trialing'  inside an open trial window
+  //   - 'past_due'  paid plan with a payment issue
   //   - 'free'      no active sub, no open trial — entitled to the Free
   //                 plan's 1 check / month. This is the default for new
   //                 signed-up users; we surface "Free 0 / 1" immediately
@@ -163,8 +164,10 @@ export default async function DashboardPage({
     // Trial row exists; if the window is open use 'trialing', otherwise
     // the user has effectively been downgraded to Free.
     billingStatus = trialEnd && new Date() < trialEnd ? 'trialing' : 'free'
+  } else if (subAny?.status === 'past_due') {
+    billingStatus = 'past_due'
   } else {
-    // Any other state — no row, inactive, canceled, past_due — render as
+    // Any other state — no row, inactive, canceled — render as
     // Free until the user upgrades. The access gate enforces the 1 / mo
     // cap; this is purely the dashboard's friendly default.
     billingStatus = 'free'
@@ -215,11 +218,11 @@ export default async function DashboardPage({
               <IconPlus className="h-4 w-4" />
               New check
             </GradientButton>
-            {/* "Upgrade now" is hidden for active subscribers and paid trial
-                users — they manage their plan via BillingStatusCard's
-                "Manage billing" portal CTA instead. Only Free / unknown /
-                expired states see this button. */}
-            {billingStatus !== 'active' && billingStatus !== 'trialing' && (
+            {/* "Upgrade now" is hidden for active, paid-trial, and past-due
+                users; BillingStatusCard handles those billing states. */}
+            {billingStatus !== 'active' &&
+              billingStatus !== 'trialing' &&
+              billingStatus !== 'past_due' && (
               <UpgradeButton stripeConfigured={stripeConfigured} />
             )}
           </div>
@@ -256,6 +259,7 @@ export default async function DashboardPage({
             (subAny?.plan ?? 'free') as keyof typeof PLAN_MONTHLY_LIMIT
           ] ?? null
         }
+        hasStripeCustomer={Boolean(subAny?.stripe_customer_id)}
       />
 
       {/* Weekly Scam Watch preference */}
