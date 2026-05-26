@@ -9,22 +9,16 @@
  * and `risk_reports`. Only `usage_events` is touched.
  *
  * Triple-gated identically to set-plan:
- *   1. ENABLE_ADMIN_BILLING_TEST_TOOLS=true → 404 otherwise
+ *   1. ENABLE_ADMIN_TOOLS=true              → 404 otherwise
  *   2. Authenticated session                → 401 otherwise
  *   3. Email in ADMIN_EMAILS                → 403 otherwise
  */
 import 'server-only'
 
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/auth'
-import {
-  canUseAdminBillingTest,
-  isAdminBillingTestEnabled,
-  isAdminUser
-} from '@/lib/admin/access'
+import { getAdminAccess } from '@/lib/admin/access'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -39,17 +33,14 @@ function serviceClient() {
 }
 
 export async function POST() {
-  if (!isAdminBillingTestEnabled()) {
+  const access = await getAdminAccess()
+  if (!access.ok && access.reason === 'disabled') {
     return NextResponse.json({ error: 'not_found' }, { status: 404 })
   }
-
-  const cookieStore = cookies()
-  const session = await auth({ cookieStore })
-  if (!session?.user?.id) {
+  if (!access.ok && access.reason === 'unauthenticated') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-
-  if (!(await canUseAdminBillingTest()) || !(await isAdminUser())) {
+  if (!access.ok) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
@@ -74,7 +65,7 @@ export async function POST() {
   const { error } = await sb
     .from('usage_events' as any)
     .delete()
-    .eq('user_id', session.user.id)
+    .eq('user_id', access.userId)
     .eq('event_type', 'check_created')
     .gte('created_at', monthStart)
 

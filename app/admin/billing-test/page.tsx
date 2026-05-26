@@ -7,23 +7,17 @@
  * without going through Stripe Checkout every time.
  *
  * The page is wrapped in three gates:
- *   - ENABLE_ADMIN_BILLING_TEST_TOOLS=true  → notFound() otherwise
- *   - authenticated user                    → redirect to /sign-in
+ *   - ENABLE_ADMIN_TOOLS=true               → notFound() otherwise
+ *   - authenticated user                    → redirect to /admin/login
  *   - email in ADMIN_EMAILS                 → notFound() otherwise
  *
  * Real Stripe billing is NEVER touched from here — see the warning
  * banner when the user has real stripe_customer_id / subscription_id.
  */
 import { cookies } from 'next/headers'
-import { notFound, redirect } from 'next/navigation'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 
-import { auth } from '@/auth'
-import {
-  canUseAdminBillingTest,
-  isAdminBillingTestEnabled,
-  isAdminUser
-} from '@/lib/admin/access'
+import { requireAdmin } from '@/lib/admin/access'
 import { PLAN_MONTHLY_LIMIT } from '@/lib/billing/plans'
 import { type Database } from '@/lib/db_types'
 import { GlassCard } from '@/components/checkmate/GlassCard'
@@ -37,24 +31,8 @@ export const metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function BillingTestPage() {
-  // Gate 1: feature flag. notFound() so the route is indistinguishable
-  // from any other 404 when disabled.
-  if (!isAdminBillingTestEnabled()) {
-    notFound()
-  }
-
-  // Gate 2: authenticated.
   const cookieStore = cookies()
-  const session = await auth({ cookieStore })
-  if (!session?.user?.id) {
-    redirect('/sign-in?next=/admin/billing-test')
-  }
-
-  // Gate 3: admin allowlist. notFound() rather than redirect so a
-  // non-admin can't fingerprint the route either.
-  if (!(await canUseAdminBillingTest()) || !(await isAdminUser())) {
-    notFound()
-  }
+  const admin = await requireAdmin()
 
   // Read current billing state + monthly usage. Same source the
   // dashboard reads, so the panel never reports drift.
@@ -65,7 +43,7 @@ export default async function BillingTestPage() {
   const { data: billingRowRaw } = await supabase
     .from('user_billing' as any)
     .select('*')
-    .eq('user_id', session.user.id)
+    .eq('user_id', admin.userId)
     .maybeSingle()
   const billingRow = billingRowRaw as any
 
@@ -77,7 +55,7 @@ export default async function BillingTestPage() {
   const { count: checksUsedThisMonth } = await supabase
     .from('usage_events')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', session.user.id)
+    .eq('user_id', admin.userId)
     .eq('event_type', 'check_created')
     .gte('created_at', monthStart)
 
@@ -121,13 +99,9 @@ export default async function BillingTestPage() {
       {/* Warning when the user has real Stripe data */}
       {hasRealStripeData && (
         <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/5 px-4 py-3 text-sm leading-6 text-yellow-200">
-          <p className="font-medium">
-            ⚠️ This account has a real Stripe subscription.
-          </p>
-          <p className="mt-1 text-yellow-200/80">
-            Admin overrides change app billing state only and do NOT cancel
-            or modify the real Stripe subscription. Use the Stripe
-            dashboard if you need to change billing for real.
+          <p className="font-medium text-yellow-100">
+            This account has a real Stripe subscription. Admin override changes
+            CheckRay app state only and does not change Stripe billing.
           </p>
         </div>
       )}
@@ -136,8 +110,8 @@ export default async function BillingTestPage() {
       <GlassCard className="p-5">
         <h2 className="text-sm font-medium text-white">Current state</h2>
         <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-          <Field label="Signed-in email" value={session.user.email ?? '—'} />
-          <Field label="user_id" value={session.user.id} mono />
+          <Field label="Admin email" value={admin.email} />
+          <Field label="user_id" value={admin.userId} mono />
           <Field label="plan" value={billingRow?.plan ?? '— (treated as free)'} mono />
           <Field label="status" value={billingRow?.status ?? '— (treated as free)'} mono />
           <Field

@@ -1,16 +1,16 @@
 /**
  * app/admin/layout.tsx
  *
- * Admin section layout — guards every /admin/* route.
- * Redirects to /dashboard if the user is not in ADMIN_EMAILS.
+ * Admin section layout. Individual admin pages and API routes own their
+ * server-side access checks so /admin/login can remain reachable.
  */
 import Link from 'next/link'
-import { requireAdmin } from '@/lib/admin/access'
 
 const NAV_LINKS = [
-  { href: '/admin', label: '⬡ Overview' },
-  { href: '/admin/customers', label: '👤 Customers' },
-  { href: '/admin/tickets', label: '🎫 Tickets' },
+  { href: '/admin', label: 'Overview' },
+  { href: '/admin/billing-test', label: 'Billing Test' },
+  { href: '/admin/customers', label: 'Customers' },
+  { href: '/admin/tickets', label: 'Tickets' },
 ]
 
 export default async function AdminLayout({
@@ -18,9 +18,6 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Throws a redirect if not admin — no auth state needed in children.
-  await requireAdmin()
-
   return (
     <div className="flex min-h-screen flex-col bg-cm-bg text-white">
       {/* Top admin bar */}

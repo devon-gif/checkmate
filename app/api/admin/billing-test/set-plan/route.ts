@@ -7,7 +7,7 @@
  * through Stripe Checkout for every state.
  *
  * Triple-gated:
- *   1. ENABLE_ADMIN_BILLING_TEST_TOOLS=true (server env)        → 404 otherwise
+ *   1. ENABLE_ADMIN_TOOLS=true (server env)                     → 404 otherwise
  *   2. Authenticated session                                    → 401 otherwise
  *   3. Signed-in user's email is in ADMIN_EMAILS                → 403 otherwise
  *
@@ -19,15 +19,9 @@
 import 'server-only'
 
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/auth'
-import {
-  canUseAdminBillingTest,
-  isAdminBillingTestEnabled,
-  isAdminUser
-} from '@/lib/admin/access'
+import { getAdminAccess } from '@/lib/admin/access'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -124,28 +118,14 @@ function serviceClient() {
 // ─── Handler ──────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
-  // Gate 1: feature flag. Return 404 so a probe can't even detect the
-  // route exists in environments where it should be invisible.
-  if (!isAdminBillingTestEnabled()) {
+  const access = await getAdminAccess()
+  if (!access.ok && access.reason === 'disabled') {
     return NextResponse.json({ error: 'not_found' }, { status: 404 })
   }
-
-  // Gate 2: authenticated user.
-  const cookieStore = cookies()
-  const session = await auth({ cookieStore })
-  if (!session?.user?.id) {
+  if (!access.ok && access.reason === 'unauthenticated') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-
-  // Gate 3: admin allowlist. Compose with canUseAdminBillingTest to
-  // re-verify the flag too (defence in depth).
-  const allowed = await canUseAdminBillingTest()
-  if (!allowed) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
-  }
-  // Re-verify the admin check independently so a logic bug in
-  // canUseAdminBillingTest can't accidentally widen access.
-  if (!(await isAdminUser())) {
+  if (!access.ok) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
@@ -180,7 +160,7 @@ export async function POST(req: Request) {
   const { data: current } = await sb
     .from('user_billing' as any)
     .select('*')
-    .eq('user_id', session.user.id)
+    .eq('user_id', access.userId)
     .maybeSingle()
 
   const currentRow = current as any
@@ -190,7 +170,7 @@ export async function POST(req: Request) {
   // stripe_subscription_id from here — those are real Stripe data and the
   // admin override is app-state-only.
   const payload: Record<string, unknown> = {
-    user_id: session.user.id,
+    user_id: access.userId,
     plan: patch.plan ?? currentRow?.plan ?? 'free',
     status: patch.status
   }
