@@ -9,6 +9,7 @@ import { GlassCard } from '@/components/checkmate/GlassCard'
 import { AddNoteForm } from './AddNoteForm'
 import { cookies } from 'next/headers'
 import { auth } from '@/auth'
+import { requireAdmin } from '@/lib/admin/access'
 
 function adminClient() {
   return createClient(
@@ -22,6 +23,8 @@ export default async function AdminCustomerDetailPage({
 }: {
   params: { id: string }
 }) {
+  await requireAdmin()
+
   const userId = params.id
   const sb = adminClient()
 

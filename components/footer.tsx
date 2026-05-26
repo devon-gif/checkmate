@@ -24,7 +24,8 @@ const BOTTOM_LINKS = [
   { title: 'Terms', href: '/terms' },
   { title: 'Privacy', href: '/privacy' },
   { title: 'Disclaimer', href: '/disclaimer' },
-  { title: 'AI Disclosure', href: '/ai-disclosure' }
+  { title: 'AI Disclosure', href: '/ai-disclosure' },
+  { title: 'Admin', href: '/admin/login' }
 ]
 
 function FooterMenu({ title, items }: { title: string; items: { title: string; href: string }[] }) {

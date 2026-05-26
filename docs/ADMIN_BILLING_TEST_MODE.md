@@ -25,7 +25,7 @@ Both must be set, server-side, for the panel to exist at all:
 
 | Variable | Scope | Value |
 |---|---|---|
-| `ENABLE_ADMIN_BILLING_TEST_TOOLS` | **Server-only** | `true` |
+| `ENABLE_ADMIN_TOOLS` | **Server-only** | `true` |
 | `ADMIN_EMAILS` | **Server-only** | comma-separated, e.g. `devonavich0@gmail.com,colleague@example.com` |
 
 > **Never prefix either with `NEXT_PUBLIC_`.** That would inline them
@@ -42,7 +42,7 @@ The page at `/admin/billing-test` and both API routes
 (`/api/admin/billing-test/set-plan`, `.../reset-usage`) compose three
 checks. If any of them fails the route is invisible / inaccessible:
 
-1. `ENABLE_ADMIN_BILLING_TEST_TOOLS === 'true'` — otherwise the page
+1. `ENABLE_ADMIN_TOOLS === 'true'` — otherwise the page
    `notFound()`s and the API routes return `404 not_found`. A probe
    cannot distinguish "feature off" from "route doesn't exist".
 2. Authenticated session — otherwise the page redirects to
@@ -112,7 +112,7 @@ never been through real Stripe Checkout.
 To enable on a live deploy:
 
 1. Vercel project → Settings → Environment Variables
-2. Add `ENABLE_ADMIN_BILLING_TEST_TOOLS=true` (Production scope).
+2. Add `ENABLE_ADMIN_TOOLS=true` (Production scope).
 3. Add `ADMIN_EMAILS=devonavich0@gmail.com[,…]` (Production scope).
    **No `NEXT_PUBLIC_` prefix.**
 4. Redeploy. (The flag is read at request time, not build time, so a
@@ -122,7 +122,7 @@ To enable on a live deploy:
 
 To disable:
 
-- Either remove `ENABLE_ADMIN_BILLING_TEST_TOOLS` (or set it to
+- Either remove `ENABLE_ADMIN_TOOLS` (or set it to
   anything other than the literal string `true`) — the page 404s and
   the API routes 404. **No redeploy needed beyond Vercel applying the
   new env value to running functions.**
@@ -138,7 +138,7 @@ To disable:
 
 ```bash
 # .env.local
-ENABLE_ADMIN_BILLING_TEST_TOOLS=true
+ENABLE_ADMIN_TOOLS=true
 ADMIN_EMAILS=devonavich0@gmail.com
 ```
 

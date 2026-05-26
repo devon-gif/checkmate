@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { GlassCard } from '@/components/checkmate/GlassCard'
+import { requireAdmin } from '@/lib/admin/access'
 
 function adminClient() {
   return createClient(
@@ -21,6 +22,8 @@ export default async function AdminCustomersPage({
 }: {
   searchParams?: { q?: string }
 }) {
+  await requireAdmin()
+
   const sb = adminClient()
   const query = (searchParams?.q ?? '').trim()
 

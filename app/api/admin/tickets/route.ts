@@ -5,10 +5,8 @@
  * PATCH /api/admin/tickets         — update ticket status (admin only)
  */
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { isAdminUser } from '@/lib/admin/access'
+import { getAdminAccess } from '@/lib/admin/access'
 import { safeStatus } from '@/lib/support/types'
 
 function serviceClient() {
@@ -19,7 +17,14 @@ function serviceClient() {
 }
 
 export async function GET(req: Request) {
-  if (!(await isAdminUser())) {
+  const access = await getAdminAccess()
+  if (!access.ok && access.reason === 'disabled') {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  }
+  if (!access.ok && access.reason === 'unauthenticated') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  if (!access.ok) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -46,7 +51,14 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  if (!(await isAdminUser())) {
+  const access = await getAdminAccess()
+  if (!access.ok && access.reason === 'disabled') {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  }
+  if (!access.ok && access.reason === 'unauthenticated') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  if (!access.ok) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

@@ -9,7 +9,6 @@ import { TailwindIndicator } from '@/components/tailwind-indicator'
 import { Providers } from '@/components/providers'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
-import { AdminFooterLink } from '@/components/admin-footer-link'
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -54,14 +53,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <Header />
             <main className="flex flex-1 flex-col">{children}</main>
             <Footer />
-            {/* Admin-only "Admin tools" link, rendered OUTSIDE the Footer
-                so its `server-only` import doesn't get pulled into the
-                client bundle. Footer is imported by client components
-                (chat-panel via FooterText), which would otherwise drag
-                this server-only module across the client/server boundary
-                and break the build. Component returns null for normal
-                users — non-admins see no DOM trace of it. */}
-            <AdminFooterLink />
           </div>
           <TailwindIndicator />
         </Providers>
