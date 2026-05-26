@@ -184,17 +184,61 @@ export async function POST(req: Request) {
   // Clear cancel_at_period_end so the dashboard doesn't show stale flags.
   payload.cancel_at_period_end = false
 
-  const { error: upsertError } = await sb
+  // Attempt to attribute this row to the admin override path. This is a
+  // best-effort write — if the `billing_source` column doesn't exist on
+  // the deployed schema, we silently retry without it. (See the optional
+  // migration: supabase/migrations/20260526120000_user_billing_billing_source.sql)
+  const payloadWithSource = { ...payload, billing_source: 'admin_override' }
+
+  let { error: upsertError } = await sb
     .from('user_billing' as any)
-    .upsert(payload, { onConflict: 'user_id' })
+    .upsert(payloadWithSource, { onConflict: 'user_id' })
+
+  // PostgREST returns code 'PGRST204' / message includes "column ... does not exist"
+  // when an unknown column is sent. Retry without billing_source so the
+  // admin override still works on schemas without that column.
+  if (
+    upsertError &&
+    /billing_source|does not exist|column/i.test(upsertError.message)
+  ) {
+    console.warn(
+      '[admin/billing-test/set-plan] billing_source column missing; retrying without it.'
+    )
+    const retry = await sb
+      .from('user_billing' as any)
+      .upsert(payload, { onConflict: 'user_id' })
+    upsertError = retry.error
+  }
 
   if (upsertError) {
+    const rawMessage = upsertError.message ?? ''
     console.error(
       '[admin/billing-test/set-plan] upsert failed:',
-      upsertError.message
+      rawMessage
     )
+
+    // Surface the specific "table missing on prod" case so the admin
+    // gets a useful next-step instead of a raw schema-cache error.
+    const tableMissing =
+      /user_billing/i.test(rawMessage) &&
+      /(schema cache|relation .* does not exist|does not exist in the schema)/i.test(
+        rawMessage
+      )
+
+    if (tableMissing) {
+      return NextResponse.json(
+        {
+          error: 'user_billing_table_missing',
+          message:
+            'The user_billing table does not exist on this Supabase project. Run the migration in supabase/migrations/20260516140000_add_user_billing_table.sql in the Supabase SQL editor, then retry.',
+          raw: rawMessage
+        },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json(
-      { error: 'write_failed', message: upsertError.message },
+      { error: 'write_failed', message: rawMessage },
       { status: 500 }
     )
   }

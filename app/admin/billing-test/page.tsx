@@ -40,12 +40,33 @@ export default async function BillingTestPage() {
     cookies: () => cookieStore
   })
 
-  const { data: billingRowRaw } = await supabase
+  const { data: billingRowRaw, error: billingErr } = await supabase
     .from('user_billing' as any)
     .select('*')
     .eq('user_id', admin.userId)
     .maybeSingle()
   const billingRow = billingRowRaw as any
+
+  // Surface the most common deployment bug: the `user_billing` table was
+  // never created on the live Supabase project (migration in repo but
+  // never applied via supabase db push / SQL editor). When that happens
+  // every set-plan click fails with "Could not find the table 'public.user_billing'
+  // in the schema cache". Telling the admin once, here, is much friendlier
+  // than letting them learn it from each individual button error.
+  const userBillingMissing = Boolean(
+    billingErr?.message &&
+      /user_billing/i.test(billingErr.message) &&
+      /(schema cache|relation .* does not exist|does not exist in the schema)/i.test(
+        billingErr.message
+      )
+  )
+
+  // Detect if billing_source column exists; if not, suggest the optional
+  // follow-up migration. Best-effort: a missing column in select() does
+  // not throw, but we can probe by trying to read it directly.
+  const hasBillingSourceColumn = Boolean(
+    billingRow && Object.prototype.hasOwnProperty.call(billingRow, 'billing_source')
+  )
 
   const monthStart = new Date(
     new Date().getFullYear(),
@@ -96,6 +117,36 @@ export default async function BillingTestPage() {
         </p>
       </header>
 
+      {/* Schema-cache / missing-table banner — the #1 reason set-plan fails. */}
+      {userBillingMissing && (
+        <div className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-4 text-sm leading-relaxed text-red-100">
+          <p className="font-semibold text-red-50">
+            The <code className="rounded bg-black/30 px-1.5 py-0.5">user_billing</code>{' '}
+            table is missing on this Supabase project.
+          </p>
+          <p className="mt-2 text-red-200/85">
+            CheckRay&apos;s dashboard, the access gate, the Stripe webhook,
+            and this admin override all read/write this table. Until it
+            exists, plan-override buttons will fail with
+            <em> &ldquo;Could not find the table &apos;public.user_billing&apos;
+            in the schema cache.&rdquo;</em>
+          </p>
+          <p className="mt-3 text-red-200/85">
+            Apply the migration in your Supabase SQL editor:
+          </p>
+          <pre className="mt-2 overflow-x-auto rounded-lg border border-red-400/20 bg-black/40 p-3 text-[11px] leading-snug text-red-100/90">{`-- supabase/migrations/20260516140000_add_user_billing_table.sql
+-- (paste exact contents from the repo into Supabase SQL editor, run once)`}</pre>
+          <p className="mt-2 text-xs text-red-200/70">
+            Optional follow-up: also run
+            <code className="ml-1 rounded bg-black/30 px-1.5 py-0.5">
+              20260526120000_user_billing_billing_source.sql
+            </code>{' '}
+            to enable the <code>billing_source=&apos;admin_override&apos;</code> column
+            this panel writes. The override still works without it.
+          </p>
+        </div>
+      )}
+
       {/* Warning when the user has real Stripe data */}
       {hasRealStripeData && (
         <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/5 px-4 py-3 text-sm leading-6 text-yellow-200">
@@ -141,6 +192,20 @@ export default async function BillingTestPage() {
           <Field
             label="current_period_end"
             value={formatDate(billingRow?.current_period_end ?? null)}
+          />
+          <Field
+            label="billing source"
+            value={
+              hasBillingSourceColumn
+                ? billingRow?.billing_source ?? '(none — stripe/default)'
+                : '(column not present)'
+            }
+            mono
+          />
+          <Field
+            label="billing table"
+            value="public.user_billing"
+            mono
           />
         </dl>
       </GlassCard>
