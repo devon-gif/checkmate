@@ -29,7 +29,11 @@ const PROTECTED_PREFIXES = [
   '/admin'
 ]
 
+const PUBLIC_PATHS = ['/admin/login']
+
 function isProtectedPath(pathname: string) {
+  if (PUBLIC_PATHS.includes(pathname)) return false
+
   return PROTECTED_PREFIXES.some(
     p => pathname === p || pathname.startsWith(p + '/')
   )
@@ -54,7 +58,9 @@ export async function middleware(req: NextRequest) {
 
     if (!session) {
       const redirectUrl = req.nextUrl.clone()
-      redirectUrl.pathname = '/sign-in'
+      redirectUrl.pathname = pathname.startsWith('/admin')
+        ? '/admin/login'
+        : '/sign-in'
       redirectUrl.searchParams.set('redirectedFrom', pathname)
       return NextResponse.redirect(redirectUrl)
     }
