@@ -188,7 +188,7 @@ export default async function BillingTestPage() {
         <p className="mt-3 text-xs text-white/35">
           The Manage billing link only works if the account has a real
           Stripe customer ID. For admin-override-only accounts it returns
-          a clean 404 "no billing account found".
+          a clean 404 &quot;no billing account found&quot;.
         </p>
       </GlassCard>
     </div>
