@@ -53,6 +53,9 @@ export default async function AdminLoginPage() {
           <p className="mt-2 text-sm leading-relaxed text-white/50">
             Sign in to manage testing tools.
           </p>
+          <p className="mt-2 text-xs leading-relaxed text-white/35">
+            Use the same Google account listed in ADMIN_EMAILS.
+          </p>
 
           {!areAdminToolsEnabled() && (
             <div

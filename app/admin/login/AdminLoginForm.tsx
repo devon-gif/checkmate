@@ -18,12 +18,15 @@ export function AdminLoginForm({ redirectTo }: AdminLoginFormProps) {
   const supabase = createClientComponentClient()
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [isPasswordLoading, setIsPasswordLoading] = React.useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+
+  const isLoading = isPasswordLoading || isGoogleLoading
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setIsLoading(true)
+    setIsPasswordLoading(true)
     setError(null)
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -33,7 +36,7 @@ export function AdminLoginForm({ redirectTo }: AdminLoginFormProps) {
 
     if (signInError) {
       setError(signInError.message)
-      setIsLoading(false)
+      setIsPasswordLoading(false)
       return
     }
 
@@ -58,11 +61,31 @@ export function AdminLoginForm({ redirectTo }: AdminLoginFormProps) {
       setError('Unable to verify admin access. Please try again.')
     }
 
-    setIsLoading(false)
+    setIsPasswordLoading(false)
+  }
+
+  async function handleGoogleSignIn() {
+    setIsGoogleLoading(true)
+    setError(null)
+
+    const callbackUrl = new URL('/api/auth/callback', window.location.origin)
+    callbackUrl.searchParams.set('next', '/admin/login')
+
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: callbackUrl.toString()
+      }
+    })
+
+    if (oauthError) {
+      setError(oauthError.message)
+      setIsGoogleLoading(false)
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <div className="space-y-5">
       {error && (
         <div
           role="alert"
@@ -72,42 +95,62 @@ export function AdminLoginForm({ redirectTo }: AdminLoginFormProps) {
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium text-white/70">Email</Label>
-        <Input
-          name="email"
-          type="email"
-          value={email}
-          placeholder="devonavich0@gmail.com"
-          autoComplete="email"
-          required
-          onChange={event => setEmail(event.target.value)}
-          className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium text-white/70">Password</Label>
-        <Input
-          name="password"
-          type="password"
-          value={password}
-          placeholder="Password"
-          autoComplete="current-password"
-          required
-          onChange={event => setPassword(event.target.value)}
-          className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
-        />
-      </div>
-
       <button
-        type="submit"
+        type="button"
         disabled={isLoading}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cm-green px-6 py-3 text-sm font-semibold text-cm-bg shadow-[0_0_24px_rgba(122,226,207,0.3)] transition-all hover:bg-cm-green/90 hover:shadow-[0_0_36px_rgba(122,226,207,0.45)] disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={handleGoogleSignIn}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-6 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isLoading && <IconSpinner className="animate-spin" />}
-        Sign in
+        {isGoogleLoading && <IconSpinner className="animate-spin" />}
+        Continue with Google
       </button>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-white/10" />
+        <span className="text-[10px] font-medium uppercase tracking-widest text-white/30">
+          or use password
+        </span>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium text-white/70">Email</Label>
+          <Input
+            name="email"
+            type="email"
+            value={email}
+            placeholder="devonavich0@gmail.com"
+            autoComplete="email"
+            required
+            onChange={event => setEmail(event.target.value)}
+            className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium text-white/70">Password</Label>
+          <Input
+            name="password"
+            type="password"
+            value={password}
+            placeholder="Password"
+            autoComplete="current-password"
+            required
+            onChange={event => setPassword(event.target.value)}
+            className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cm-green px-6 py-3 text-sm font-semibold text-cm-bg shadow-[0_0_24px_rgba(122,226,207,0.3)] transition-all hover:bg-cm-green/90 hover:shadow-[0_0_36px_rgba(122,226,207,0.45)] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isPasswordLoading && <IconSpinner className="animate-spin" />}
+          Sign in with email
+        </button>
+      </form>
 
       <p className="text-center text-sm text-white/40">
         <Link
@@ -117,6 +160,6 @@ export function AdminLoginForm({ redirectTo }: AdminLoginFormProps) {
           Back to homepage
         </Link>
       </p>
-    </form>
+    </div>
   )
 }
