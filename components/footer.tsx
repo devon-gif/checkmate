@@ -166,7 +166,6 @@ export function Footer({ className }: { className?: string }) {
             {/* Admin-only "Admin tools" link. The component renders its
                 own divider when present, and returns null for normal
                 users — so non-admins see no trace of it in the DOM. */}
-            {/* @ts-expect-error Async Server Component */}
             <AdminFooterLink />
           </div>
         </div>
