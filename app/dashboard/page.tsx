@@ -7,7 +7,7 @@ import { CaseRiskBadge } from '@/components/case-risk-badge'
 import { IconArrowRight, IconPlus } from '@/components/ui/icons'
 import { humanizeCategory } from '@/lib/checkmate-shared'
 import { type Database, type Json } from '@/lib/db_types'
-import { PLAN_MONTHLY_LIMIT } from '@/lib/billing/plans'
+import { resolvePlanLimits } from '@/lib/billing/plan-limits'
 import { hasAnyPlanPriceId } from '@/lib/billing/stripe'
 import { DashboardCards } from '@/components/checkmate/DashboardCards'
 import { GlassCard } from '@/components/checkmate/GlassCard'
@@ -229,38 +229,42 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      {/* Stats — monthly limit, sourced from PLAN_MONTHLY_LIMIT so it always
-          matches the access gate. `null` = unlimited (Family or legacy
-          in-app `plan === 'trial'`). Paid trial users see their paid
-          plan's limit during the trial — not "unlimited". */}
-      <DashboardCards
-        total={total}
-        highRisk={highRisk}
-        averageScore={averageScore}
-        checksUsed={checksUsedThisMonth ?? 0}
-        checksLimit={
+      {/* Stats + billing card use the shared `resolvePlanLimits` helper
+          so they never disagree with the access gate. The helper returns
+          `display === null` for Family / legacy-trial plans (= "Unlimited
+          fair-use" in the UI), and a real number for Free/Basic/Plus.
+          The previous `PLAN_MONTHLY_LIMIT[plan] ?? 1` pattern was
+          buggy: `null ?? 1 === 1`, which silently downgraded Family to
+          the Free fallback of 1. */}
+      {(() => {
+        const planForDisplay =
           billingStatus === 'trialing' && subAny?.plan === 'trial'
-            ? null
-            : PLAN_MONTHLY_LIMIT[
-                (subAny?.plan ?? 'free') as keyof typeof PLAN_MONTHLY_LIMIT
-              ] ?? 1
-        }
-      />
+            ? 'trial'
+            : (subAny?.plan ?? 'free')
+        const limits = resolvePlanLimits(planForDisplay)
+        return (
+          <>
+            <DashboardCards
+              total={total}
+              highRisk={highRisk}
+              averageScore={averageScore}
+              checksUsed={checksUsedThisMonth ?? 0}
+              checksLimit={limits.display}
+            />
 
-      {/* Billing status */}
-      <BillingStatusCard
-        status={billingStatus}
-        trialEndsAt={subAny?.trial_ends_at ?? null}
-        stripeConfigured={stripeConfigured}
-        plan={subAny?.plan ?? 'free'}
-        checksUsed={checksUsedThisMonth ?? 0}
-        checksLimit={
-          PLAN_MONTHLY_LIMIT[
-            (subAny?.plan ?? 'free') as keyof typeof PLAN_MONTHLY_LIMIT
-          ] ?? null
-        }
-        hasStripeCustomer={Boolean(subAny?.stripe_customer_id)}
-      />
+            {/* Billing status */}
+            <BillingStatusCard
+              status={billingStatus}
+              trialEndsAt={subAny?.trial_ends_at ?? null}
+              stripeConfigured={stripeConfigured}
+              plan={subAny?.plan ?? 'free'}
+              checksUsed={checksUsedThisMonth ?? 0}
+              checksLimit={limits.display}
+              hasStripeCustomer={Boolean(subAny?.stripe_customer_id)}
+            />
+          </>
+        )
+      })()}
 
       {/* Weekly Scam Watch preference */}
       <ScamWatchCard

@@ -12,16 +12,37 @@ export type PlanId = 'free' | 'basic' | 'basic_yearly' | 'plus' | 'plus_yearly' 
 
 // ─── Monthly check limits ─────────────────────────────────────────────────────
 
-/** null = unlimited fair-use (no hard cap, abuse policy applies) */
+/**
+ * Hard numeric monthly cap per plan, in checks/month.
+ *
+ * IMPORTANT: prefer `resolvePlanLimits()` from `./plan-limits` over a
+ * direct lookup. Family is a real number here (500, the fair-use cap)
+ * because the access gate needs a number to enforce against abuse —
+ * but the UI must render Family as "Unlimited fair-use", not "0 / 500".
+ * `resolvePlanLimits()` handles that split correctly.
+ *
+ * Historical note: this map used to set `family` and `family_yearly` to
+ * `null` as an "unlimited" sentinel. The dashboard then did
+ * `PLAN_MONTHLY_LIMIT[plan] ?? 1`, which silently collapsed Family back
+ * to the Free fallback of 1 — bug. The new shape (always-number) and
+ * the helper above avoid that whole class of mistake.
+ *
+ * `trial` keeps its `null` because the legacy in-app trial branch in
+ * `lib/billing/access.ts` reads `PLAN_MONTHLY_LIMIT[planId] ?? null`
+ * and treats `null` as "skip counting, allow". Stripe-managed trials
+ * on Basic/Plus/Family use the paid plan's cap directly, not this row.
+ */
 export const PLAN_MONTHLY_LIMIT: Record<PlanId, number | null> = {
   free: 1,
-  trial: null, // unlimited during trial window
+  trial: null, // legacy in-app trial: unlimited inside its window
   basic: 10,
   basic_yearly: 10,
   plus: 50,
   plus_yearly: 50,
-  family: null,
-  family_yearly: null
+  // Family: 500/month is the internal fair-use safety net. The UI shows
+  // "Unlimited fair-use" via resolvePlanLimits().display === null.
+  family: 500,
+  family_yearly: 500
 }
 
 // ─── Pricing (in USD) ─────────────────────────────────────────────────────────
