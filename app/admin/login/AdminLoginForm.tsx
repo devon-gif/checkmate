@@ -30,20 +30,29 @@ export function AdminLoginForm() {
     setError(null)
     setMessage(null)
 
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: adminCallbackUrl()
-      }
+    const res = await fetch('/api/auth/admin-magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
     })
 
-    if (signInError) {
-      setError(signInError.message)
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+      setError(
+        data.error === 'admin_tools_unavailable'
+          ? 'Admin tools are not available.'
+          : 'Could not send an admin sign-in link. Please try again.'
+      )
       setIsEmailLoading(false)
       return
     }
 
-    setMessage('Check your email for the admin sign-in link.')
+    setMessage(
+      typeof data.message === 'string'
+        ? data.message
+        : 'If this email is authorized, a sign-in link will be sent.'
+    )
     setIsEmailLoading(false)
   }
 
@@ -123,7 +132,7 @@ export function AdminLoginForm() {
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cm-green px-6 py-3 text-sm font-semibold text-cm-bg shadow-[0_0_24px_rgba(122,226,207,0.3)] transition-all hover:bg-cm-green/90 hover:shadow-[0_0_36px_rgba(122,226,207,0.45)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isEmailLoading && <IconSpinner className="animate-spin" />}
-          Email me an admin sign-in link
+          Send admin sign-in link
         </button>
       </form>
 

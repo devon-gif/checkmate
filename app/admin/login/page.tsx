@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { auth } from '@/auth'
 import { AuthSetupNotice } from '@/components/auth-setup-notice'
+import { GlassCard } from '@/components/checkmate/GlassCard'
 import { hasSupabasePublicEnv } from '@/lib/env'
 import { areAdminToolsEnabled, getAdminAccess } from '@/lib/admin/access'
 import { AdminLoginForm } from './AdminLoginForm'
@@ -36,14 +37,18 @@ export default async function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-theme(spacing.16))] flex-col items-center justify-center bg-black px-4 py-16">
-      <div className="mx-auto w-full max-w-sm">
-        <div className="rounded-xl border border-white/10 bg-black p-8">
+    <div className="relative flex min-h-[calc(100vh-theme(spacing.16))] flex-col items-center justify-center overflow-hidden bg-deep px-4 py-16">
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute left-1/2 top-0 h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-cm-green/10 blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-sm">
+        <GlassCard className="p-8 shadow-[0_0_60px_rgba(122,226,207,0.07)]">
           <h1 className="text-2xl font-semibold tracking-tight text-white">
-            Admin login
+            CheckRay Admin
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-white/60">
-            Admin only.
+            Enter your admin email and we&apos;ll send a secure sign-in link.
           </p>
           <p className="mt-2 text-xs leading-relaxed text-white/35">
             Use the same Google account listed in ADMIN_EMAILS.
@@ -70,7 +75,7 @@ export default async function AdminLoginPage() {
           <div className="mt-6">
             <AdminLoginForm />
           </div>
-        </div>
+        </GlassCard>
       </div>
     </div>
   )

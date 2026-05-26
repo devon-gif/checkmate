@@ -31,6 +31,12 @@ function getAdminEmailList(): string[] {
     .filter(Boolean)
 }
 
+/** Checks an arbitrary email against the server-only admin allowlist. */
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  return getAdminEmailList().includes(email.trim().toLowerCase())
+}
+
 /** True when all admin tools are enabled by the server env flag. */
 export function areAdminToolsEnabled(): boolean {
   return process.env.ENABLE_ADMIN_TOOLS === 'true'
@@ -59,8 +65,7 @@ export async function getAdminAccess(): Promise<AdminAccess> {
     return { ok: false, reason: 'unauthenticated' }
   }
 
-  const whitelist = getAdminEmailList()
-  if (!whitelist.includes(session.user.email.toLowerCase())) {
+  if (!isAdminEmail(session.user.email)) {
     return { ok: false, reason: 'forbidden' }
   }
 

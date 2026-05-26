@@ -19,8 +19,12 @@ Do not use `NEXT_PUBLIC_` for admin authorization values.
 
 ## Access
 
-Visit `/admin/login` and sign in with the existing Supabase email/password
-auth flow. After a successful admin check, the app redirects to `/admin`.
+Visit `/admin/login` and enter the admin email. CheckRay sends a Supabase
+passwordless magic link only when the email is listed in `ADMIN_EMAILS`. The
+link returns through `/api/auth/callback` and then lands on `/admin`.
+
+Google OAuth remains available as a secondary option when configured in
+Supabase.
 
 Admin access requires all of the following:
 
@@ -29,8 +33,24 @@ Admin access requires all of the following:
 - the signed-in email listed in `ADMIN_EMAILS`
 
 If `devonavich0@gmail.com` does not have a Supabase password yet, use the
-existing CheckRay sign-up flow or Supabase password reset flow to create one
-safely. Do not create or store an admin password in code.
+passwordless magic link or Google OAuth flow. Do not create or store an admin
+password in code.
+
+## Supabase URL Configuration
+
+Configure Supabase Auth redirect URLs to allow:
+
+- `https://checkray.app/**`
+- `https://checkray.app/auth/callback`
+- `https://checkray.app/api/auth/callback`
+- `http://localhost:3000/**`
+- `http://localhost:3000/auth/callback`
+- `http://localhost:3000/api/auth/callback`
+
+Admin tools must still be protected server-side. The magic-link form is only a
+login method; `/admin`, `/admin/billing-test`, and `/api/admin/*` must continue
+to verify `ENABLE_ADMIN_TOOLS=true`, an authenticated Supabase session, and an
+email in `ADMIN_EMAILS`.
 
 ## Billing Test Dashboard
 
@@ -70,8 +90,8 @@ not be exposed client-side.
 1. Set `ENABLE_ADMIN_TOOLS=true`.
 2. Set `ADMIN_EMAILS=devonavich0@gmail.com`.
 3. Visit `/admin/login`.
-4. Sign in as `devonavich0@gmail.com`.
-5. Confirm redirect to `/admin`.
+4. Enter `devonavich0@gmail.com` and send the admin sign-in link.
+5. Click the magic link and confirm redirect to `/admin`.
 6. Open `/admin/billing-test`.
 7. Set Free and confirm the dashboard shows Free with `0 / 1`.
 8. Set Basic and confirm the dashboard shows Basic with `0 / 10`.
