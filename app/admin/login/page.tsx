@@ -68,7 +68,7 @@ export default async function AdminLoginPage() {
           )}
 
           <div className="mt-6">
-            <AdminLoginForm redirectTo={adminRedirectPath()} />
+            <AdminLoginForm />
           </div>
         </div>
       </div>
