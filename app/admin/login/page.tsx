@@ -36,6 +36,8 @@ export default async function AdminLoginPage() {
     redirect(adminRedirectPath())
   }
 
+  const toolsEnabled = areAdminToolsEnabled()
+
   return (
     <div className="relative flex min-h-[calc(100vh-theme(spacing.16))] flex-col items-center justify-center overflow-hidden bg-deep px-4 py-16">
       <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
@@ -54,21 +56,38 @@ export default async function AdminLoginPage() {
             Use the same Google account listed in ADMIN_EMAILS.
           </p>
 
-          {!areAdminToolsEnabled() && (
+          {!toolsEnabled && (
             <div
               role="alert"
-              className="mt-6 rounded-xl border border-yellow-400/25 bg-yellow-400/8 px-4 py-3 text-sm text-yellow-100"
+              className="mt-6 space-y-2 rounded-xl border border-yellow-400/25 bg-yellow-400/8 px-4 py-3 text-sm text-yellow-100"
             >
-              Admin tools are not available.
+              <p className="font-medium">Admin tools are not enabled.</p>
+              <p className="text-xs leading-relaxed text-yellow-200/80">
+                Set{' '}
+                <code className="rounded bg-black/30 px-1 py-0.5">
+                  ENABLE_ADMIN_TOOLS=true
+                </code>{' '}
+                in your Vercel project (Production scope) and redeploy with
+                build cache disabled.
+              </p>
             </div>
           )}
 
           {access?.reason === 'forbidden' && (
             <div
               role="alert"
-              className="mt-6 rounded-xl border border-red-400/25 bg-red-400/8 px-4 py-3 text-sm text-red-200"
+              className="mt-6 space-y-2 rounded-xl border border-red-400/25 bg-red-400/8 px-4 py-3 text-sm text-red-200"
             >
-              This account is not authorized for admin access.
+              <p className="font-medium">
+                This account is not authorized for admin access.
+              </p>
+              <p className="text-xs leading-relaxed text-red-200/80">
+                Add your email to{' '}
+                <code className="rounded bg-black/30 px-1 py-0.5">
+                  ADMIN_EMAILS
+                </code>{' '}
+                in your Vercel project and redeploy.
+              </p>
             </div>
           )}
 
