@@ -23,8 +23,10 @@ import { getAdminAccess } from '@/lib/admin/access'
 import {
   betaServiceClient,
   isBetaPlan,
-  normalizeBetaEmail
+  normalizeBetaEmail,
+  type BetaPlan
 } from '@/lib/billing/beta-access'
+import { sendBetaApprovalEmail } from '@/lib/billing/beta-approval-email'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -97,11 +99,12 @@ export async function POST(req: Request) {
     )
   }
 
-  // 1. Look up the request and grab its email. We bail if the row is
-  //    already approved/rejected to avoid double-grants on a stale UI.
+  // 1. Look up the request and grab its email + name. We bail if the
+  //    row is already approved/rejected to avoid double-grants on a
+  //    stale UI. `name` flows into the approval email greeting.
   const { data: reqRow, error: reqErr } = await sb
     .from('beta_requests' as any)
-    .select('id,email,status')
+    .select('id,email,name,status')
     .eq('id', id)
     .maybeSingle()
 
@@ -118,7 +121,12 @@ export async function POST(req: Request) {
       { status: 404 }
     )
   }
-  const requestRow = reqRow as { id: string; email: string; status: string }
+  const requestRow = reqRow as {
+    id: string
+    email: string
+    name: string | null
+    status: string
+  }
   if (requestRow.status !== 'pending') {
     return NextResponse.json(
       {
@@ -184,7 +192,27 @@ export async function POST(req: Request) {
     )
   }
 
-  // 3. Mark the request approved. If this fails, the user already has
+  // 3. Send the approval email. We do NOT roll back the grant on email
+  //    failure — beta_access is the durable record. The admin UI shows
+  //    a partial-success message when this returns ok=false; admins can
+  //    re-send the email via /api/admin/beta-testers/resend-approval.
+  const grantedRow = grantResult.data as
+    | { email: string; plan: BetaPlan; expires_at: string | null }
+    | null
+  let emailSent = false
+  let emailError: string | null = null
+  if (grantedRow) {
+    const sendResult = await sendBetaApprovalEmail({
+      toEmail: grantedRow.email,
+      toName: requestRow.name,
+      plan: grantedRow.plan,
+      expiresAt: grantedRow.expires_at
+    })
+    emailSent = sendResult.ok
+    if (!sendResult.ok) emailError = sendResult.message
+  }
+
+  // 4. Mark the request approved. If this fails, the user already has
   //    beta access — log loudly but return success so the admin doesn't
   //    keep re-clicking and double-granting.
   const { error: markErr } = await sb
@@ -204,6 +232,8 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({
+    email_sent: emailSent,
+    email_error: emailError,
     ok: true,
     betaAccess: grantResult.data,
     request_id: id,

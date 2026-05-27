@@ -95,8 +95,21 @@ export function PendingBetaRequestsPanel({ requests }: Props) {
         )
         return
       }
-      setMessageTone('ok')
-      setMessage('Beta access granted.')
+      // Differentiate "granted + emailed" from "granted but email
+      // failed". The grant itself succeeded in either case — beta_access
+      // is the source of truth — but the operator deserves to know.
+      if (data.email_sent === true) {
+        setMessageTone('ok')
+        setMessage('Beta access granted and approval email sent.')
+      } else {
+        setMessageTone('ok')
+        const reason = typeof data.email_error === 'string'
+          ? ` (${data.email_error})`
+          : ''
+        setMessage(
+          `Beta access granted, but the approval email could not be sent${reason}.`
+        )
+      }
       startTransition(() => router.refresh())
     } catch (err) {
       setMessageTone('error')

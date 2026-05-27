@@ -6,8 +6,10 @@ import { getAdminAccess } from '@/lib/admin/access'
 import {
   betaServiceClient,
   isBetaPlan,
-  normalizeBetaEmail
+  normalizeBetaEmail,
+  type BetaPlan
 } from '@/lib/billing/beta-access'
+import { sendBetaApprovalEmail } from '@/lib/billing/beta-approval-email'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -126,5 +128,29 @@ export async function POST(req: Request) {
     )
   }
 
-  return NextResponse.json({ ok: true, betaAccess: result.data })
+  // Send the approval email after the grant succeeds. We deliberately
+  // do NOT roll back the grant if the email fails — beta access is the
+  // source of truth and the admin can re-send the notification via the
+  // /api/admin/beta-testers/resend-approval route or the UI button.
+  const grantedRow = result.data as
+    | { email: string; plan: BetaPlan; expires_at: string | null }
+    | null
+  let emailSent = false
+  let emailError: string | null = null
+  if (grantedRow) {
+    const sendResult = await sendBetaApprovalEmail({
+      toEmail: grantedRow.email,
+      plan: grantedRow.plan,
+      expiresAt: grantedRow.expires_at
+    })
+    emailSent = sendResult.ok
+    if (!sendResult.ok) emailError = sendResult.message
+  }
+
+  return NextResponse.json({
+    ok: true,
+    betaAccess: result.data,
+    email_sent: emailSent,
+    email_error: emailError
+  })
 }

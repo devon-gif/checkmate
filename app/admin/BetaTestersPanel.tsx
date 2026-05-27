@@ -66,7 +66,19 @@ export function BetaTestersPanel({ betaUsers }: Props) {
       }
       setEmail('')
       setNotes('')
-      setMessage('Beta access granted.')
+      // Show the email-status detail alongside the grant confirmation.
+      // The grant itself succeeded either way (beta_access is the source
+      // of truth); the approval email is best-effort.
+      if (data.email_sent === true) {
+        setMessage('Beta access granted and approval email sent.')
+      } else {
+        const reason = typeof data.email_error === 'string'
+          ? ` (${data.email_error})`
+          : ''
+        setMessage(
+          `Beta access granted, but the approval email could not be sent${reason}.`
+        )
+      }
       startTransition(() => router.refresh())
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Network error.')
@@ -92,6 +104,38 @@ export function BetaTestersPanel({ betaUsers }: Props) {
       }
       setMessage(`Beta access revoked for ${targetEmail}.`)
       startTransition(() => router.refresh())
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Network error.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /**
+   * Re-send the approval email for an existing active beta tester. No
+   * DB writes happen — beta_access is read-only here. Useful when the
+   * original send failed (Resend outage, mistyped sender) or the user
+   * lost the original message.
+   */
+  async function resendApprovalEmail(targetEmail: string) {
+    setBusy(`resend:${targetEmail}`)
+    setMessage(null)
+
+    try {
+      const res = await fetch('/api/admin/beta-testers/resend-approval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.email_sent !== true) {
+        const reason = data.email_error ?? data.message ?? data.error
+        setMessage(
+          `Could not resend approval email${reason ? ` (${reason})` : ''}.`
+        )
+        return
+      }
+      setMessage(`Approval email re-sent to ${targetEmail}.`)
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Network error.')
     } finally {
@@ -228,14 +272,27 @@ export function BetaTestersPanel({ betaUsers }: Props) {
                     {active ? 'active' : row.status === 'revoked' ? 'revoked' : 'expired'}
                   </span>
                   {row.status === 'active' && (
-                    <button
-                      type="button"
-                      disabled={busy !== null}
-                      onClick={() => revokeBeta(row.email)}
-                      className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/55 transition hover:border-orange-300/40 hover:text-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {busy === row.email ? 'Revoking…' : 'Revoke'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => resendApprovalEmail(row.email)}
+                        className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/55 transition hover:border-cm-green/40 hover:text-cm-green disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Re-send the approval email to this tester"
+                      >
+                        {busy === `resend:${row.email}`
+                          ? 'Sending…'
+                          : 'Resend approval email'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => revokeBeta(row.email)}
+                        className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/55 transition hover:border-orange-300/40 hover:text-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {busy === row.email ? 'Revoking…' : 'Revoke'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
