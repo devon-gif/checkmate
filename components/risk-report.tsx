@@ -195,7 +195,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                   <line x1="4" y1="22" x2="4" y2="15" />
                 </svg>
-                Common red flags
+                Red flags Ray noticed
               </span>
             </SectionHeading>
             <ul className="space-y-2">
@@ -212,7 +212,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
         {/* Verification steps */}
         {report.verification_steps && report.verification_steps.length > 0 && (
           <section>
-            <SectionHeading>Verification steps</SectionHeading>
+            <SectionHeading>What to verify next</SectionHeading>
             <BulletList items={report.verification_steps} />
           </section>
         )}
@@ -234,7 +234,7 @@ export function RiskReport({ report, className }: RiskReportProps) {
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
-                Ray recommends
+                Safer next steps
               </span>
             </SectionHeading>
             <BulletList items={report.recommended_actions} />
@@ -260,6 +260,21 @@ export function RiskReport({ report, className }: RiskReportProps) {
           &ldquo;{report.safe_reply}&rdquo;
         </p>
       </section>
+      )}
+
+      {/* Job-specific educational footer — appears only for cases the
+          analyzer tagged as a job scam or ghost job. Pure copy; doesn't
+          read or change the analyzer response shape. */}
+      {report.category === 'job_scam_or_ghost_job' && (
+        <section className="mx-5 rounded-lg border border-border/70 bg-muted/30 p-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            <span className="font-medium text-foreground">Heads-up.</span>{' '}
+            Don&apos;t ignore a real opportunity. Don&apos;t walk into a fake
+            one. Verify the company, recruiter, domain, and any payment
+            requests through official channels before you reply, sign, or
+            send money.
+          </p>
+        </section>
       )}
 
       {/* Disclaimer */}

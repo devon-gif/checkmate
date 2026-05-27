@@ -113,9 +113,10 @@ export function BillingStatusCard({
   if (status === 'active' && isFamily) {
     header = (
       <>
-        <p className="text-sm font-medium text-white">Family plan</p>
+        <p className="text-sm font-medium text-white">Family Protection</p>
         <p className="mt-0.5 text-xs text-white/40">
-          Unlimited fair-use checks. Family / trusted-contact support coming soon.
+          Unlimited fair-use checks for households, caregivers, parents,
+          and anyone helping loved ones avoid costly scams.
         </p>
       </>
     )
@@ -261,7 +262,7 @@ export function BillingStatusCard({
           Your trial ended. You&apos;re now on Free.
         </p>
         <p className="mt-1 text-xs leading-relaxed text-white/45">
-          You still get 1 check per month. Upgrade to Basic, Plus, or Family for more checks, saved reports, and weekly Scam Watch.
+          You still get 3 checks per month. Upgrade to Basic, Plus, or Family for more checks, saved reports, and weekly Scam Watch.
         </p>
       </>
     )
@@ -277,7 +278,7 @@ export function BillingStatusCard({
           )}
         </p>
         <p className="mt-1 text-xs leading-relaxed text-white/45">
-          You get 1 check per month. Upgrade for more checks, saved reports,
+          You get 3 checks per month. Upgrade for more checks, saved reports,
           weekly Scam Watch, and priority features.
         </p>
       </>

@@ -106,7 +106,7 @@ export function PricingCards({ stripeConfigured }: Props) {
           </div>
           <ul className="flex flex-1 flex-col gap-2">
             {[
-              '1 check per month',
+              '3 checks per month',
               'Risk score',
               'Common red flags',
               'Suggested next steps',
@@ -220,10 +220,12 @@ export function PricingCards({ stripeConfigured }: Props) {
           </p>
         </GlassCard>
 
-        {/* Family / Unlimited */}
+        {/* Family Protection / Unlimited */}
         <GlassCard className="flex flex-col gap-6 p-6">
           <div>
-            <h2 className="text-base font-semibold text-white">Family</h2>
+            <h2 className="text-base font-semibold text-white">
+              Family Protection
+            </h2>
             <div className="mt-2 flex min-h-[3rem] items-end gap-1">
               <span className="text-4xl font-bold leading-none text-white">
                 ${familyPrice.toFixed(2)}
@@ -232,7 +234,8 @@ export function PricingCards({ stripeConfigured }: Props) {
             </div>
             <p className="mt-1 text-xs text-white/30">{familyBilled}</p>
             <p className="mt-1.5 text-sm text-white/40">
-              For families and heavy use — unlimited checks, shared protection.
+              For households, caregivers, parents, and anyone helping loved
+              ones avoid costly scams.
             </p>
           </div>
           <ul className="flex flex-1 flex-col gap-2">

@@ -12,7 +12,7 @@ export const metadata = {
 }
 
 const perks = [
-  { label: '1 free check/month', sub: 'No credit card required' },
+  { label: '3 free checks/month', sub: 'No credit card required' },
   { label: 'Saved reports', sub: 'Review history anytime' },
   { label: 'Safer reply drafts', sub: 'Ray writes it, you decide' },
   { label: 'Weekly Scam Watch', sub: 'On paid plans' },

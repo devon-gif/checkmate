@@ -11,15 +11,109 @@ import { IconArrowRight, IconSpinner } from '@/components/ui/icons'
 import type { CaseCategory, RiskLevel } from '@/lib/checkmate-shared'
 import type { AccessStatus } from '@/lib/billing/access'
 
-const CATEGORIES: { value: CaseCategory | ''; label: string }[] = [
-  { value: '', label: 'Not sure - let CheckRay decide' },
-  { value: 'job_scam_or_ghost_job', label: 'Job post / recruiter message' },
-  { value: 'scam_text', label: 'Scam text / suspicious message' },
-  { value: 'email', label: 'Email / forwarded email' },
-  { value: 'bill_or_fee', label: 'Bill, fee, or debt notice' },
-  { value: 'phishing_url', label: 'Suspicious link or URL' },
-  { value: 'rental_or_marketplace', label: 'Rental or marketplace listing' }
+/**
+ * Category picker options shown above the text box. Each option maps to
+ * a `category_hint` value that the analyzer already accepts (defined in
+ * `lib/checkmate-shared.ts caseCategories` + the API route schema).
+ *
+ * Adding a fresh hint here without an existing backend mapping would
+ * silently get dropped by the API's zod validator, so we re-use the
+ * canonical values and only diverge in the user-facing label. Two UI
+ * options (Job offer, Ghost job listing) deliberately map to the same
+ * backend hint `job_scam_or_ghost_job` — surfacing them as separate
+ * choices in the picker is a research-backed positioning play (job
+ * scams are the strongest wedge) without splitting analyzer logic.
+ *
+ * The `icon` is a plain glyph rendered alongside the label so the
+ * picker reads at a glance even on small screens.
+ */
+interface CategoryOption {
+  /** Stable id used as the React key and for the highlighted state. */
+  id: string
+  /** Backend analyzer hint — must be one of the existing accepted values. */
+  hint: CaseCategory | ''
+  label: string
+  icon: string
+  /** Optional short subtitle shown on hover / focus. */
+  blurb?: string
+}
+
+const CATEGORY_OPTIONS: CategoryOption[] = [
+  {
+    id: 'auto',
+    hint: '',
+    label: 'Not sure',
+    icon: '✨',
+    blurb: 'Let Ray pick the category for you.'
+  },
+  {
+    id: 'job_offer',
+    hint: 'job_scam_or_ghost_job',
+    label: 'Job offer / recruiter',
+    icon: '💼',
+    blurb: 'Recruiter texts, DMs, or job offers that look off.'
+  },
+  {
+    id: 'ghost_job',
+    hint: 'job_scam_or_ghost_job',
+    label: 'Ghost job listing',
+    icon: '👻',
+    blurb: 'Listings that look real but never lead anywhere.'
+  },
+  {
+    id: 'suspicious_text',
+    hint: 'scam_text',
+    label: 'Suspicious text',
+    icon: '💬',
+    blurb: 'SMS or chat from an unknown sender.'
+  },
+  {
+    id: 'phishing_link',
+    hint: 'phishing_url',
+    label: 'Phishing link',
+    icon: '🔗',
+    blurb: 'Suspicious URL pretending to be a real site.'
+  },
+  {
+    id: 'bill_or_fee',
+    hint: 'bill_or_fee',
+    label: 'Bill or payment request',
+    icon: '💳',
+    blurb: 'Unexpected invoices, fees, or money requests.'
+  },
+  {
+    id: 'marketplace',
+    hint: 'rental_or_marketplace',
+    label: 'Marketplace / rental',
+    icon: '🏠',
+    blurb: 'Listings on FB Marketplace, Craigslist, Zillow, etc.'
+  },
+  {
+    id: 'bank_or_govt',
+    // Backend mapping note: "Bank or government notice" doesn't have a
+    // dedicated category in the schema yet (would need a migration), so
+    // we send `scam_text` — closest existing hint that prompts the
+    // analyzer for impersonation cues. The user-facing label stays
+    // accurate.
+    hint: 'scam_text',
+    label: 'Bank or gov notice',
+    icon: '🏛️',
+    blurb: 'IRS, USPS, bank, or "official" messages.'
+  },
+  {
+    id: 'other',
+    hint: '',
+    label: 'Other',
+    icon: '🤔',
+    blurb: 'Something else — Ray will figure it out.'
+  }
 ]
+
+/**
+ * Visible-in-the-UI options that should trigger the job-specific
+ * helper card (educational hint + red-flag examples).
+ */
+const JOB_OPTION_IDS = new Set(['job_offer', 'ghost_job'])
 
 interface AnalysisResult extends RiskReportData {
   saved: boolean
@@ -30,8 +124,20 @@ export function NewCaseForm() {
   const router = useRouter()
   const [text, setText] = useState('')
   const [url, setUrl] = useState('')
+  // `selectedOptionId` drives the highlighted-button UX; `categoryHint`
+  // is the backend value we send. They're kept in sync via `pickOption`.
+  // Default to 'auto' so the picker has a visible selection on first
+  // render — the API treats empty `hint` the same as if nothing was sent.
+  const [selectedOptionId, setSelectedOptionId] = useState<string>('auto')
   const [categoryHint, setCategoryHint] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  function pickOption(option: CategoryOption) {
+    setSelectedOptionId(option.id)
+    setCategoryHint(option.hint)
+  }
+
+  const isJobSelected = JOB_OPTION_IDS.has(selectedOptionId)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [blockedReason, setBlockedReason] = useState<{
     message: string
@@ -209,27 +315,94 @@ export function NewCaseForm() {
             />
           </div>
 
-          <div className="space-y-2">
-            <label
-              htmlFor="category-hint"
-              className="text-sm font-medium text-white/80"
+          {/* Category picker. Visual button-grid replaces the previous
+              <select> so the categories that matter (job scams in
+              particular — strongest wedge per market research) are
+              first-class and one tap away. Each button maps to an
+              existing analyzer category_hint; new UI categories that
+              don't have a dedicated backend value reuse the closest
+              existing hint to avoid breaking the analyzer schema. */}
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-white/80">
+              What kind of thing should Ray check?{' '}
+              <span className="font-normal text-white/30">(optional)</span>
+            </legend>
+            <div
+              role="radiogroup"
+              aria-label="Check category"
+              className="grid grid-cols-2 gap-2 sm:grid-cols-3"
             >
-              What does this look like?{' '}
-              <span className="font-normal text-white/30">(optional hint)</span>
-            </label>
-            <select
-              id="category-hint"
-              value={categoryHint}
-              onChange={e => setCategoryHint(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-cm-green/40 focus:ring-2 focus:ring-cm-green/20 [&>option]:bg-neutral-900"
-            >
-              {CATEGORIES.map(c => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
+              {CATEGORY_OPTIONS.map(option => {
+                const isActive = option.id === selectedOptionId
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    onClick={() => pickOption(option)}
+                    title={option.blurb}
+                    className={[
+                      'flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm transition',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-cm-green/40',
+                      isActive
+                        ? 'border-cm-green/45 bg-cm-green/8 text-white shadow-[0_0_18px_rgba(122,226,207,0.12)]'
+                        : 'border-white/10 bg-white/[0.03] text-white/65 hover:border-white/25 hover:bg-white/[0.06] hover:text-white'
+                    ].join(' ')}
+                  >
+                    <span className="text-base leading-none" aria-hidden>
+                      {option.icon}
+                    </span>
+                    <span className="truncate">{option.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Job / ghost-job educational panel. Surfaces when either
+                of the two job-related UI options is selected. Pure
+                copy — does not change the analyzer call. */}
+            {isJobSelected && (
+              <div className="mt-3 rounded-xl border border-cm-green/25 bg-cm-green/[0.04] p-4">
+                <p className="text-sm font-medium text-white">
+                  Check a job offer or recruiter message
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-white/55">
+                  Paste the recruiter text, job listing, email, or offer.
+                  Ray checks for fake-recruiter patterns, ghost-job signals,
+                  equipment-payment scams, and risky hiring language.
+                </p>
+
+                <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-cm-green/85">
+                  Common red flags
+                </p>
+                <ul className="mt-1.5 grid grid-cols-1 gap-1 text-xs text-white/55 sm:grid-cols-2">
+                  {[
+                    'Recruiter only texts',
+                    'Asked to reply "YES" or "INTERESTED"',
+                    'Equipment deposit or fake check',
+                    'Vague company details',
+                    'High pay, low detail',
+                    'Pressure to act today'
+                  ].map(flag => (
+                    <li
+                      key={flag}
+                      className="flex items-start gap-1.5 leading-snug"
+                    >
+                      <span className="mt-1 inline-block h-1 w-1 flex-shrink-0 rounded-full bg-cm-green/55" />
+                      {flag}
+                    </li>
+                  ))}
+                </ul>
+
+                <p className="mt-3 rounded-lg border border-white/8 bg-black/20 px-3 py-2 text-[11px] leading-relaxed text-white/55">
+                  Don&apos;t ignore a real opportunity. Don&apos;t walk into
+                  a fake one. Verify the company, recruiter, domain, and
+                  payment requests through official channels.
+                </p>
+              </div>
+            )}
+          </fieldset>
 
           <div className="flex flex-col gap-3 border-t border-white/8 pt-5 sm:flex-row sm:items-center sm:justify-end">
             <button

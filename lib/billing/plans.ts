@@ -33,7 +33,10 @@ export type PlanId = 'free' | 'basic' | 'basic_yearly' | 'plus' | 'plus_yearly' 
  * on Basic/Plus/Family use the paid plan's cap directly, not this row.
  */
 export const PLAN_MONTHLY_LIMIT: Record<PlanId, number | null> = {
-  free: 1,
+  // Free was 1/mo. Bumped to 3/mo on the back of the market-research
+  // finding that scam exposure is bursty — a single check per month
+  // wasn't enough to build trust before the user hit the upgrade wall.
+  free: 3,
   trial: null, // legacy in-app trial: unlimited inside its window
   basic: 10,
   basic_yearly: 10,

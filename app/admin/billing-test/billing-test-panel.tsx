@@ -36,10 +36,15 @@ interface StateButton {
 }
 
 const PAID_STATES: StateButton[] = [
-  { state: 'free', label: 'Set Free', hint: '1 / month', tone: 'free' },
+  { state: 'free', label: 'Set Free', hint: '3 / month', tone: 'free' },
   { state: 'basic', label: 'Set Basic', hint: '10 / month', tone: 'paid' },
   { state: 'plus', label: 'Set Plus', hint: '50 / month', tone: 'paid' },
-  { state: 'family', label: 'Set Family', hint: 'Unlimited', tone: 'paid' }
+  {
+    state: 'family',
+    label: 'Set Family Protection',
+    hint: 'Unlimited fair-use',
+    tone: 'paid'
+  }
 ]
 
 const TRIAL_STATES: StateButton[] = [

@@ -14,7 +14,7 @@ const pricing = [
     href: '/try',
     isFeatured: false,
     features: [
-      '1 check/month',
+      '3 checks/month',
       'Basic risk score',
       'Basic red flags',
       'No account required'
@@ -54,18 +54,18 @@ const pricing = [
   },
   {
     id: 'family',
-    title: 'FAMILY',
+    title: 'FAMILY PROTECTION',
     price: '19.99',
     priceNote: 'or $15.99/mo billed yearly',
-    cta: 'Start free trial',
+    cta: 'Protect your family',
     href: '/sign-up',
     isFeatured: false,
     features: [
       'Unlimited fair-use checks',
-      'Family & trusted contact support',
-      'Priority access to new features',
-      'Call Ray access (coming soon)',
-      '7-day free trial'
+      'Help protect parents or family members',
+      'Check texts, bills, emails, and job offers',
+      'Save reports and next steps',
+      'Weekly Scam Watch updates'
     ]
   }
 ]
@@ -195,7 +195,7 @@ export default function Pricing() {
           })}
         </motion.div>
         <div className="mt-8 mb-3 text-center text-description-2 text-white/50 max-md:mt-6">
-          Text it. Email it. Check it in Chrome. Ray gives you a plain-English risk readout before you act.
+          Start free. Upgrade when you need more checks. Ray is a second opinion — not a guarantee.
         </div>
 
       </div>

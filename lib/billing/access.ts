@@ -257,6 +257,25 @@ async function checkAccessInner({
     }
   }
 
+  // Past-due — Stripe payment failed (trial card decline or recurring
+  // charge bounce). We do NOT silently downgrade to Free in this case,
+  // because that hides a real billing problem behind the soft Free copy.
+  // Instead, block analysis and tell the user to update their payment
+  // method via the Customer Portal. The webhook will flip status back
+  // to 'active' once Stripe collects the next successful payment.
+  if (row.status === 'past_due') {
+    return {
+      canAnalyze: false,
+      accessStatus: 'blocked',
+      plan: planId,
+      checksUsed: 0,
+      checksLimit: monthlyLimit,
+      trialEndsAt: row.trial_ends_at ?? null,
+      reason:
+        "Your last payment didn't go through. Update your card in the billing portal to keep using CheckRay."
+    }
+  }
+
   // Trialing — Stripe-managed trial OR legacy in-app trial.
   //
   // For Stripe paid trials, the webhook writes:
@@ -376,7 +395,10 @@ async function checkAccessInner({
       checksUsed: used,
       checksLimit: freeLimit,
       trialEndsAt: row.trial_ends_at ?? null,
-      reason: `You've used your free check for this month. Upgrade to Basic, Plus, or Family for more.`
+      // Limit is interpolated from `freeLimit` (currently 3, bumped from 1
+      // per market research — see lib/billing/plans.ts). Single source of
+      // truth so this copy stays correct if the limit changes again.
+      reason: `You've used all ${freeLimit} of your free check${freeLimit === 1 ? '' : 's'} for this month. Upgrade to Basic, Plus, or Family Protection for more.`
     }
   }
 

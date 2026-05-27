@@ -94,8 +94,8 @@ export default async function NewCasePage() {
                   You&apos;ve used your free check this month
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-white/50">
-                  You&apos;re on the Free plan (1 check / month). Upgrade to
-                  Basic, Plus, or Family for more.
+                  You&apos;re on the Free plan (3 checks / month). Upgrade to
+                  Basic, Plus, or Family Protection for more.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
