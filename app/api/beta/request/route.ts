@@ -3,13 +3,21 @@
  *
  * POST /api/beta/request — public beta access request
  *
- * Validates the form, sends a notification email to Devon via Resend,
- * and returns success. Does NOT create a beta_access row or assign any plan.
- * Manual approval still happens in /admin.
+ * Validates the form, persists the request to `public.beta_requests`
+ * with status='pending', then sends a notification email to Devon via
+ * Resend. Does NOT create a beta_access row or assign any plan — that
+ * happens only when an admin approves the request from /admin via the
+ * /api/admin/beta-requests/approve route.
+ *
+ * Ordering note: we persist BEFORE we email so a Resend outage can
+ * never lose a submission. The email is best-effort; the row in
+ * beta_requests is the durable source of truth that drives the admin UI.
  */
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+
+import { betaServiceClient } from '@/lib/billing/beta-access'
 
 const NOTIFY_EMAIL = 'devonavich0@gmail.com'
 const FROM_EMAIL =
@@ -66,11 +74,67 @@ export async function POST(req: Request) {
 
   const cleanName = name!.trim().slice(0, 120)
   const cleanEmail = email!.trim().toLowerCase().slice(0, 254)
-  const cleanNote = note!.trim().slice(0, 1000)
+  const cleanNote = (note ?? '').trim().slice(0, 1000)
   const useCaseLabel = USE_CASES[useCase!]
   const submittedAt = new Date().toISOString()
 
+  // ── Persist the request first (durable source of truth) ───────────────
+  //
+  // We insert into beta_requests BEFORE attempting to send the notification
+  // email. A Resend outage must never make a request disappear — the admin
+  // page reads from beta_requests, so persistence is the contract that
+  // backs the admin UI. Email is best-effort.
+  //
+  // The Supabase client used here is the service-role client. RLS on
+  // beta_requests blocks anonymous writes; admin-gating for this PUBLIC
+  // route is therefore enforced by the route itself (validation +
+  // server-only secret + no auto-grant) rather than by RLS policies.
+  const sb = betaServiceClient()
+  if (!sb) {
+    console.error(
+      '[beta/request] Supabase service-role env vars missing — cannot persist request.'
+    )
+    return NextResponse.json(
+      {
+        error: 'storage_unavailable',
+        message:
+          "We couldn't save your request right now. Please try again in a minute."
+      },
+      { status: 503 }
+    )
+  }
+
+  const { data: insertedRow, error: insertError } = await sb
+    .from('beta_requests' as any)
+    .insert({
+      name: cleanName,
+      email: cleanEmail,
+      use_case: useCase,
+      note: cleanNote || null,
+      status: 'pending'
+    })
+    .select('id, created_at')
+    .maybeSingle()
+
+  if (insertError) {
+    console.error(
+      '[beta/request] beta_requests insert failed:',
+      insertError.message
+    )
+    return NextResponse.json(
+      {
+        error: 'storage_failed',
+        message:
+          "We couldn't save your request right now. Please try again in a minute."
+      },
+      { status: 500 }
+    )
+  }
+
+  const requestId = (insertedRow as { id?: string } | null)?.id ?? null
+
   // ── Send email via Resend ───────────────────────────────────────────────
+  let emailSent = false
   const resendKey = process.env.RESEND_API_KEY
   if (resendKey) {
     try {
@@ -117,8 +181,12 @@ export async function POST(req: Request) {
 </div>`,
         text: `New CheckRay beta request\n\nName: ${cleanName}\nEmail: ${cleanEmail}\nUse case: ${useCaseLabel}\nNote: ${cleanNote}\nSubmitted: ${submittedAt}\n\nApprove this user manually in the admin beta tester panel at /admin.`
       })
+      emailSent = true
     } catch (err) {
-      // Email failure should not block the user response — log and continue
+      // Email failure should not block the user response — the request is
+      // already saved in beta_requests and visible in /admin. Log and
+      // continue. The client receives a `warning` so the support team can
+      // surface it if needed.
       console.error('[beta/request] Resend error:', err)
     }
   } else {
@@ -132,5 +200,12 @@ export async function POST(req: Request) {
     })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    request_id: requestId,
+    // The client doesn't strictly need this, but surfacing the email
+    // delivery state lets the front-end show a "we received it but
+    // couldn't email Devon — we'll review manually" hint if needed.
+    email_sent: emailSent
+  })
 }

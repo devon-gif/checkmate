@@ -120,3 +120,50 @@ export async function listBetaAccess(supabase?: SupabaseClient) {
     isBetaAccessActive(row, now)
   )
 }
+
+// ─── Public beta-request queue (manual approval) ───────────────────────────
+
+export type BetaRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface BetaRequestRow {
+  id: string
+  name: string
+  email: string
+  use_case: string
+  note: string | null
+  status: BetaRequestStatus
+  reviewed_at: string | null
+  reviewed_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * List all beta requests, newest first. Admin-only consumer; the caller
+ * is responsible for the auth gate. Returns an empty array on any DB
+ * issue (and logs the cause) — the admin page must not crash if the
+ * beta_requests migration hasn't been applied yet on this environment.
+ */
+export async function listBetaRequests(
+  supabase?: SupabaseClient
+): Promise<BetaRequestRow[]> {
+  const sb = supabase ?? betaServiceClient()
+  if (!sb) return []
+
+  const { data, error } = await sb
+    .from('beta_requests' as any)
+    .select(
+      'id,name,email,use_case,note,status,reviewed_at,reviewed_by,created_at,updated_at'
+    )
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error(
+      '[billing/beta-access] beta_requests list failed:',
+      error.message
+    )
+    return []
+  }
+
+  return (data ?? []) as BetaRequestRow[]
+}

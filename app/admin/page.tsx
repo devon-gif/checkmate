@@ -3,13 +3,14 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 
 import { GlassCard } from '@/components/checkmate/GlassCard'
-import { listBetaAccess } from '@/lib/billing/beta-access'
+import { listBetaAccess, listBetaRequests } from '@/lib/billing/beta-access'
 import {
   areAdminToolsEnabled,
   isAdminEmail,
   requireAdmin
 } from '@/lib/admin/access'
 import { BetaTestersPanel } from './BetaTestersPanel'
+import { PendingBetaRequestsPanel } from './PendingBetaRequestsPanel'
 
 const CARDS = [
   {
@@ -76,7 +77,13 @@ export default async function AdminOverviewPage() {
   // (admin tools disabled OR email not on allowlist).
   const admin = await requireAdmin()
   const diag = diagnosticsSnapshot(admin.email)
-  const betaUsers = await listBetaAccess()
+  // Fetch both the granted-beta-testers list AND the inbound public
+  // request queue. Each call is independent and degrades to [] on
+  // error, so a missing migration on one table never breaks the page.
+  const [betaUsers, betaRequests] = await Promise.all([
+    listBetaAccess(),
+    listBetaRequests()
+  ])
 
   return (
     <div className="space-y-8">
@@ -185,6 +192,12 @@ export default async function AdminOverviewPage() {
           </Link>
         ))}
       </div>
+
+      {/* Pending beta requests appear ABOVE the granted testers list so
+          new work-to-do is the first thing the admin sees on this page.
+          BetaTestersPanel stays below for granting access manually by
+          email (e.g. for friends or testers who never used /beta). */}
+      <PendingBetaRequestsPanel requests={betaRequests} />
 
       <BetaTestersPanel betaUsers={betaUsers} />
     </div>
