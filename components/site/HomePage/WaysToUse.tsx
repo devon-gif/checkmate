@@ -65,10 +65,10 @@ export default function WaysToUse() {
         >
           <div className="label mb-3 max-md:mb-1">Ways to use</div>
           <div className="mb-4 bg-radial-white-2 bg-clip-text text-transparent text-title-1 max-lg:text-title-2 max-md:mb-3 max-md:text-title-1-mobile">
-            A scam expert in your pocket.
+            If it feels off, check it first.
           </div>
           <div className="text-description">
-            Whether it came by text, email, job board, marketplace, or a random link, Ray gives you a second look before you click, pay, reply, or apply.
+            Whether it came by text, email, job board, marketplace, or a random link, Ray gives you a plain-English second read before you click, pay, reply, or apply.
           </div>
         </motion.div>
         <motion.div

@@ -23,7 +23,8 @@ export default async function NewCasePage() {
   // Pre-check access so we can render the gate server-side if already blocked.
   const access = await checkAccess({
     userId: session?.user?.id ?? null,
-    anonymousId
+    anonymousId,
+    userEmail: session?.user?.email ?? null
   })
 
   // ── Blocked gate ──────────────────────────────────────────────────────────

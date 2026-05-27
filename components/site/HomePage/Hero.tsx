@@ -98,7 +98,7 @@ export default function Hero() {
             variants={fadeUp}
             className="max-w-[32rem] mb-5 text-description max-lg:max-w-88 max-md:max-w-full max-md:mb-5"
           >
-            Paste it, text it, email it, or check it in Chrome. Ray looks for scam signals in texts, emails, links, bills, job posts, and suspicious pages — then gives you a plain-English risk readout before you act.
+            Get a plain-English risk readout, common red flags, and safer next steps before you click, pay, reply, or apply. You can text or email Ray, or use the Chrome extension to check.
           </motion.p>
 
           {/* CTAs */}
@@ -114,34 +114,26 @@ export default function Hero() {
                 boxShadow: '0 0 28px rgba(255,112,90,0.50), 0 0 56px rgba(255,112,90,0.18), inset 0 1px 0 rgba(255,255,255,0.15)'
               }}
             >
-              Start free trial
+              Start your first check
             </Link>
             <Link
-              href="#how-it-works"
+              href="#features"
               className="relative inline-flex justify-center items-center h-11 px-5 rounded-xl text-title-5 text-white/75 cursor-pointer transition-all after:absolute after:inset-0 after:border after:border-white/12 after:rounded-xl after:pointer-events-none hover:text-white hover:after:border-white/30"
               style={{
                 background: 'rgba(255,255,255,0.04)',
                 boxShadow: '0.0625rem 0.0625rem 0.0625rem 0 rgba(255,255,255,0.08) inset'
               }}
             >
-              See how Ray works
+              See what Ray checks
             </Link>
           </motion.div>
 
           {/* Supporting note */}
           <motion.p
             variants={fadeUp}
-            className="max-w-[27rem] text-[11px] leading-5 text-white/35 max-md:mb-8"
+            className="max-w-[32rem] text-[11px] leading-5 text-white/35 max-md:mb-8"
           >
-            Works for scams, phishing, fake recruiters, suspicious links, bills, and more.
-          </motion.p>
-
-          {/* Trial note */}
-          <motion.p
-            variants={fadeUp}
-            className="text-[11px] leading-5 text-white/35 max-md:mb-8"
-          >
-            7 day free trial. No credit card required.
+            Informational only. Ray can be wrong. Always verify high-stakes requests through official sources.
           </motion.p>
 
           <motion.div variants={fadeIn}>

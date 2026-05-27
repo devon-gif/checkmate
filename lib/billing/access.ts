@@ -17,6 +17,10 @@ import 'server-only'
 
 import { createClient } from '@supabase/supabase-js'
 import { PLAN_MONTHLY_LIMIT, type PlanId } from '@/lib/billing/plans'
+import {
+  betaPlanToBasePlan,
+  getActiveBetaAccessForEmail
+} from '@/lib/billing/beta-access'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +29,7 @@ export type AccessStatus =
   | 'anonymous_used'    // anonymous, free check already consumed — must sign up
   | 'trialing'          // logged in, trial window open
   | 'active'            // logged in, paid subscription active
+  | 'beta'              // logged in, admin-granted beta access
   | 'free'              // logged in, free plan, monthly quota remaining
   | 'expired'           // logged in, free/paid plan with no quota left (upgrade prompt)
   | 'blocked'           // catch-all for any other blocked state
@@ -36,6 +41,8 @@ export interface AccessResult {
   checksUsed: number
   checksLimit: number | null
   trialEndsAt?: string | null
+  betaExpiresAt?: string | null
+  billingSource?: 'stripe' | 'admin_override' | 'beta' | null
   reason?: string
 }
 
@@ -85,13 +92,15 @@ function permissiveAnonResult(): AccessResult {
 
 export async function checkAccess({
   userId,
-  anonymousId
+  anonymousId,
+  userEmail
 }: {
   userId?: string | null
   anonymousId?: string | null
+  userEmail?: string | null
 }): Promise<AccessResult> {
   try {
-    return await checkAccessInner({ userId, anonymousId })
+    return await checkAccessInner({ userId, anonymousId, userEmail })
   } catch (err) {
     console.error('[billing/access] checkAccess failed, falling back permissive:', err)
     return permissiveAnonResult()
@@ -100,10 +109,12 @@ export async function checkAccess({
 
 async function checkAccessInner({
   userId,
-  anonymousId
+  anonymousId,
+  userEmail
 }: {
   userId?: string | null
   anonymousId?: string | null
+  userEmail?: string | null
 }): Promise<AccessResult> {
   const sb = serviceClient()
   if (!sb) return permissiveAnonResult()
@@ -216,6 +227,17 @@ async function checkAccessInner({
   }
 
   const now = new Date()
+  let resolvedEmail = userEmail ?? null
+  if (!resolvedEmail) {
+    const { data: userRow } = await sb
+      .from('users' as any)
+      .select('email')
+      .eq('id', userId)
+      .maybeSingle()
+    resolvedEmail = typeof (userRow as any)?.email === 'string'
+      ? (userRow as any).email
+      : null
+  }
 
   // Resolve the canonical PlanId from the stored plan string
   const planId = (row.plan ?? 'trial') as PlanId
@@ -368,6 +390,61 @@ async function checkAccessInner({
     row.status = 'inactive'
     row.plan = 'free'
     // fall through to the Free path
+  }
+
+  // ── Admin-granted beta path ─────────────────────────────────────────────
+  // Beta access is keyed by email so admins can invite testers before or
+  // after sign-up. It applies only after Stripe/admin active states above
+  // have had first refusal, so a real active paid subscription is never
+  // downgraded into beta.
+  const beta = await getActiveBetaAccessForEmail(resolvedEmail, sb)
+  if (beta) {
+    const betaPlan = beta.plan as PlanId
+    const betaLimit = PLAN_MONTHLY_LIMIT[betaPlan] ?? null
+    const basePlan = betaPlanToBasePlan(beta.plan)
+    let betaUsedThisMonth = 0
+
+    if (betaLimit !== null) {
+      const betaMonthStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1
+      ).toISOString()
+      const { count } = await sb
+        .from('usage_events' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('event_type', 'check_created')
+        .gte('created_at', betaMonthStart)
+      betaUsedThisMonth = count ?? 0
+    }
+
+    if (betaLimit !== null && betaUsedThisMonth >= betaLimit) {
+      return {
+        canAnalyze: false,
+        accessStatus: 'blocked',
+        plan: betaPlan,
+        checksUsed: betaUsedThisMonth,
+        checksLimit: betaLimit,
+        betaExpiresAt: beta.expires_at,
+        billingSource: 'beta',
+        reason: `You've used all ${betaLimit} beta checks for this month. Your limit resets at the start of next month.`
+      }
+    }
+
+    return {
+      canAnalyze: true,
+      accessStatus: 'beta',
+      plan: betaPlan,
+      checksUsed: betaUsedThisMonth,
+      checksLimit: betaLimit,
+      betaExpiresAt: beta.expires_at,
+      billingSource: 'beta',
+      reason:
+        basePlan === 'family'
+          ? "You're in the CheckRay beta with unlimited fair-use checks. No card required."
+          : "You're in the CheckRay beta. No card required."
+    }
   }
 
   // ── Free path ────────────────────────────────────────────────────────────

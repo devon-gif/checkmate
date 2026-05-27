@@ -153,7 +153,8 @@ async function handlePost(req: Request) {
   // ── Access / billing gate ─────────────────────────────────────────────────
   const access = await checkAccess({
     userId: session?.user?.id ?? null,
-    anonymousId
+    anonymousId,
+    userEmail: session?.user?.email ?? null
   })
 
   if (!access.canAnalyze) {

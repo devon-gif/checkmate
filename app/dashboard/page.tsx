@@ -8,6 +8,10 @@ import { IconArrowRight, IconPlus } from '@/components/ui/icons'
 import { humanizeCategory } from '@/lib/checkmate-shared'
 import { type Database, type Json } from '@/lib/db_types'
 import { resolvePlanLimits } from '@/lib/billing/plan-limits'
+import {
+  betaPlanLabel,
+  getActiveBetaAccessForEmail
+} from '@/lib/billing/beta-access'
 import { hasAnyPlanPriceId } from '@/lib/billing/stripe'
 import { DashboardCards } from '@/components/checkmate/DashboardCards'
 import { GlassCard } from '@/components/checkmate/GlassCard'
@@ -156,6 +160,7 @@ export default async function DashboardPage({
   //   - 'unknown'   reserved for genuine "we couldn't fetch the row"
   //                 errors; not used for the new-user case any more.
   const subAny = (userBillingRow ?? billingRow) as any
+  const betaAccess = await getActiveBetaAccessForEmail(session.user.email)
   let billingStatus: BillingStatus = 'free'
   if (subAny?.status === 'active') {
     billingStatus = 'active'
@@ -171,6 +176,15 @@ export default async function DashboardPage({
     // Free until the user upgrades. The access gate enforces the 1 / mo
     // cap; this is purely the dashboard's friendly default.
     billingStatus = 'free'
+  }
+
+  if (
+    betaAccess &&
+    billingStatus !== 'active' &&
+    billingStatus !== 'trialing' &&
+    billingStatus !== 'past_due'
+  ) {
+    billingStatus = 'beta'
   }
 
   const stripeConfigured = hasAnyPlanPriceId()
@@ -222,6 +236,7 @@ export default async function DashboardPage({
                 users; BillingStatusCard handles those billing states. */}
             {billingStatus !== 'active' &&
               billingStatus !== 'trialing' &&
+              billingStatus !== 'beta' &&
               billingStatus !== 'past_due' && (
               <UpgradeButton stripeConfigured={stripeConfigured} />
             )}
@@ -238,9 +253,11 @@ export default async function DashboardPage({
           the Free fallback of 1. */}
       {(() => {
         const planForDisplay =
-          billingStatus === 'trialing' && subAny?.plan === 'trial'
-            ? 'trial'
-            : (subAny?.plan ?? 'free')
+          billingStatus === 'beta' && betaAccess
+            ? betaAccess.plan
+            : billingStatus === 'trialing' && subAny?.plan === 'trial'
+              ? 'trial'
+              : (subAny?.plan ?? 'free')
         const limits = resolvePlanLimits(planForDisplay)
         return (
           <>
@@ -257,7 +274,9 @@ export default async function DashboardPage({
               status={billingStatus}
               trialEndsAt={subAny?.trial_ends_at ?? null}
               stripeConfigured={stripeConfigured}
-              plan={subAny?.plan ?? 'free'}
+              plan={planForDisplay}
+              betaLabel={betaAccess ? betaPlanLabel(betaAccess.plan) : null}
+              betaExpiresAt={betaAccess?.expires_at ?? null}
               checksUsed={checksUsedThisMonth ?? 0}
               checksLimit={limits.display}
               hasStripeCustomer={Boolean(subAny?.stripe_customer_id)}

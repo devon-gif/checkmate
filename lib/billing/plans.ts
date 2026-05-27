@@ -8,7 +8,18 @@
 
 // ─── Plan identifiers ─────────────────────────────────────────────────────────
 
-export type PlanId = 'free' | 'basic' | 'basic_yearly' | 'plus' | 'plus_yearly' | 'family' | 'family_yearly' | 'trial'
+export type PlanId =
+  | 'free'
+  | 'basic'
+  | 'basic_yearly'
+  | 'plus'
+  | 'plus_yearly'
+  | 'family'
+  | 'family_yearly'
+  | 'trial'
+  | 'beta_basic'
+  | 'beta_plus'
+  | 'beta_family'
 
 // ─── Monthly check limits ─────────────────────────────────────────────────────
 
@@ -45,7 +56,10 @@ export const PLAN_MONTHLY_LIMIT: Record<PlanId, number | null> = {
   // Family: 500/month is the internal fair-use safety net. The UI shows
   // "Unlimited fair-use" via resolvePlanLimits().display === null.
   family: 500,
-  family_yearly: 500
+  family_yearly: 500,
+  beta_basic: 10,
+  beta_plus: 50,
+  beta_family: 500
 }
 
 // ─── Pricing (in USD) ─────────────────────────────────────────────────────────

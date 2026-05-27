@@ -39,6 +39,7 @@ export const FAIR_USE_CAP = 500
 const UNLIMITED_DISPLAY_PLANS = new Set<string>([
   'family',
   'family_yearly',
+  'beta_family',
   // Legacy in-app trial rows pre-date the Stripe trial flow. Treat them
   // as unlimited-display so the dashboard copy stays correct, but the
   // FAIR_USE_CAP still applies so they can't run unbounded checks.

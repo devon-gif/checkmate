@@ -20,6 +20,7 @@ export type BillingStatus =
   | 'trialing'
   | 'active'
   | 'past_due'
+  | 'beta'
   | 'free'
   | 'expired'
   | 'unknown'
@@ -31,6 +32,8 @@ interface Props {
   stripeConfigured: boolean
   /** PlanId from user_billing e.g. 'trial' | 'basic' | 'plus' | 'free' */
   plan?: string | null
+  betaLabel?: string | null
+  betaExpiresAt?: string | null
   /** Checks used this calendar month */
   checksUsed?: number
   /** Monthly check limit (null = unlimited) */
@@ -51,6 +54,8 @@ export function BillingStatusCard({
   trialEndsAt,
   stripeConfigured,
   plan,
+  betaLabel,
+  betaExpiresAt,
   checksUsed = 0,
   checksLimit,
   hasStripeCustomer = false
@@ -102,9 +107,11 @@ export function BillingStatusCard({
         ? 'bg-yellow-400 shadow-[0_0_6px_theme(colors.yellow.400)]'
         : status === 'past_due'
           ? 'bg-orange-500 shadow-[0_0_6px_theme(colors.orange.500)]'
-        : status === 'expired'
-          ? 'bg-red-500 shadow-[0_0_6px_theme(colors.red.500)]'
-          : 'bg-white/40'
+          : status === 'beta'
+            ? 'bg-cm-green shadow-[0_0_6px_theme(colors.cm-green)]'
+            : status === 'expired'
+              ? 'bg-red-500 shadow-[0_0_6px_theme(colors.red.500)]'
+              : 'bg-white/40'
 
   // ── Per-status header block. EXACTLY ONE branch renders — no fallthrough
   // doubles like the previous version had for `unknown`.
@@ -253,6 +260,37 @@ export function BillingStatusCard({
         </>
       )
     }
+  } else if (status === 'beta') {
+    const betaEndDateLabel =
+      betaExpiresAt && !Number.isNaN(new Date(betaExpiresAt).getTime())
+        ? new Date(betaExpiresAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })
+        : null
+
+    header = (
+      <>
+        <p className="text-sm font-medium text-white">
+          {betaLabel ?? 'Beta access'}
+          {checksLimit != null && (
+            <span className="ml-2 text-xs font-normal text-white/50">
+              {checksUsed}/{checksLimit} checks this month
+            </span>
+          )}
+          {checksLimit === null && (
+            <span className="ml-2 text-xs font-normal text-white/50">
+              Unlimited fair-use
+            </span>
+          )}
+        </p>
+        <p className="mt-0.5 text-xs text-white/40">
+          You&apos;re in the CheckRay beta. No card required.
+          {betaEndDateLabel ? ` Access ends ${betaEndDateLabel}.` : ''}
+        </p>
+      </>
+    )
   } else if (status === 'expired') {
     // Trial ended OR free-tier monthly limit reached. Either way the user is
     // on the Free plan now — soft messaging, not "blocked forever".
@@ -316,6 +354,10 @@ export function BillingStatusCard({
     >
       {loading ? 'Loading...' : 'Manage billing'}
     </GradientButton>
+  ) : status === 'beta' ? (
+    <span className="rounded-xl border border-cm-green/20 bg-cm-green/8 px-4 py-2 text-xs font-medium text-cm-green">
+      Beta access active
+    </span>
   ) : isPaidState ? (
     <span className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-white/45">
       Manage billing unavailable

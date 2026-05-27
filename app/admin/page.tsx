@@ -3,11 +3,13 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 
 import { GlassCard } from '@/components/checkmate/GlassCard'
+import { listBetaAccess } from '@/lib/billing/beta-access'
 import {
   areAdminToolsEnabled,
   isAdminEmail,
   requireAdmin
 } from '@/lib/admin/access'
+import { BetaTestersPanel } from './BetaTestersPanel'
 
 const CARDS = [
   {
@@ -74,6 +76,7 @@ export default async function AdminOverviewPage() {
   // (admin tools disabled OR email not on allowlist).
   const admin = await requireAdmin()
   const diag = diagnosticsSnapshot(admin.email)
+  const betaUsers = await listBetaAccess()
 
   return (
     <div className="space-y-8">
@@ -182,6 +185,8 @@ export default async function AdminOverviewPage() {
           </Link>
         ))}
       </div>
+
+      <BetaTestersPanel betaUsers={betaUsers} />
     </div>
   )
 }

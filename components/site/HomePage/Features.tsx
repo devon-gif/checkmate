@@ -48,11 +48,10 @@ export default function Features() {
         >
           <div className="label mb-3 max-md:mb-1">What Ray can check</div>
           <div className="mb-6 bg-radial-white-2 bg-clip-text text-transparent text-title-1 max-lg:text-title-2 max-md:mb-3 max-md:text-title-1-mobile">
-            Not just link protection. A second look for real-life scams.
+            Paste it. Ray checks it.
           </div>
           <div className="text-description">
-            CheckRay isn&apos;t a generic antivirus or a phishing-link-only tool.
-            It&apos;s a second look for ghost jobs, scam texts, suspicious payments, and the everyday situations where something just feels off.
+            Paste the message, link, email, bill, job offer, or listing. Ray looks for common risk signals and explains what to verify next — in plain English.
           </div>
         </motion.div>
         <motion.div
