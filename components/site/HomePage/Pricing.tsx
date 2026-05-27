@@ -198,6 +198,28 @@ export default function Pricing() {
           Start free. Upgrade when you need more checks. Ray is a second opinion — not a guarantee.
         </div>
 
+        {/* Beta CTA */}
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <p className="text-[13px] text-white/40">
+            Want to test CheckRay before choosing a plan?
+          </p>
+          <Link
+            href="/beta"
+            className="inline-flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: 'rgba(122,226,207,0.07)',
+              border: '1px solid rgba(122,226,207,0.18)',
+              color: '#7ae2cf',
+              boxShadow: '0 0 16px rgba(122,226,207,0.08)'
+            }}
+          >
+            Request beta access
+            <svg className="size-3.5" fill="none" viewBox="0 0 14 14" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M1 7h12M8 2l5 5-5 5" />
+            </svg>
+          </Link>
+        </div>
+
       </div>
     </div>
   )

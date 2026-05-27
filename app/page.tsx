@@ -1,5 +1,6 @@
 import Hero from '@/components/site/HomePage/Hero'
 import StatsBar from '@/components/site/HomePage/StatsBar'
+import DemoVideo from '@/components/site/HomePage/DemoVideo'
 import Details from '@/components/site/HomePage/Details'
 import Features from '@/components/site/HomePage/Features'
 import GhostJobSection from '@/components/site/HomePage/GhostJobSection'
@@ -15,6 +16,7 @@ export default function LandingPage() {
     <div className="relative overflow-hidden bg-deep text-white font-helvetica">
       <Hero />
       <StatsBar />
+      <DemoVideo />
       <Details />
       <Features />
       <GhostJobSection />

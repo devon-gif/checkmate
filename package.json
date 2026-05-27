@@ -31,6 +31,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-switch": "^1.0.3",
     "@radix-ui/react-tooltip": "^1.0.6",
+    "@react-email/render": "^2.0.8",
     "@sentry/nextjs": "^8.55.2",
     "@supabase/auth-helpers-nextjs": "^0.7.2",
     "@supabase/supabase-js": "^2.26.0",
@@ -56,6 +57,7 @@
     "react-textarea-autosize": "^8.4.1",
     "remark-gfm": "^3.0.1",
     "remark-math": "^5.1.1",
+    "resend": "^6.12.4",
     "server-only": "^0.0.1",
     "stripe": "^22.1.1",
     "zod": "^3.25.76"

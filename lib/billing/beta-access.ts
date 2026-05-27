@@ -107,6 +107,7 @@ export async function listBetaAccess(supabase?: SupabaseClient) {
   const { data, error } = await sb
     .from('beta_access' as any)
     .select('id,email,plan,status,expires_at,notes,created_at,updated_at')
+    .eq('status', 'active')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -114,5 +115,8 @@ export async function listBetaAccess(supabase?: SupabaseClient) {
     return []
   }
 
-  return (data ?? []) as BetaAccessRow[]
+  const now = new Date()
+  return ((data ?? []) as BetaAccessRow[]).filter(row =>
+    isBetaAccessActive(row, now)
+  )
 }

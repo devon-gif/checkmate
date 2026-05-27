@@ -17,7 +17,8 @@ const LEGAL = [
   { title: 'Disclaimer', href: '/disclaimer' },
   { title: 'AI Disclosure', href: '/ai-disclosure' },
   { title: 'Acceptable Use', href: '/acceptable-use' },
-  { title: 'Contact', href: '/contact' }
+  { title: 'Contact', href: '/contact' },
+  { title: 'Beta access', href: '/beta' }
 ]
 
 const BOTTOM_LINKS = [
@@ -131,17 +132,32 @@ export function Footer({ className }: { className?: string }) {
               Use the channel that feels easiest. Ray meets you where the
               message arrived.
             </div>
-            <ul className="flex flex-col gap-2 text-description-3 text-description">
+            <ul className="flex flex-col gap-2.5 text-description-3 text-description">
               <li>
                 <span className="text-white">Text</span> · save to home screen
               </li>
-              <li>
-                <span className="text-white">Email</span> · forward suspicious mail
+              <li className="flex flex-col gap-0.5">
+                <span className="text-white">Email Ray</span>
+                <a
+                  href="mailto:ray@checkray.app"
+                  className="transition-colors hover:text-white"
+                >
+                  ray@checkray.app
+                </a>
               </li>
               <li>
                 <span className="text-white">Web</span> · paste a link or upload
               </li>
             </ul>
+            <div className="mt-5 pt-4 border-t border-white/6 flex flex-col gap-0.5">
+              <span className="text-description-3 text-white">Questions or beta access</span>
+              <a
+                href="mailto:support@checkray.app"
+                className="text-description-3 text-description transition-colors hover:text-white"
+              >
+                support@checkray.app
+              </a>
+            </div>
           </div>
         </div>
 

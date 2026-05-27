@@ -114,17 +114,17 @@ export default function Hero() {
                 boxShadow: '0 0 28px rgba(255,112,90,0.50), 0 0 56px rgba(255,112,90,0.18), inset 0 1px 0 rgba(255,255,255,0.15)'
               }}
             >
-              Start your first check
+              Try a free check
             </Link>
             <Link
-              href="#features"
+              href="/beta"
               className="relative inline-flex justify-center items-center h-11 px-5 rounded-xl text-title-5 text-white/75 cursor-pointer transition-all after:absolute after:inset-0 after:border after:border-white/12 after:rounded-xl after:pointer-events-none hover:text-white hover:after:border-white/30"
               style={{
                 background: 'rgba(255,255,255,0.04)',
                 boxShadow: '0.0625rem 0.0625rem 0.0625rem 0 rgba(255,255,255,0.08) inset'
               }}
             >
-              See what Ray checks
+              Request beta access
             </Link>
           </motion.div>
 
