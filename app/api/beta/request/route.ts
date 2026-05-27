@@ -58,7 +58,6 @@ export async function POST(req: Request) {
   if (!email?.trim()) errors.push('Email is required.')
   else if (!isValidEmail(email)) errors.push('A valid email address is required.')
   if (!useCase || !USE_CASES[useCase]) errors.push('Please select a use case.')
-  if (!note?.trim()) errors.push('A short note is required.')
   if (!understood) errors.push('Please confirm you understand CheckRay is informational only.')
 
   if (errors.length > 0) {

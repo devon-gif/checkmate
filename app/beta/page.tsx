@@ -284,7 +284,7 @@ export default function BetaPage() {
               {/* Note */}
               <div>
                 <label htmlFor="beta-note" className="mb-1.5 block text-[12px] font-medium text-white/50 uppercase tracking-wider">
-                  Short note
+                  Short note <span className="normal-case tracking-normal font-normal text-white/25">(optional)</span>
                 </label>
                 <textarea
                   id="beta-note"
@@ -293,7 +293,6 @@ export default function BetaPage() {
                   placeholder="Tell us what you want to use CheckRay for."
                   value={form.note}
                   onChange={handleChange}
-                  required
                   className={`${inputClass} ${inputFocusRing} resize-none`}
                   style={inputStyle}
                 />
