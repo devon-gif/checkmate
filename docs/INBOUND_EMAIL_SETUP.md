@@ -1,17 +1,36 @@
-# INBOUND_EMAIL_SETUP.md — `ray@checkray.app` (Stage 1)
+# INBOUND_EMAIL_SETUP.md — `ray@checkray.app` (Stage 3, gated MVP)
 
-This is the operational guide for the **smoke-test** stage of the
-inbound-email pipeline. The endpoint at `/api/inbound/email` is live
-and verifies Resend's webhook signature, but it deliberately does NOT:
+## Current state
 
-- look up the sender's CheckRay account
-- enforce plan / usage limits
-- call OpenAI / the analyzer
-- save a case or report
-- send a reply email
+**Stage 3 is implemented.** `/api/inbound/email` now:
 
-Those stages will land in subsequent commits. Stage 1 only confirms
-DNS → Resend → our webhook works end to end.
+1. Verifies the webhook signature (Resend / Svix HMAC).
+2. Parses sender / recipient / subject / text / html from the payload —
+   provider-agnostic, supports Resend's `data.*` nested envelope, the
+   flat `{from,to,subject,text}` shape used by Mailgun and curl tests,
+   and a few common synonyms.
+3. Logs every delivery to `public.inbound_email_log` with a unique
+   `(provider, provider_msg_id)` index. Provider retries short-circuit
+   as `duplicate`.
+4. Gates the sender:
+   - active non-expired row in `beta_access` → allowed (mapped to the
+     beta tier's monthly cap)
+   - active or trialing `user_billing` → allowed (paid plan limits)
+   - `past_due` subscription → blocked (payment-issue reply)
+   - everything else → blocked (sign-up-or-request-beta reply)
+   - over the monthly cap → over-limit reply
+5. On the allowed path, calls the existing `analyzeCase()` (same one
+   the web app uses), saves `cases` + `risk_reports`, logs a
+   `usage_events('check_created')` row, and sends the "Ray checked
+   your email" reply.
+
+**The analyzer is never called for unknown / over-limit / blocked
+senders.** That's the cost protection.
+
+**What's not done yet:** automated DNS / inbound MX routing (see the
+provider section below). IONOS still forwards `ray@checkray.app` →
+your Gmail inbox, which is fine for you reading manually, but **that
+forwarding alone does not call this webhook**.
 
 ## Webhook URL
 
@@ -19,161 +38,315 @@ DNS → Resend → our webhook works end to end.
 https://www.checkray.app/api/inbound/email
 ```
 
-(Or `https://checkray.app/api/inbound/email` — both must point to the
-same Vercel deployment; use whichever matches your canonical domain.)
+(`https://checkray.app/api/inbound/email` works too — both resolve
+to the same Vercel deployment.)
 
 ## Required Vercel env vars
 
-| Variable | Scope | Value | Notes |
+| Variable | Scope | Required? | Notes |
 |---|---|---|---|
-| `RESEND_INBOUND_WEBHOOK_SECRET` | **Sensitive** (server-only) | `whsec_...` | Copy from Resend → Inbound → your route → Signing secret. Server-only — never expose. |
-| `INBOUND_EMAIL_ADDRESS` | Server | `ray@checkray.app` | Used in copy / loop-detection later. Optional in Stage 1. |
+| `RESEND_INBOUND_WEBHOOK_SECRET` | **Sensitive** | yes in prod | Resend's `whsec_…` signing secret. In dev (NODE_ENV !== production) it's optional so local curl tests work. |
+| `RESEND_API_KEY` | **Sensitive** | for replies | Same key the rest of the app already uses to send email. Without it, gating still works but the reply email is skipped (logged as `reply_failed`). |
+| `RESEND_FROM_EMAIL` | server | optional | Defaults to `CheckRay <noreply@checkray.app>`. |
+| `INBOUND_EMAIL_ADDRESS` | server | optional | Defaults to `ray@checkray.app`. Used for the loop guard. |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Sensitive** | yes | Same key billing uses. Required to look up beta_access, user_billing, write cases. |
+| `NEXT_PUBLIC_SUPABASE_URL` | public | yes | |
+| `NEXT_PUBLIC_APP_URL` | public | yes | Used to build the dashboard link in the reply email. |
 
-After setting these, redeploy with build cache disabled (Vercel →
-Deployments → ⋯ → Redeploy → uncheck "Use existing Build Cache").
-Server env vars are read at runtime, but the redeploy ensures the
-runtime workers pick up the new values on the next request.
+After changing any of these, redeploy with build cache disabled.
 
-## Resend setup steps (one-time)
+## Required SQL migrations (one-time)
 
-1. **Verify a domain.** Resend dashboard → **Domains** → add
-   `checkray.app` (or a dedicated subdomain like `inbound.checkray.app`).
-2. **Add DNS records** Resend prints — typically:
-   - `MX` → `feedback-smtp.<region>.amazonses.com`
-   - `TXT` (SPF) → `v=spf1 include:amazonses.com ~all`
-   - `CNAME` × 3 (DKIM)
-   - Optional `TXT` (DMARC) → `v=DMARC1; p=quarantine; rua=mailto:dmarc@checkray.app`
-3. **Wait for verification** — usually a few minutes; Resend shows ✅.
-4. **Create the inbound route.** Resend → **Inbound** → **+ Add inbound**:
-   - Match address: `ray@checkray.app`
-   - Destination type: **Webhook**
-   - URL: `https://www.checkray.app/api/inbound/email`
-5. **Copy the signing secret** Resend generates (starts with `whsec_`).
-   Paste it into Vercel as `RESEND_INBOUND_WEBHOOK_SECRET` for the
-   **Production** scope.
-6. **Redeploy** with build cache disabled.
+Apply these in the Supabase SQL editor **before** rolling Stage 3 to
+production. Both are idempotent.
 
-## Signature verification
-
-We verify the signature ourselves using Node's `crypto`, no `svix`
-dependency required. The check:
-
-- Headers: `svix-id`, `svix-timestamp`, `svix-signature`
-  (we also accept the generic `webhook-*` aliases).
-- Signed payload: `${svix_id}.${svix_timestamp}.${rawBody}`.
-- HMAC-SHA256 with the secret base64-decoded from `whsec_<base64>`.
-- Compare base64 result against any `v1,<sig>` token in the header
-  (Svix sends multiple during a key rotation).
-- Reject deliveries whose timestamp is > 5 minutes out of sync — basic
-  replay protection.
-
-| Condition | Response |
+| Migration | What it adds |
 |---|---|
-| Secret unset in Production | `503 webhook_not_configured` |
-| Secret unset in dev | warn + accept (so local smoke tests work without the secret) |
-| Headers missing | `401 invalid_signature` |
-| Timestamp too old/future | `401 invalid_signature` |
-| HMAC mismatch | `401 invalid_signature` |
-| Body not JSON | `400 invalid_json` |
-| Valid | `200 { ok: true, received: true }` |
+| `supabase/migrations/20260527120000_add_beta_access.sql` | The `beta_access` table the gate reads. |
+| `supabase/migrations/20260528120000_add_beta_requests.sql` | The pending-request queue, used by `/admin`. |
+| `supabase/migrations/20260529120000_add_inbound_email_log.sql` | **Required for Stage 3.** Idempotency + audit log. |
 
-## What we log (and what we don't)
+After applying, force a schema-cache reload: `notify pgrst, 'reload schema';`
 
-**Per request, exactly one structured log line:**
+## How the gate decides
 
 ```
-[inbound/email] received: provider_msg_id=msg_abc123 from=a***@example.com to=r***@checkray.app subject_len=42 has_text=true has_html=true
+┌──────────────────────────────────────────────────────────────┐
+│ POST /api/inbound/email                                      │
+│                                                              │
+│ 1. signature check ───── (401 if invalid in prod)            │
+│ 2. parse JSON ────────── (400 if invalid)                    │
+│ 3. duplicate? ────────── (200, action: duplicate)            │
+│ 4. spam guard ────────── (200, action: rejected_spam)        │
+│         │                                                    │
+│         ▼                                                    │
+│ 5. beta_access active for sender?                            │
+│         │ yes                       │ no                     │
+│         ▼                           ▼                        │
+│   plan = beta plan          billing.status active/trialing?  │
+│   isAllowed = true                  │ yes        │ no        │
+│                                     ▼            ▼           │
+│                              plan = paid    past_due?        │
+│                              isAllowed = true   │            │
+│                                                 ▼            │
+│                                          blocked reply       │
+│         │                                       │            │
+│         ▼                                       ▼            │
+│ 6. count usage_events this month            (no analysis)    │
+│ 7. canCreateCheck(plan, status, used)?                       │
+│      │ allowed                       │ blocked               │
+│      ▼                               ▼                       │
+│ 8. analyzeCase() ─→ save        over-limit reply             │
+│    case + report + usage         (no analysis)               │
+│ 9. send "Ray checked your email"                             │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Never logged:**
-- The webhook secret
-- The email body / HTML
-- Full email headers
-- Full from/to addresses (always masked as `first-char + *** + @domain`)
-- Subject text (only its length)
+Every branch writes one row to `inbound_email_log` with a stable
+`outcome` value (analyzed / unknown_sender / beta_expired / over_limit
+/ past_due / no_user_record / duplicate / rejected_spam /
+webhook_invalid / analyzer_error / save_failed / reply_failed).
 
-If you need to debug a specific email's content during Stage 1, do it
-in Resend's dashboard — they store the inbound payload there for ~30
-days. We do not.
+## Local webhook testing (no DNS required)
 
-## How to test
+The route accepts a simple flat JSON payload in dev mode. With
+`RESEND_INBOUND_WEBHOOK_SECRET` unset locally, no signature is checked.
 
-### Live test (after Resend setup is done)
-
-1. Send an email from any inbox to `ray@checkray.app`.
-2. Open Vercel → **your project → Functions → Logs** and filter for
-   `[inbound/email]`. You should see one structured line within a few
-   seconds.
-3. The endpoint returns 200 immediately, but Stage 1 sends no reply.
-   You won't get an email back yet — that's normal.
-
-### Sanity check with curl (no signature)
+Start the dev server:
 
 ```bash
-# In production this should return 401 (no signature) — verifying that
-# the endpoint isn't accepting unauthenticated POSTs.
-curl -i -X POST https://www.checkray.app/api/inbound/email \
-  -H 'Content-Type: application/json' \
-  -d '{}'
+pnpm dev
 ```
 
-Expected: `HTTP/2 401` and `{"ok":false,"error":"invalid_signature"}`.
-If you get `503 webhook_not_configured`, the env var hasn't been set
-or the deployment is stale.
+### Test 1 — approved beta sender (allowed path)
 
-### Local test (with secret missing)
+First grant beta access in `/admin/billing-test` or via the
+beta-testers admin form. Then:
 
 ```bash
-# In NODE_ENV=development the endpoint logs a warning and accepts.
-curl -i -X POST http://localhost:3000/api/inbound/email \
+curl -s -X POST http://localhost:3000/api/inbound/email \
   -H 'Content-Type: application/json' \
-  -d '{"data":{"from":"you@example.com","to":"ray@checkray.app","subject":"test","text":"hello"}}'
+  -d '{
+    "from":    "your-beta-tester@example.com",
+    "to":      "ray@checkray.app",
+    "subject": "Recruiter asking for $200 equipment deposit",
+    "text":    "Hi! You are hired for a remote data entry role at GlobalSoft. Please reply YES and send a $200 deposit for your equipment. We will send a check first."
+  }' | jq
 ```
 
-Expected: `200 {"ok":true,"received":true}` and a `[inbound/email]
-received:` log line in your `pnpm dev` console.
+Expected response (HTTP 200):
+
+```json
+{
+  "ok": true,
+  "received": true,
+  "action": "analyzed",
+  "case_id": "…",
+  "save_error": null,
+  "reply_sent": true
+}
+```
+
+Verify:
+- a new row in `cases` for that user
+- a new row in `risk_reports`
+- a new row in `usage_events`
+- a new `inbound_email_log` row with `outcome = analyzed`
+- a "Ray checked your email" email in the tester's inbox
+
+### Test 2 — unknown sender (blocked)
+
+```bash
+curl -s -X POST http://localhost:3000/api/inbound/email \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "from": "stranger@nowhere.example",
+    "to":   "ray@checkray.app",
+    "subject": "hello",
+    "text": "is this a real service"
+  }' | jq
+```
+
+Expected: `action: "unknown_sender"`. No `cases` row. A "Finish setting
+up CheckRay to email Ray" reply.
+
+### Test 3 — expired or revoked beta
+
+Set the tester's `beta_access.expires_at` to a past date (admin SQL
+editor) or click **Revoke** in `/admin`. Repeat Test 1. Expected:
+`action: "blocked"` and the same blocked reply as Test 2.
+
+### Test 4 — paid user (allowed)
+
+In `/admin/billing-test`, set your account to "Basic / active". From an
+email that matches your account:
+
+```bash
+curl -s -X POST http://localhost:3000/api/inbound/email \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "from":    "you@your-domain.com",
+    "to":      "ray@checkray.app",
+    "subject": "Suspicious bill from county clerk?",
+    "text":    "I got a $45 bill from a county clerk office in Iowa asking for credit card payment by today or my driver license will be suspended."
+  }' | jq
+```
+
+Expected: `action: "analyzed"`.
+
+### Test 5 — over-limit
+
+Same setup as Test 4, but first run 10 checks (Basic = 10 / month) via
+`/cases/new` or by repeating the curl. The 11th call returns
+`action: "over_limit"` and a "CheckRay limit reached" reply.
+
+### Test 6 — idempotency
+
+Repeat any successful call with the same `id` in the payload:
+
+```bash
+curl -s -X POST http://localhost:3000/api/inbound/email \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": "msg_test_001", "from": "...", "to": "...", "text": "..." }'
+```
+
+The second call returns `action: "duplicate"` and creates no new rows.
+
+### Test 7 — spam/loop guard
+
+Sending from `ray@checkray.app` itself, or with an `Auto-Submitted`
+header, returns `action: "rejected_spam"` with no analysis:
+
+```bash
+curl -s -X POST http://localhost:3000/api/inbound/email \
+  -H 'Content-Type: application/json' \
+  -H 'Auto-Submitted: auto-replied' \
+  -d '{ "from":"you@x.com", "to":"ray@checkray.app", "subject":"OOO", "text":"I am away." }'
+```
+
+## How real inbound email must be wired
+
+Right now `ray@checkray.app` is a forwarding alias at IONOS pointing at
+your Gmail. **That forwarding cannot trigger the webhook** — IONOS has
+no concept of an HTTPS callback. You need to swap the MX route to a
+provider that does inbound-to-webhook.
+
+Four options, in rough order of "least effort to a working production
+flow":
+
+### A. Resend inbound (recommended)
+
+Already what the signature verifier expects. Steps:
+
+1. Resend dashboard → **Domains** → add `checkray.app` (or
+   `inbound.checkray.app`) → add the DNS records Resend prints (MX,
+   SPF, DKIM, optional DMARC).
+2. Resend → **Inbound** → **+ Add inbound** → match `ray@checkray.app`,
+   destination type **Webhook**, URL
+   `https://www.checkray.app/api/inbound/email`.
+3. Copy the `whsec_…` signing secret → Vercel `RESEND_INBOUND_WEBHOOK_SECRET`
+   (Production scope).
+4. Update IONOS DNS to point the new MX records at Resend's inbound
+   servers (Resend's UI shows the exact target). Remove the IONOS-to-Gmail
+   forwarding for `ray@…` so messages stop double-delivering.
+
+### B. SendGrid Inbound Parse
+
+Set an MX record pointing at `mx.sendgrid.net`, then in SendGrid
+**Settings → Inbound Parse** add a hostname route → POST URL =
+`https://www.checkray.app/api/inbound/email`. SendGrid sends
+multipart/form-data, which our parser would need a small adapter for —
+not zero-effort. Stick with Resend if possible.
+
+### C. Mailgun Routes
+
+Similar shape: MX → `mxa.mailgun.org`, in Mailgun create a route with
+"store and notify" + your URL. Our parser already accepts the flat
+Mailgun-style payload (`from`, `subject`, `body-plain`), but the
+signature header format is `X-Mailgun-Signature-*` — the current
+verifier expects Svix-style, so you'd need to swap signature logic.
+
+### D. Cloudflare Email Routing + Worker
+
+Cheapest. Cloudflare's Email Routing terminates the MX, a Worker
+forwards a JSON envelope to the route. No native webhook signing — set
+up your own HMAC or rely on a shared `X-Internal-Auth` header.
+
+**Operational warning if you do A and want zero downtime:** the moment
+the MX flip propagates, mail stops landing in your IONOS / Gmail
+inbox. Make sure the webhook + DB migrations are live first, then flip
+DNS during a quiet window.
+
+## Provider/webhook formats supported
+
+The parser deliberately tries multiple envelopes:
+
+- `data.from / data.to / data.subject / data.text / data.html / data.id`
+  (Resend, Svix-wrapped)
+- `message.from / message.subject / …` (some Mailgun integrations)
+- Top-level `from / to / subject / text / html / id` (curl tests,
+  Cloudflare Worker, Mailgun "store and notify" parse)
+- `attachments[]` array OR `attachment-count` numeric header — both
+  flag as `has_attachments` (currently unsupported; logged for the
+  operator and the email still gets analyzed via text/html body)
+
+Each `from`/`to` value can be a string, `{email, name}` object, or an
+array of either (we pick the first).
 
 ## What logs to check in Vercel
 
-- Vercel → project → **Functions** tab → filter by path
-  `/api/inbound/email`. Each delivery is one invocation.
-- Look for `[inbound/email] received:` → success.
-- Look for `[inbound/email] signature verification failed` → wrong
-  secret or replay.
-- Look for `[inbound/email] body is not valid JSON` → Resend changed
-  payload encoding (rare).
-- Look for `RESEND_INBOUND_WEBHOOK_SECRET is not set` → env var missing
-  in this environment.
+Vercel → project → **Functions** → filter by path `/api/inbound/email`.
+Each delivery is one invocation. Look for:
 
-## Security guarantees
+- `[inbound/email] received:` → request landed (every call)
+- `action: "analyzed"` → happy path
+- `action: "unknown_sender"` / `"blocked"` → gate denied
+- `action: "duplicate"` → idempotent replay (no DB writes)
+- `signature verification failed:` → wrong secret on this deploy
 
-- Webhook secret is `RESEND_INBOUND_WEBHOOK_SECRET` (no `NEXT_PUBLIC_`
-  prefix) so it cannot reach the client bundle.
-- Endpoint never reads `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`,
-  or any Stripe key in Stage 1.
-- Endpoint touches no database table in Stage 1. Cost per request is
-  one Vercel function invocation and that's it.
-- Endpoint never modifies billing state, never weakens admin auth,
-  never changes the analyzer response shape.
+For deeper forensics, query `public.inbound_email_log` directly —
+sender_email, subject, outcome, error_message, received_at are all
+there, one row per delivery.
+
+## What still needs DNS / provider setup
+
+| Item | Required for | Done? |
+|---|---|---|
+| Pick a provider (Resend recommended) | any automation at all | not yet |
+| Add MX + SPF + DKIM records on `checkray.app` (or subdomain) | provider can receive | not yet |
+| Set up inbound webhook in the provider dashboard | provider can POST us | not yet |
+| Set `RESEND_INBOUND_WEBHOOK_SECRET` in Vercel | signature check works | not yet |
+| Apply `20260529120000_add_inbound_email_log.sql` migration | idempotency + audit | not yet |
+| Remove IONOS → Gmail forwarding for `ray@…` once provider is live | avoid double-delivery | not yet |
+| Confirm `RESEND_API_KEY` is set in Vercel | reply emails go out | already in place for /beta/request |
+
+## Honesty note for the user-facing email
+
+The "approved beta" email (sent at grant time, separate file) tells the
+user "you can also email Ray at ray@checkray.app" and adds **"For now,
+email checks may be reviewed manually while we finish automatic email
+intake."** Keep that copy honest until item A above is fully live.
 
 ## Disable / rollback
 
-To disable the endpoint without redeploying code:
+To pause inbound automation without redeploying code:
 
-1. Vercel → env vars → **delete** `RESEND_INBOUND_WEBHOOK_SECRET` in
-   Production.
-2. Next request returns 503 with `webhook_not_configured`.
-3. Resend will retry per its policy; once it gives up, deliveries are
-   effectively paused. (Or: pause the route in Resend's dashboard for
-   an immediate stop.)
+1. Vercel env → delete `RESEND_INBOUND_WEBHOOK_SECRET` (Production).
+2. Endpoint now returns 503 `webhook_not_configured`. Resend will
+   retry then give up — incoming mail effectively pauses.
+3. Or pause the inbound route in the Resend dashboard for an instant
+   stop.
 
 To fully remove: delete the inbound route in Resend, then delete
-`app/api/inbound/email/route.ts` in the next PR.
+`app/api/inbound/email/route.ts` in a follow-up PR.
 
 ## Related docs
 
-- `docs/STRIPE_BILLING_SETUP.md` — Stripe webhook setup (different
-  webhook secret, different route, same general pattern).
-- `docs/USAGE_LIMITS.md` — the plan caps that Stage 4 will enforce
-  when a known sender hits the endpoint.
-- `docs/SECURITY_BOUNDARIES.md` — server-only / client boundary rules.
+- `docs/STRIPE_BILLING_SETUP.md` — Stripe webhook pattern (different
+  secret, same shape).
+- `docs/USAGE_LIMITS.md` — the plan caps Stage 3's gate consumes.
+- `docs/ADMIN_BILLING_TEST_MODE.md` — admin tools for flipping plans
+  while testing the gate.
+- `lib/billing/inbound-reply-email.ts` — the three reply templates.
+- `lib/db/user-lookup.ts` — `findUserByEmail` (with auth.users
+  fallback + public.users backfill).
