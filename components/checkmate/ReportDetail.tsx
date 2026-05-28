@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
 import { humanizeCategory, ANALYSIS_DISCLAIMER } from '@/lib/checkmate-shared'
 import type { Database, Json } from '@/lib/db_types'
+import { FeedbackWidget } from '@/components/checkmate/FeedbackWidget'
 
 type CaseRow = Database['public']['Tables']['cases']['Row']
 type ReportRow = Database['public']['Tables']['risk_reports']['Row']
@@ -256,6 +257,9 @@ export function ReportDetail({ caseRow, report }: ReportDetailProps) {
       <div className="rounded-xl border border-white/8 bg-white/3 px-5 py-4">
         <p className="text-[11px] leading-5 text-white/30">{ANALYSIS_DISCLAIMER}</p>
       </div>
+
+      {/* Feedback */}
+      <FeedbackWidget caseId={caseRow.id} />
 
       <div className="flex justify-center">
         <GradientButton href="/cases/new" variant="primary">

@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: '/admin/billing-test', label: 'Billing Test' },
   { href: '/admin/customers', label: 'Customers' },
   { href: '/admin/tickets', label: 'Tickets' },
+  { href: '/admin/reviews', label: 'Feedback Reviews' }
 ]
 
 export default async function AdminLayout({

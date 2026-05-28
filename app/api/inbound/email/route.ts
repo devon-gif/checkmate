@@ -38,6 +38,7 @@ import 'server-only'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
 import { analyzeCase } from '@/lib/checkmate'
 import type { CaseCategory } from '@/lib/checkmate-shared'
@@ -136,6 +137,8 @@ function verifySignature({
 // ─── 2. Provider-agnostic payload extraction ──────────────────────────────
 
 interface ParsedInbound {
+  /** Resend inbound email ID — used to fetch full body via API */
+  emailId: string | null
   providerMessageId: string | null
   fromEmail: string | null
   toEmail: string | null
@@ -145,6 +148,10 @@ interface ParsedInbound {
   hasAttachments: boolean
   /** Standard auto-reply hint header — caller uses this for loop detection. */
   autoSubmitted: string | null
+  /** Debug-only: top-level payload key names (never values). */
+  _rootKeys: string[]
+  /** Debug-only: data-level key names (never values). */
+  _dataKeys: string[]
 }
 
 function pickString(value: unknown): string {
@@ -184,9 +191,47 @@ function parseInbound(payload: unknown, headers: Headers): ParsedInbound {
       : null) ??
     root
 
+  // Capture keys for debug logging (names only, never values).
+  const _rootKeys = Object.keys(root)
+  const _dataKeys = data !== root ? Object.keys(data) : []
+
   const subject = pickString(data.subject ?? root.subject)
-  const text = pickString(data.text ?? root.text ?? root.body_plain)
-  const html = pickString(data.html ?? root.html ?? root.body_html)
+
+  // ── Body extraction ────────────────────────────────────────────────────
+  // Resend `email.received` webhook: body is NOT in the webhook payload.
+  // It must be fetched via resend.emails.receiving.get(email_id).
+  // For other providers / direct JSON / test payloads we probe all likely field
+  // names so this handler remains provider-agnostic.
+  const text = pickString(
+    data.text ??
+    data.body ??
+    data.body_text ??
+    (data as any)['body-plain'] ??
+    data.stripped_text ??
+    data.plain ??
+    data.content ??
+    root.text ??
+    root.body_plain ??
+    (root as any)['body-plain'] ??
+    root.body ??
+    root.content
+  )
+
+  const html = pickString(
+    data.html ??
+    data.body_html ??
+    (data as any)['body-html'] ??
+    data.stripped_html ??
+    root.html ??
+    root.body_html ??
+    (root as any)['body-html']
+  )
+
+  // Resend inbound email_id — used to fetch body via API when text+html empty.
+  // The field is `email_id` in the official ReceivedEmailEventData type.
+  const emailId =
+    pickString(data.email_id ?? data.emailId ?? root.email_id ?? root.emailId) ||
+    null
 
   // attachments[] (Resend), Attachment-Count (Mailgun) — either signal is fine
   const attachmentsRaw = data.attachments ?? root.attachments
@@ -205,8 +250,9 @@ function parseInbound(payload: unknown, headers: Headers): ParsedInbound {
       : null)
 
   return {
+    emailId,
     providerMessageId:
-      pickString(data.id ?? data.message_id ?? root.id ?? root.message_id) ||
+      pickString(data.email_id ?? data.id ?? data.message_id ?? root.id ?? root.message_id) ||
       null,
     fromEmail: pickEmail(data.from ?? root.from),
     toEmail: pickEmail(data.to ?? root.to ?? INBOUND_EMAIL_ADDRESS),
@@ -214,7 +260,9 @@ function parseInbound(payload: unknown, headers: Headers): ParsedInbound {
     text,
     html,
     hasAttachments,
-    autoSubmitted
+    autoSubmitted,
+    _rootKeys,
+    _dataKeys
   }
 }
 
@@ -241,6 +289,47 @@ function deriveAnalyzableText(p: ParsedInbound): string {
 
 function isRawEmailTooLarge(p: ParsedInbound): boolean {
   return p.text.length + p.html.length > MAX_RAW_EMAIL_CHARS
+}
+
+/**
+ * Fetches the plain-text and HTML body from Resend's inbound email API.
+ * The `email.received` webhook payload does NOT include body content —
+ * only metadata. Body lives at GET /emails/receiving/{email_id}.
+ *
+ * Returns null if the API key is missing, emailId is null, or the fetch fails.
+ * Never throws — caller treats null as "body unavailable".
+ */
+async function fetchBodyFromResend(
+  emailId: string
+): Promise<{ text: string; html: string } | null> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn(
+      '[inbound/email] RESEND_API_KEY not set — cannot fetch email body from Resend API'
+    )
+    return null
+  }
+  try {
+    const resend = new Resend(apiKey)
+    const result = await resend.emails.receiving.get(emailId)
+    if (result.error) {
+      console.warn(
+        `[inbound/email] resend.emails.receiving.get(${emailId}) error:`,
+        result.error
+      )
+      return null
+    }
+    return {
+      text: result.data?.text ?? '',
+      html: result.data?.html ?? ''
+    }
+  } catch (err) {
+    console.warn(
+      `[inbound/email] resend.emails.receiving.get threw:`,
+      err instanceof Error ? err.message : String(err)
+    )
+    return null
+  }
 }
 
 function pickCategoryHint(input: string): CaseCategory {
@@ -401,17 +490,41 @@ export async function POST(req: Request) {
   const parsed = parseInbound(payload, req.headers)
   const fromEmail = normalizeBetaEmail(parsed.fromEmail)
 
-  // One structured log line per request — safe fields only.
+  // One structured log line per request — safe fields only (no body content, no PII).
   console.log(
     `[inbound/email] received: provider_msg_id=${parsed.providerMessageId ?? '(none)'} ` +
+      `email_id=${parsed.emailId ?? '(none)'} ` +
       `from=${maskEmail(fromEmail)} to=${maskEmail(parsed.toEmail)} ` +
-      `subject_len=${parsed.subject.length} has_text=${parsed.text.length > 0} ` +
-      `has_html=${parsed.html.length > 0} has_attachments=${parsed.hasAttachments}`
+      `subject_len=${parsed.subject.length} ` +
+      `body_text_len=${parsed.text.length} body_html_len=${parsed.html.length} ` +
+      `has_attachments=${parsed.hasAttachments} ` +
+      `root_keys=[${parsed._rootKeys.join(',')}] ` +
+      `data_keys=[${parsed._dataKeys.join(',')}]`
   )
+
+  // ── Body hydration: Resend inbound webhook does NOT include text/html ──
+  // The email.received payload only has metadata (email_id, subject, from,
+  // to, attachments). Full body lives at GET /emails/receiving/{email_id}.
+  // We fetch it now if the webhook payload body fields are empty.
+  if (parsed.text.length === 0 && parsed.html.length === 0 && parsed.emailId) {
+    const fetched = await fetchBodyFromResend(parsed.emailId)
+    if (fetched) {
+      parsed.text = fetched.text
+      parsed.html = fetched.html
+      console.log(
+        `[inbound/email] body hydrated from Resend API: ` +
+          `email_id=${parsed.emailId} ` +
+          `text_len=${parsed.text.length} html_len=${parsed.html.length}`
+      )
+    } else {
+      console.warn(
+        `[inbound/email] body fetch failed for email_id=${parsed.emailId} — will analyze subject only`
+      )
+    }
+  }
 
   const sb = serviceClient()
   if (!sb) {
-    // Without Supabase we can neither look up the sender nor analyze.
     // Return 200 so the provider doesn't retry; the operator will see
     // the warning above in the function logs.
     console.warn(
@@ -669,6 +782,15 @@ export async function POST(req: Request) {
   const combinedForAnalyzer = parsed.subject
     ? `${parsed.subject}\n\n${submittedText}`.slice(0, MAX_ANALYZABLE_CHARS)
     : submittedText
+
+  // Debug: log input dimensions (no body content)
+  console.log(
+    `[inbound/email] analyzer input: ` +
+      `subject_len=${parsed.subject.length} ` +
+      `body_len=${submittedText.length} ` +
+      `combined_len=${combinedForAnalyzer.length} ` +
+      `source=${parsed.emailId ? 'resend_api' : 'webhook_payload'}`
+  )
 
   if (!combinedForAnalyzer.trim()) {
     // Nothing to analyze. Log and bail — but still 200 so Resend doesn't

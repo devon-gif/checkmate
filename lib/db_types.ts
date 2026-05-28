@@ -339,6 +339,97 @@ export interface Database {
           }
         ]
       }
+      case_feedback: {
+        Row: {
+          id: string
+          case_id: string
+          user_id: string
+          rating: 'accurate' | 'not_right'
+          reason:
+            | 'too_risky'
+            | 'not_risky_enough'
+            | 'missed_red_flag'
+            | 'wrong_category'
+            | 'confusing_explanation'
+            | 'other'
+            | null
+          note: string | null
+          admin_status:
+            | 'reviewed'
+            | 'false_positive'
+            | 'false_negative'
+            | 'needs_rule_update'
+            | 'needs_prompt_update'
+            | null
+          admin_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          user_id?: string
+          rating: 'accurate' | 'not_right'
+          reason?:
+            | 'too_risky'
+            | 'not_risky_enough'
+            | 'missed_red_flag'
+            | 'wrong_category'
+            | 'confusing_explanation'
+            | 'other'
+            | null
+          note?: string | null
+          admin_status?:
+            | 'reviewed'
+            | 'false_positive'
+            | 'false_negative'
+            | 'needs_rule_update'
+            | 'needs_prompt_update'
+            | null
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          user_id?: string
+          rating?: 'accurate' | 'not_right'
+          reason?:
+            | 'too_risky'
+            | 'not_risky_enough'
+            | 'missed_red_flag'
+            | 'wrong_category'
+            | 'confusing_explanation'
+            | 'other'
+            | null
+          note?: string | null
+          admin_status?:
+            | 'reviewed'
+            | 'false_positive'
+            | 'false_negative'
+            | 'needs_rule_update'
+            | 'needs_prompt_update'
+            | null
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'case_feedback_case_id_fkey'
+            columns: ['case_id']
+            referencedRelation: 'cases'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'case_feedback_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       risk_reports: {
         Row: {
           case_id: string
