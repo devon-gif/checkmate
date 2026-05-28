@@ -1,5 +1,6 @@
 import { GlassCard } from './GlassCard'
 import { cn } from '@/lib/utils'
+import { riskTw, riskLabel as riskLabelHelper } from '@/lib/risk-colors'
 
 type RiskLevel = 'low' | 'medium' | 'high' | 'very_high' | string
 
@@ -11,33 +12,8 @@ interface RiskPreviewCardProps {
   className?: string
 }
 
-function levelColor(level: RiskLevel) {
-  switch (level) {
-    case 'very_high':
-    case 'high':
-      return 'text-red-400'
-    case 'medium':
-      return 'text-amber-400'
-    default:
-      return 'text-emerald-400'
-  }
-}
-
-function levelBorderColor(level: RiskLevel) {
-  switch (level) {
-    case 'very_high':
-    case 'high':
-      return 'border-red-500/30'
-    case 'medium':
-      return 'border-amber-500/30'
-    default:
-      return 'border-emerald-500/30'
-  }
-}
-
 function humanizeLevel(level: RiskLevel) {
-  if (level === 'very_high') return 'CRITICAL RISK'
-  return level.replace('_', ' ').toUpperCase()
+  return riskLabelHelper(level).toUpperCase()
 }
 
 export function RiskPreviewCard({
@@ -47,6 +23,7 @@ export function RiskPreviewCard({
   flags = [],
   className
 }: RiskPreviewCardProps) {
+  const tw = riskTw(level)
   return (
     <GlassCard className={cn('flex flex-col gap-4 p-5', className)}>
       {/* Score ring */}
@@ -54,14 +31,14 @@ export function RiskPreviewCard({
         <div
           className={cn(
             'flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 text-xl font-bold',
-            levelColor(level),
-            levelBorderColor(level)
+            tw.text,
+            tw.border
           )}
         >
           {score}
         </div>
         <div>
-          <p className={cn('text-sm font-semibold', levelColor(level))}>
+          <p className={cn('text-sm font-semibold', tw.text)}>
             {humanizeLevel(level)}
           </p>
           <p className="text-xs text-white/40">Ray’s read · {score}/100</p>
