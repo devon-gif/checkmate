@@ -13,9 +13,9 @@
    `(provider, provider_msg_id)` index. Provider retries short-circuit
    as `duplicate`.
 4. Gates the sender:
-   - active non-expired row in `beta_access` → allowed (mapped to the
-     beta tier's monthly cap)
    - active or trialing `user_billing` → allowed (paid plan limits)
+   - otherwise, active non-expired row in `beta_access` → allowed
+     (mapped to the beta tier's monthly cap)
    - `past_due` subscription → blocked (payment-issue reply)
    - everything else → blocked (sign-up-or-request-beta reply)
    - over the monthly cap → over-limit reply
@@ -89,13 +89,13 @@ After applying, force a schema-cache reload: `notify pgrst, 'reload schema';`
 │ 4. spam guard ────────── (200, action: rejected_spam)        │
 │         │                                                    │
 │         ▼                                                    │
-│ 5. beta_access active for sender?                            │
+│ 5. active/trialing paid billing?                             │
 │         │ yes                       │ no                     │
 │         ▼                           ▼                        │
-│   plan = beta plan          billing.status active/trialing?  │
+│   plan = paid plan          beta_access active?              │
 │   isAllowed = true                  │ yes        │ no        │
 │                                     ▼            ▼           │
-│                              plan = paid    past_due?        │
+│                              plan = beta    past_due?        │
 │                              isAllowed = true   │            │
 │                                                 ▼            │
 │                                          blocked reply       │
@@ -359,8 +359,9 @@ The parser deliberately tries multiple envelopes:
   flag as `has_attachments` (currently unsupported; logged for the
   operator and the email still gets analyzed via text/html body)
 
-Each `from`/`to` value can be a string, `{email, name}` object, or an
-array of either (we pick the first).
+Each `from`/`to` value can be a string, a `"Name <email@example.com>"`
+string, an `{email, name}` object, or an array of either (we pick the
+first).
 
 ## What logs to check in Vercel
 

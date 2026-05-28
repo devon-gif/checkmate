@@ -14,9 +14,9 @@
  *      return 200 (Resend retries are at-least-once).
  *   4. Gate the sender:
  *        a. spam loop guard (`from == ray@…` or `Auto-Submitted`)
- *        b. is the email on `beta_access` and still active?
- *        c. is there a `public.users` row for them?
- *        d. is there an active/trialing paid subscription?
+ *        b. is there a `public.users` row for them?
+ *        c. is there an active/trialing paid subscription?
+ *        d. if not paid, is the email on `beta_access` and still active?
  *        e. resolve plan → monthly limit → check usage_events count
  *      If any gate fails, log the outcome and send the matching reply
  *      email (blocked / over_limit) — never call the analyzer.
@@ -152,7 +152,13 @@ function pickString(value: unknown): string {
 }
 
 function pickEmail(value: unknown): string | null {
-  if (typeof value === 'string') return value
+  if (typeof value === 'string') {
+    const angleMatch = value.match(/<([^<>@\s]+@[^<>\s]+)>/)
+    if (angleMatch?.[1]) return angleMatch[1]
+
+    const plainMatch = value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
+    return plainMatch?.[0] ?? value
+  }
   if (value && typeof value === 'object') {
     const obj = value as Record<string, unknown>
     if (typeof obj.email === 'string') return obj.email
