@@ -1,4 +1,4 @@
-# INBOUND_EMAIL_SETUP.md — `ray@checkray.app` (Stage 3, gated MVP)
+# INBOUND_EMAIL_SETUP.md — `ray@inbound.checkray.app` (gated MVP)
 
 ## Current state
 
@@ -28,9 +28,18 @@
 senders.** That's the cost protection.
 
 **What's not done yet:** automated DNS / inbound MX routing (see the
-provider section below). IONOS still forwards `ray@checkray.app` →
-your Gmail inbox, which is fine for you reading manually, but **that
-forwarding alone does not call this webhook**.
+provider section below). IONOS still forwards `ray@checkray.app` and
+`support@checkray.app` to your Gmail inbox, which is fine for manual
+fallback, but **that forwarding alone does not call this webhook**.
+
+The first automated inbound address should be:
+
+```
+ray@inbound.checkray.app
+```
+
+Keep the root `ray@checkray.app` address as the public/manual fallback
+until Resend inbound has been tested live.
 
 ## Webhook URL
 
@@ -48,7 +57,7 @@ to the same Vercel deployment.)
 | `RESEND_INBOUND_WEBHOOK_SECRET` | **Sensitive** | yes in prod | Resend's `whsec_…` signing secret. In dev (NODE_ENV !== production) it's optional so local curl tests work. |
 | `RESEND_API_KEY` | **Sensitive** | for replies | Same key the rest of the app already uses to send email. Without it, gating still works but the reply email is skipped (logged as `reply_failed`). |
 | `RESEND_FROM_EMAIL` | server | optional | Defaults to `CheckRay <noreply@checkray.app>`. |
-| `INBOUND_EMAIL_ADDRESS` | server | optional | Defaults to `ray@checkray.app`. Used for the loop guard. |
+| `INBOUND_EMAIL_ADDRESS` | server | optional | Defaults to `ray@inbound.checkray.app`. Used for the loop guard. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Sensitive** | yes | Same key billing uses. Required to look up beta_access, user_billing, write cases. |
 | `NEXT_PUBLIC_SUPABASE_URL` | public | yes | |
 | `NEXT_PUBLIC_APP_URL` | public | yes | Used to build the dashboard link in the reply email. |
@@ -128,7 +137,7 @@ curl -s -X POST http://localhost:3000/api/inbound/email \
   -H 'Content-Type: application/json' \
   -d '{
     "from":    "your-beta-tester@example.com",
-    "to":      "ray@checkray.app",
+    "to":      "ray@inbound.checkray.app",
     "subject": "Recruiter asking for $200 equipment deposit",
     "text":    "Hi! You are hired for a remote data entry role at GlobalSoft. Please reply YES and send a $200 deposit for your equipment. We will send a check first."
   }' | jq
@@ -161,7 +170,7 @@ curl -s -X POST http://localhost:3000/api/inbound/email \
   -H 'Content-Type: application/json' \
   -d '{
     "from": "stranger@nowhere.example",
-    "to":   "ray@checkray.app",
+    "to":   "ray@inbound.checkray.app",
     "subject": "hello",
     "text": "is this a real service"
   }' | jq
@@ -186,7 +195,7 @@ curl -s -X POST http://localhost:3000/api/inbound/email \
   -H 'Content-Type: application/json' \
   -d '{
     "from":    "you@your-domain.com",
-    "to":      "ray@checkray.app",
+    "to":      "ray@inbound.checkray.app",
     "subject": "Suspicious bill from county clerk?",
     "text":    "I got a $45 bill from a county clerk office in Iowa asking for credit card payment by today or my driver license will be suspended."
   }' | jq
@@ -194,13 +203,63 @@ curl -s -X POST http://localhost:3000/api/inbound/email \
 
 Expected: `action: "analyzed"`.
 
-### Test 5 — over-limit
+### Test 5 — phishing URL email
+
+From an approved beta or paid sender:
+
+```bash
+curl -s -X POST http://localhost:3000/api/inbound/email \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "from":    "your-beta-tester@example.com",
+    "to":      "ray@inbound.checkray.app",
+    "subject": "Account final notice",
+    "text":    "Your account will be suspended today. Pay now at https://secure-example-login.xyz/payment"
+  }' | jq
+```
+
+Expected: `action: "analyzed"`. The route sends a `phishing_url`
+category hint to the analyzer.
+
+### Test 6 — bill/payment email
+
+```bash
+curl -s -X POST http://localhost:3000/api/inbound/email \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "from":    "your-beta-tester@example.com",
+    "to":      "ray@inbound.checkray.app",
+    "subject": "Suspicious bill from county clerk?",
+    "text":    "I got a $45 bill from a county clerk office asking for credit card payment by today or my driver license will be suspended."
+  }' | jq
+```
+
+Expected: `action: "analyzed"`. The route sends a `bill_or_fee`
+category hint.
+
+### Test 7 — empty / attachment-only email
+
+```bash
+curl -s -X POST http://localhost:3000/api/inbound/email \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "from": "your-beta-tester@example.com",
+    "to": "ray@inbound.checkray.app",
+    "subject": "Please check this attachment",
+    "attachments": [{ "filename": "invoice.pdf" }]
+  }' | jq
+```
+
+Expected: `action: "empty_body"` and a "Ray could not check that
+email" reply. Attachments are intentionally not processed in this beta.
+
+### Test 8 — over-limit
 
 Same setup as Test 4, but first run 10 checks (Basic = 10 / month) via
 `/cases/new` or by repeating the curl. The 11th call returns
 `action: "over_limit"` and a "CheckRay limit reached" reply.
 
-### Test 6 — idempotency
+### Test 9 — idempotency
 
 Repeat any successful call with the same `id` in the payload:
 
@@ -212,24 +271,27 @@ curl -s -X POST http://localhost:3000/api/inbound/email \
 
 The second call returns `action: "duplicate"` and creates no new rows.
 
-### Test 7 — spam/loop guard
+### Test 10 — spam/loop guard
 
-Sending from `ray@checkray.app` itself, or with an `Auto-Submitted`
+Sending from `ray@inbound.checkray.app` itself, or with an `Auto-Submitted`
 header, returns `action: "rejected_spam"` with no analysis:
 
 ```bash
 curl -s -X POST http://localhost:3000/api/inbound/email \
   -H 'Content-Type: application/json' \
   -H 'Auto-Submitted: auto-replied' \
-  -d '{ "from":"you@x.com", "to":"ray@checkray.app", "subject":"OOO", "text":"I am away." }'
+  -d '{ "from":"you@x.com", "to":"ray@inbound.checkray.app", "subject":"OOO", "text":"I am away." }'
 ```
 
 ## How real inbound email must be wired
 
-Right now `ray@checkray.app` is a forwarding alias at IONOS pointing at
-your Gmail. **That forwarding cannot trigger the webhook** — IONOS has
-no concept of an HTTPS callback. You need to swap the MX route to a
-provider that does inbound-to-webhook.
+Right now `ray@checkray.app` and `support@checkray.app` are forwarding
+aliases at IONOS pointing at your Gmail. **That forwarding cannot
+trigger the webhook** — IONOS has no concept of an HTTPS callback.
+
+For the first automated version, do **not** move the root `checkray.app`
+MX records. Add a dedicated Resend inbound subdomain instead:
+`inbound.checkray.app`.
 
 Four options, in rough order of "least effort to a working production
 flow":
@@ -238,17 +300,24 @@ flow":
 
 Already what the signature verifier expects. Steps:
 
-1. Resend dashboard → **Domains** → add `checkray.app` (or
-   `inbound.checkray.app`) → add the DNS records Resend prints (MX,
-   SPF, DKIM, optional DMARC).
-2. Resend → **Inbound** → **+ Add inbound** → match `ray@checkray.app`,
+1. Resend dashboard → **Domains** → add `inbound.checkray.app` → add
+   the DNS records Resend prints in IONOS (MX, SPF, DKIM, optional
+   DMARC).
+2. Resend → **Inbound** → **+ Add inbound** → match
+   `ray@inbound.checkray.app`,
    destination type **Webhook**, URL
-   `https://www.checkray.app/api/inbound/email`.
+   `https://checkray.app/api/inbound/email`.
 3. Copy the `whsec_…` signing secret → Vercel `RESEND_INBOUND_WEBHOOK_SECRET`
    (Production scope).
-4. Update IONOS DNS to point the new MX records at Resend's inbound
-   servers (Resend's UI shows the exact target). Remove the IONOS-to-Gmail
-   forwarding for `ray@…` so messages stop double-delivering.
+4. Add Vercel env vars:
+   - `RESEND_INBOUND_WEBHOOK_SECRET`
+   - `INBOUND_EMAIL_ADDRESS=ray@inbound.checkray.app`
+   - `NEXT_PUBLIC_APP_URL=https://checkray.app`
+5. Keep IONOS `support@checkray.app` forwarding active for now. Keep
+   `ray@checkray.app` as a manual fallback until the automated subdomain
+   has been tested.
+6. Do not move root `checkray.app` MX records for this first inbound
+   rollout.
 
 ### B. SendGrid Inbound Parse
 
@@ -313,11 +382,12 @@ there, one row per delivery.
 | Item | Required for | Done? |
 |---|---|---|
 | Pick a provider (Resend recommended) | any automation at all | not yet |
-| Add MX + SPF + DKIM records on `checkray.app` (or subdomain) | provider can receive | not yet |
-| Set up inbound webhook in the provider dashboard | provider can POST us | not yet |
+| Add MX + SPF + DKIM records on `inbound.checkray.app` | provider can receive | not yet |
+| Set up `ray@inbound.checkray.app` inbound webhook in Resend | provider can POST us | not yet |
 | Set `RESEND_INBOUND_WEBHOOK_SECRET` in Vercel | signature check works | not yet |
+| Set `INBOUND_EMAIL_ADDRESS=ray@inbound.checkray.app` in Vercel | loop guard matches inbound address | not yet |
 | Apply `20260529120000_add_inbound_email_log.sql` migration | idempotency + audit | not yet |
-| Remove IONOS → Gmail forwarding for `ray@…` once provider is live | avoid double-delivery | not yet |
+| Keep IONOS root forwarding for `support@checkray.app` and manual `ray@checkray.app` | manual fallback | yes |
 | Confirm `RESEND_API_KEY` is set in Vercel | reply emails go out | already in place for /beta/request |
 
 ## Honesty note for the user-facing email

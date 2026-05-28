@@ -40,6 +40,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 
 import { analyzeCase } from '@/lib/checkmate'
+import type { CaseCategory } from '@/lib/checkmate-shared'
 import { ensureDisclaimer } from '@/lib/checkray-core'
 import {
   getActiveBetaAccessForEmail,
@@ -50,6 +51,7 @@ import {
 import {
   sendInboundAllowedReply,
   sendInboundBlockedReply,
+  sendInboundUnableReply,
   sendInboundOverLimitReply
 } from '@/lib/billing/inbound-reply-email'
 import { canCreateCheck } from '@/lib/billing/plan-limits'
@@ -62,8 +64,10 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const INBOUND_EMAIL_ADDRESS =
-  process.env.INBOUND_EMAIL_ADDRESS ?? 'ray@checkray.app'
+  process.env.INBOUND_EMAIL_ADDRESS ?? 'ray@inbound.checkray.app'
 const REPLAY_TOLERANCE_SECONDS = 5 * 60
+const MAX_ANALYZABLE_CHARS = 20_000
+const MAX_RAW_EMAIL_CHARS = 100_000
 
 // ─── 1. Webhook signature verification ────────────────────────────────────
 
@@ -215,7 +219,7 @@ function parseInbound(payload: unknown, headers: Headers): ParsedInbound {
  */
 function deriveAnalyzableText(p: ParsedInbound): string {
   const fromText = p.text.trim()
-  if (fromText.length > 0) return fromText.slice(0, 20_000)
+  if (fromText.length > 0) return fromText.slice(0, MAX_ANALYZABLE_CHARS)
 
   if (p.html) {
     const stripped = p.html
@@ -224,9 +228,32 @@ function deriveAnalyzableText(p: ParsedInbound): string {
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-    return stripped.slice(0, 20_000)
+    return stripped.slice(0, MAX_ANALYZABLE_CHARS)
   }
   return ''
+}
+
+function isRawEmailTooLarge(p: ParsedInbound): boolean {
+  return p.text.length + p.html.length > MAX_RAW_EMAIL_CHARS
+}
+
+function pickCategoryHint(input: string): CaseCategory {
+  if (/https?:\/\/|www\./i.test(input)) return 'phishing_url'
+  if (
+    /\b(job|recruiter|resume|interview|hiring|position|role|remote work|employment|offer letter|equipment deposit)\b/i.test(
+      input
+    )
+  ) {
+    return 'job_scam_or_ghost_job'
+  }
+  if (
+    /\b(invoice|bill|fee|payment|pay now|final notice|amount due|charge|deposit|receipt)\b/i.test(
+      input
+    )
+  ) {
+    return 'bill_or_fee'
+  }
+  return 'email'
 }
 
 function maskEmail(email: string | null | undefined): string {
@@ -488,14 +515,16 @@ export async function POST(req: Request) {
     }
   }
 
-  // Compose final allow decision. Beta beats paid for plan identity; if
-  // both are present we pick beta so usage limits stay on the beta tier.
+  // Compose final allow decision. Active/trialing paid access wins when
+  // both exist so a beta grant cannot accidentally downgrade a paid user.
   const allowedByBeta = Boolean(betaRow)
   const allowedByPaid = billing.isPaid
-  const effectivePlan = betaRow
-    ? betaPlanToBasePlan(betaRow.plan)
-    : billing.plan ?? null
-  const effectiveStatus = betaRow ? 'active' : billing.status
+  const effectivePlan = allowedByPaid
+    ? billing.plan
+    : betaRow
+      ? betaPlanToBasePlan(betaRow.plan)
+      : null
+  const effectiveStatus = allowedByPaid ? billing.status : betaRow ? 'active' : null
 
   // Past-due is its own messaging path even when neither beta nor paid is
   // technically "allowed" — we want the user to see the right blocker.
@@ -602,9 +631,37 @@ export async function POST(req: Request) {
   }
 
   // ── 5. Allowed path: analyze + save + reply ─────────────────────────
+  if (isRawEmailTooLarge(parsed)) {
+    await logInbound(sb, {
+      provider_msg_id: parsed.providerMessageId,
+      sender_email: fromEmail,
+      to_email: parsed.toEmail,
+      subject: parsed.subject,
+      matched_user_id: user.id,
+      outcome: 'analyzer_error',
+      error_message: 'email text/html content exceeded local processing limit'
+    })
+    const reply = await sendInboundUnableReply({
+      toEmail: fromEmail,
+      reason: 'too_large'
+    })
+    if (!reply.ok) {
+      await logInbound(sb, {
+        provider_msg_id: parsed.providerMessageId,
+        sender_email: fromEmail,
+        to_email: parsed.toEmail,
+        subject: parsed.subject,
+        matched_user_id: user.id,
+        outcome: 'reply_failed',
+        error_message: reply.message
+      })
+    }
+    return NextResponse.json({ ok: true, received: true, action: 'too_large' })
+  }
+
   const submittedText = deriveAnalyzableText(parsed)
   const combinedForAnalyzer = parsed.subject
-    ? `${parsed.subject}\n\n${submittedText}`.slice(0, 20_000)
+    ? `${parsed.subject}\n\n${submittedText}`.slice(0, MAX_ANALYZABLE_CHARS)
     : submittedText
 
   if (!combinedForAnalyzer.trim()) {
@@ -621,6 +678,21 @@ export async function POST(req: Request) {
         ? 'attachment-only email — text extraction unsupported'
         : 'empty body'
     })
+    const reply = await sendInboundUnableReply({
+      toEmail: fromEmail,
+      reason: parsed.hasAttachments ? 'attachments_unsupported' : 'empty'
+    })
+    if (!reply.ok) {
+      await logInbound(sb, {
+        provider_msg_id: parsed.providerMessageId,
+        sender_email: fromEmail,
+        to_email: parsed.toEmail,
+        subject: parsed.subject,
+        matched_user_id: user.id,
+        outcome: 'reply_failed',
+        error_message: reply.message
+      })
+    }
     return NextResponse.json({ ok: true, received: true, action: 'empty_body' })
   }
 
@@ -628,7 +700,7 @@ export async function POST(req: Request) {
   try {
     analysis = await analyzeCase({
       text: combinedForAnalyzer,
-      categoryHint: 'email'
+      categoryHint: pickCategoryHint(combinedForAnalyzer)
     })
   } catch (err) {
     console.error(
@@ -656,7 +728,9 @@ export async function POST(req: Request) {
       userId: user.id,
       analysis,
       submittedText: combinedForAnalyzer,
-      submittedUrl: ''
+      submittedUrl: '',
+      source: 'inbound_email',
+      title: `Emailed check: ${parsed.subject || maskEmail(fromEmail)}`.slice(0, 72)
     })
     if (createdCase) {
       savedCaseId = createdCase.id
@@ -700,7 +774,8 @@ export async function POST(req: Request) {
     topRedFlags: analysis.red_flags,
     recommendedActions: analysis.recommended_actions,
     safeReply: ensureDisclaimer(analysis.safe_reply ?? '') || null,
-    caseId: savedCaseId
+    caseId: savedCaseId,
+    attachmentNotice: parsed.hasAttachments
   })
 
   if (!reply.ok) {

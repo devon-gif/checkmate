@@ -18,15 +18,17 @@ export interface SaveCaseInput {
   analysis: RiskAnalysis
   submittedText: string
   submittedUrl: string
+  source?: string
+  title?: string
 }
 
 export async function saveCase(
   supabase: SupabaseClient<Database>,
-  { userId, analysis, submittedText, submittedUrl }: SaveCaseInput
+  { userId, analysis, submittedText, submittedUrl, source = 'web', title }: SaveCaseInput
 ): Promise<Row | null> {
   const titleSource =
     submittedText || submittedUrl.replace(/^https?:\/\//, '') || 'New risk check'
-  const title = titleSource.slice(0, 72)
+  const caseTitle = (title || titleSource).slice(0, 72)
   const inputType = submittedUrl ? (submittedText ? 'text_and_url' : 'url') : 'text'
 
   const { data: createdCase, error } = await supabase
@@ -35,13 +37,13 @@ export async function saveCase(
       user_id: userId,
       category: analysis.category,
       status: 'open',
-      title,
+      title: caseTitle,
       risk_level: analysis.risk_level,
       risk_score: analysis.risk_score,
       input_text: submittedText || null,
       input_url: submittedUrl || null,
       input_type: inputType,
-      source: 'web'
+      source
     })
     .select('*')
     .single()

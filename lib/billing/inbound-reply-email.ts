@@ -36,7 +36,7 @@ const APP_URL = (
 
 const SIGN_IN_URL = `${APP_URL}/sign-in`
 const BETA_REQUEST_URL = `${APP_URL}/beta`
-const PRICING_URL = `${APP_URL}/pricing`
+const DASHBOARD_URL = `${APP_URL}/dashboard`
 
 const DISCLAIMER =
   'Ray can be wrong. Verify important decisions through official sources.'
@@ -101,6 +101,7 @@ export interface AllowedReplyArgs {
   safeReply?: string | null
   recommendedActions?: string[]
   caseId?: string | null
+  attachmentNotice?: boolean
 }
 
 function riskLabel(level: RiskLevel) {
@@ -132,6 +133,9 @@ export async function sendInboundAllowedReply(
     (args.recommendedActions ?? [])[0] ??
     args.safeReply?.trim() ??
     "Don't reply until you've verified the sender through an official channel."
+  const attachmentNotice = args.attachmentNotice
+    ? 'Note: attachments are not supported in the email beta yet. Ray checked the message text only.'
+    : null
 
   const text = [
     `Ray checked the email you forwarded. ${riskLabel(args.riskLevel)} (${args.riskScore}/100).`,
@@ -147,12 +151,16 @@ export async function sendInboundAllowedReply(
     'Safer next step:',
     `  ${saferStep}`,
     '',
+    attachmentNotice,
+    attachmentNotice ? '' : null,
     `Open the full report on your dashboard: ${dashboardLink}`,
     '',
     DISCLAIMER,
     '',
     '— Ray @ CheckRay'
-  ].join('\n')
+  ]
+    .filter((line): line is string => line !== null)
+    .join('\n')
 
   const html = `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d0d0d;padding:32px;border-radius:12px;max-width:600px;color:#e5e5e5;line-height:1.55;">
@@ -185,6 +193,12 @@ export async function sendInboundAllowedReply(
   <p style="margin:0 0 22px;font-size:14px;color:rgba(255,255,255,0.78);">
     ${escapeHtml(saferStep)}
   </p>
+
+  ${
+    attachmentNotice
+      ? `<p style="margin:0 0 22px;font-size:13px;color:rgba(255,255,255,0.62);">${escapeHtml(attachmentNotice)}</p>`
+      : ''
+  }
 
   <p style="margin:0 0 22px;">
     <a href="${dashboardLink}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Open the full report</a>
@@ -256,7 +270,7 @@ export async function sendInboundOverLimitReply(
     'Hey,',
     '',
     'Ray received your email, but this account has reached its current check limit.',
-    `Sign in to view your plan or upgrade: ${PRICING_URL}`,
+    `Sign in to view your plan or upgrade: ${DASHBOARD_URL}`,
     '',
     DISCLAIMER,
     '',
@@ -272,11 +286,60 @@ export async function sendInboundOverLimitReply(
     Sign in to view your plan or upgrade.
   </p>
   <p style="margin:0;">
-    <a href="${PRICING_URL}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">View plans</a>
+    <a href="${DASHBOARD_URL}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Open dashboard</a>
   </p>
   <p style="margin:22px 0 0;font-size:11px;color:rgba(255,255,255,0.4);">${escapeHtml(DISCLAIMER)}</p>
   <p style="margin:8px 0 0;font-size:11px;color:rgba(255,255,255,0.35);">— Ray @ CheckRay</p>
 </div>`
 
   return sendOrLog(args.toEmail, subject, text, html, 'inbound-reply/over-limit')
+}
+
+/* ── Unable-to-check reply (empty / too large / attachment-only) ───────── */
+
+export interface UnableReplyArgs {
+  toEmail: string
+  reason: 'empty' | 'too_large' | 'attachments_unsupported'
+}
+
+export async function sendInboundUnableReply(
+  args: UnableReplyArgs
+): Promise<ReplyResult> {
+  const subject = 'Ray could not check that email'
+  const detail =
+    args.reason === 'attachments_unsupported'
+      ? 'Attachments are not supported in the email beta yet, and Ray could not find enough message text to analyze.'
+      : args.reason === 'too_large'
+        ? 'That email was too large for the email beta to process safely.'
+        : 'Ray could not find enough message text to analyze.'
+
+  const text = [
+    'Hey,',
+    '',
+    detail,
+    'Please forward the suspicious message as plain text or paste it into your CheckRay dashboard.',
+    '',
+    DISCLAIMER,
+    '',
+    '— Ray @ CheckRay'
+  ].join('\n')
+
+  const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d0d0d;padding:32px;border-radius:12px;max-width:600px;color:#e5e5e5;line-height:1.55;">
+  <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#7ae2cf;">CheckRay</p>
+  <h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#ffffff;">Ray could not check that email</h1>
+  <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.78);">
+    ${escapeHtml(detail)}
+  </p>
+  <p style="margin:0 0 22px;font-size:14px;color:rgba(255,255,255,0.78);">
+    Please forward the suspicious message as plain text or paste it into your CheckRay dashboard.
+  </p>
+  <p style="margin:0;">
+    <a href="${DASHBOARD_URL}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Open CheckRay</a>
+  </p>
+  <p style="margin:22px 0 0;font-size:11px;color:rgba(255,255,255,0.4);">${escapeHtml(DISCLAIMER)}</p>
+  <p style="margin:8px 0 0;font-size:11px;color:rgba(255,255,255,0.35);">— Ray @ CheckRay</p>
+</div>`
+
+  return sendOrLog(args.toEmail, subject, text, html, 'inbound-reply/unable')
 }
