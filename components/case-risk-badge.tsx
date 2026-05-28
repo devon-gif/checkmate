@@ -9,6 +9,13 @@ const riskStyles: Record<string, string> = {
   very_high: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300'
 }
 
+const riskLabels: Record<string, string> = {
+  low: 'Low risk',
+  medium: 'Medium risk',
+  high: 'High risk',
+  very_high: 'Critical risk'
+}
+
 export function CaseRiskBadge({
   level,
   className
@@ -21,7 +28,7 @@ export function CaseRiskBadge({
       variant="outline"
       className={cn('capitalize shadow-none', riskStyles[level], className)}
     >
-      {level.replace('_', ' ')}
+      {riskLabels[level] ?? level.replace('_', ' ')}
     </Badge>
   )
 }

@@ -21,6 +21,12 @@ export const riskLevels = ['low', 'medium', 'high', 'very_high'] as const
 export type CaseCategory = (typeof caseCategories)[number]
 export type RiskLevel = (typeof riskLevels)[number]
 
+export const RISK_SCORE_THRESHOLDS = {
+  medium: 25,
+  high: 60,
+  very_high: 85
+} as const
+
 export const ANALYSIS_DISCLAIMER =
   'Ray can be wrong. Results are informational only and not legal, financial, medical, or professional advice. Verify important decisions through official sources.'
 
@@ -39,8 +45,8 @@ export function humanizeCategory(cat: string): string {
 }
 
 export function getRiskLevel(score: number): RiskLevel {
-  if (score >= 75) return 'very_high'
-  if (score >= 50) return 'high'
-  if (score >= 25) return 'medium'
+  if (score >= RISK_SCORE_THRESHOLDS.very_high) return 'very_high'
+  if (score >= RISK_SCORE_THRESHOLDS.high) return 'high'
+  if (score >= RISK_SCORE_THRESHOLDS.medium) return 'medium'
   return 'low'
 }

@@ -1,6 +1,7 @@
 import {
   ANALYSIS_DISCLAIMER,
   caseCategories,
+  getRiskLevel,
   type CaseCategory,
   type RiskLevel
 } from '@/lib/checkmate-shared'
@@ -94,11 +95,7 @@ export function clampRiskScore(score: number): number {
 }
 
 export function normalizeRiskLevel(score: number): RiskLevel {
-  const clamped = clampRiskScore(score)
-  if (clamped >= 75) return 'very_high'
-  if (clamped >= 50) return 'high'
-  if (clamped >= 25) return 'medium'
-  return 'low'
+  return getRiskLevel(clampRiskScore(score))
 }
 
 export function normalizeCategory(category: string | undefined): CaseCategory {
@@ -233,7 +230,7 @@ export function defaultVerificationSteps(category: CaseCategory): string[] {
 }
 
 export function safeLowRiskSummary(): string {
-  return 'No major red flags were found in the provided information, but that does not prove it is safe. Verify through official channels before sending money, credentials, or personal information.'
+  return 'Low risk based on the information provided. No major red flags were found, but that does not prove it is safe. Verify through official channels before sending money, credentials, or personal information.'
 }
 
 export function ensureDisclaimer(disclaimer?: string): string {

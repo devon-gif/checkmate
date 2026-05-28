@@ -107,7 +107,7 @@ export interface AllowedReplyArgs {
 function riskLabel(level: RiskLevel) {
   switch (level) {
     case 'very_high':
-      return 'Very high risk'
+      return 'Critical risk'
     case 'high':
       return 'High risk'
     case 'medium':

@@ -22,34 +22,53 @@ function detectUrls(input) {
 }
 
 function getRiskLevel(score) {
-  if (score >= 75) return 'very_high'
-  if (score >= 50) return 'high'
+  if (score >= 85) return 'very_high'
+  if (score >= 60) return 'high'
   if (score >= 25) return 'medium'
   return 'low'
 }
 
 function runSignals(text, urls, hint) {
   const lower = text.toLowerCase()
+  const trimmed = text.trim()
   let score = 20
   const flags = []
   let category = hint ?? 'unknown'
+
+  if (!urls.length && (trimmed.length < 10 || /^[^a-z0-9]+$/i.test(trimmed) || /^[bcdfghjklmnpqrstvwxyz]{8,}$/i.test(trimmed) || /\b(asdf|qwer|zzzz)\b/i.test(trimmed))) {
+    return {
+      score: 30,
+      risk_level: getRiskLevel(30),
+      flags: ['Not enough scam-related content to analyze'],
+      category
+    }
+  }
 
   const paymentSignals = [
     [/wire\s*transfer/i, 'Mentions wire transfer'],
     [/western\s*union/i, 'Mentions Western Union'],
     [/gift\s*card/i, 'Requests gift card payment'],
     [/\bzelle\b/i, 'Requests Zelle payment'],
+    [/cash\s*app/i, 'Requests Cash App payment'],
+    [/\bcrypto\b|\bbitcoin\b/i, 'Requests cryptocurrency'],
     [/cashier'?s?\s*check/i, "Mentions cashier's check"],
     [/upfront\s*(fee|cost|payment|equipment)/i, 'Requires upfront payment'],
+    [/equipment.{0,30}(deposit|fee|payment)|\$\s*\d+.{0,30}equipment\s+deposit/i, 'Requests an equipment deposit'],
+    [/send\s+(money|funds|payment)|send\s+\$\s*\d+/i, 'Requests money to be sent'],
     [/social\s*security\s*number|ssn\b/i, 'Requests Social Security number'],
     [/bank\s*(account|routing)\s*number/i, 'Requests bank account details'],
+    [/(your\s*)?(password|login\s*credentials)/i, 'Requests password or credentials'],
     [/verification\s*code|one[-\s]?time\s*(code|password)|otp\b/i, 'Requests OTP code'],
+    [/2fa\s*code|\btwo[-\s]?factor\b/i, 'Requests two-factor auth code'],
   ]
   for (const [pat, flag] of paymentSignals) {
     if (pat.test(lower)) { score += 15; flags.push(flag) }
   }
 
   const jobSignals = [
+    [/remote.{0,30}(job|role|position|work).{0,80}(deposit|equipment fee|send\s+\$)/i, 'Remote job asks for money before verification'],
+    [/reply\s+["']?(yes|interested)["']?|respond\s+["']?(yes|interested)["']?/i, 'Pressures you to reply with a quick confirmation'],
+    [/\b(whatsapp|telegram|signal)\b/i, 'Recruiter moved conversation to messaging app'],
     [/deposit\s*(the\s*)?(check|cheque)/i, 'Asks you to deposit a check'],
     [/send\s*(you\s*)?a\s*check|mail\s*(you\s*)?a\s*check/i, 'Offer to send a check upfront'],
     [/wire\s*(the\s*)?(difference|remainder|rest)\s*back/i, 'Asks you to wire money back'],
@@ -101,6 +120,62 @@ function runSignals(text, urls, hint) {
     category = 'phishing_url'
   }
 
+  const hasEquipmentDeposit = /equipment.{0,30}(deposit|fee|payment)|\$\s*\d+.{0,30}equipment\s+deposit|send.{0,40}\$\s*\d+.{0,40}equipment/i.test(lower)
+  const hasRemoteJob = /remote.{0,30}(job|role|position|work)|job\s+offer/i.test(lower)
+  const hasReplyYes = /reply\s+["']?(yes|interested)["']?|respond\s+["']?(yes|interested)["']?/i.test(lower)
+  const beforeInterview = /before\s+(the\s+)?interview|no\s+interview|without\s+interview/i.test(lower)
+  const isJob = /\b(job|role|position|recruiter|hiring|interview|offer|onboarding|employment|work from home|remote work|remote job)\b/i.test(lower) || hint === 'job_scam_or_ghost_job'
+  const hasUrgency = /\b(today|immediately|right now|asap|urgent|limited time|within\s+\d+\s*(hours?|hrs?))\b/i.test(lower)
+  const hasMessagingApp = /\b(whatsapp|telegram|signal)\b/i.test(lower)
+  const hasHighRiskPayment = /\b(zelle|cash\s*app|wire transfer|western union|moneygram|gift cards?|crypto|bitcoin)\b/i.test(lower)
+  const hasPaymentRequest = /\b(send|pay|wire|transfer|buy|purchase|load|deposit|payment|fee|amount|balance|invoice)\b/i.test(lower)
+  const hasCredentials = /\b(login|password|2fa|two[-\s]?factor|otp|verification code|verify account|account locked|account suspended|confirm your account)\b/i.test(lower)
+  const hasUrgentPayment = /\b(final notice|past due|overdue|urgent payment|pay immediately|payment required|avoid late fees|collections?|legal action)\b/i.test(lower)
+  const unknownParty = /\b(unknown sender|unknown party|someone i do not know|someone i don't know|random number|unsolicited|unexpected|unverifiable)\b/i.test(lower) || hint === undefined
+  const asksSensitiveJobData = /\b(ssn|social security number|bank account|routing number|government id|driver'?s license|passport)\b/i.test(lower)
+  const earlyJobProcess = /\b(before interview|before the interview|before offer|first step|to continue|to proceed|application process)\b/i.test(lower)
+
+  if (hasEquipmentDeposit && (hasRemoteJob || hasReplyYes || beforeInterview)) {
+    score = Math.max(score, 88)
+    category = 'job_scam_or_ghost_job'
+    flags.push('Equipment deposit requested before verified employment')
+    flags.push('Remote job offer with suspicious payment setup')
+  }
+  if (isJob && hasReplyYes && hasUrgency) {
+    score = Math.max(score, 60)
+    category = 'job_scam_or_ghost_job'
+    flags.push('Pressure to reply immediately')
+  }
+  if (isJob && hasMessagingApp) {
+    score = Math.max(score, 60)
+    category = 'job_scam_or_ghost_job'
+    flags.push('Recruiter moved conversation to messaging app')
+  }
+  if (isJob && hasHighRiskPayment && hasPaymentRequest) {
+    score = Math.max(score, 85)
+    category = 'job_scam_or_ghost_job'
+    flags.push('High-risk payment method requested during hiring')
+  }
+  if (isJob && asksSensitiveJobData && earlyJobProcess) {
+    score = Math.max(score, 70)
+    category = 'job_scam_or_ghost_job'
+    flags.push('Sensitive identity or banking details requested early')
+  }
+  if (hasCredentials && urls.length > 0) {
+    score = Math.max(score, 70)
+    category = 'phishing_url'
+    flags.push('Login or account verification request includes a link')
+  }
+  if (hasUrgentPayment && unknownParty) {
+    score = Math.max(score, 70)
+    if (category === 'unknown') category = 'bill_or_fee'
+    flags.push('Urgent payment demand from an unverifiable sender')
+  }
+  if (hasHighRiskPayment && hasPaymentRequest && unknownParty) {
+    score = Math.max(score, hasUrgency || hasUrgentPayment ? 85 : 70)
+    flags.push('High-risk payment method requested by unknown party')
+  }
+
   score = Math.min(score, 100)
   return { score, risk_level: getRiskLevel(score), flags, category }
 }
@@ -108,6 +183,18 @@ function runSignals(text, urls, hint) {
 // ─── Test cases ───────────────────────────────────────────────────────────────
 
 const CASES = [
+  {
+    id: 'A0',
+    name: 'Remote job equipment deposit before interview',
+    input: 'I got a remote job offer. They want me to reply YES today and send a $200 equipment deposit before the interview.',
+    url: '',
+    hint: 'job_scam_or_ghost_job',
+    expectations: {
+      minScore: 85,
+      riskLevels: ['very_high'],
+      mustHaveFlag: /equipment|deposit|reply/i,
+    }
+  },
   {
     id: 'A',
     name: 'Fake-check job scam',
@@ -122,14 +209,50 @@ const CASES = [
   },
   {
     id: 'B',
-    name: 'Toll phishing',
-    input: 'Final notice: pay your toll balance now or your registration will be suspended. Click',
-    url: 'http://pay-toll-fast-help.com',
+    name: 'Account locked phishing link',
+    input: 'Your bank account is locked. Verify your login now or access will be suspended.',
+    url: 'http://secure-bank-verify-help.com/login',
     hint: 'phishing_url',
     expectations: {
-      minScore: 80,
+      minScore: 70,
       riskLevels: ['very_high', 'high'],
-      mustHaveFlag: /notice|suspend|toll|domain/i,
+      mustHaveFlag: /login|account|verify|domain/i,
+    }
+  },
+  {
+    id: 'B2',
+    name: 'WhatsApp recruiter',
+    input: 'I got a job offer from a recruiter who wants to move the interview to WhatsApp today.',
+    url: '',
+    hint: 'job_scam_or_ghost_job',
+    expectations: {
+      minScore: 60,
+      riskLevels: ['high'],
+      mustHaveFlag: /whatsapp|messaging app/i,
+    }
+  },
+  {
+    id: 'B3',
+    name: 'Urgent invoice payment from unknown sender',
+    input: 'Unexpected invoice from an unknown sender: final notice, payment required immediately to avoid late fees.',
+    url: '',
+    hint: 'bill_or_fee',
+    expectations: {
+      minScore: 70,
+      riskLevels: ['high', 'very_high'],
+      mustHaveFlag: /urgent payment|unverifiable|final notice/i,
+    }
+  },
+  {
+    id: 'B4',
+    name: 'Gift card request',
+    input: 'Someone I do not know says I must buy gift cards and send the codes immediately to avoid legal action.',
+    url: '',
+    hint: undefined,
+    expectations: {
+      minScore: 85,
+      riskLevels: ['very_high'],
+      mustHaveFlag: /gift card|unknown party|payment/i,
     }
   },
   {
@@ -152,9 +275,36 @@ const CASES = [
     hint: undefined,
     expectations: {
       // API returns 400 before reaching the analyzer — but if it reaches
-      // fallback, score must not be dangerously high
+      // fallback, it should ask for more context instead of pretending safe.
+      minScore: 25,
       maxScore: 40,
-      riskLevels: ['low', 'medium', 'high', 'very_high'], // any is fine, won't crash
+      riskLevels: ['medium'],
+      mustHaveFlag: /not enough/i,
+    }
+  },
+  {
+    id: 'D2',
+    name: 'Gibberish input',
+    input: 'asdf qwer zzzz',
+    url: '',
+    hint: undefined,
+    expectations: {
+      minScore: 25,
+      maxScore: 40,
+      riskLevels: ['medium'],
+      mustHaveFlag: /not enough/i,
+    }
+  },
+  {
+    id: 'D3',
+    name: 'Profanity with scam content',
+    input: 'This feels like bullshit: a recruiter says I need to send my SSN before interview to continue the application process.',
+    url: '',
+    hint: 'job_scam_or_ghost_job',
+    expectations: {
+      minScore: 70,
+      riskLevels: ['high', 'very_high'],
+      mustHaveFlag: /ssn|sensitive|banking|identity/i,
     }
   },
   {

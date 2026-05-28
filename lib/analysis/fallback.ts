@@ -21,6 +21,10 @@ import {
   safeLowRiskSummary,
   uniqueStrings
 } from '@/lib/analysis/accuracy-policy'
+import {
+  evaluateRedFlagOverrides,
+  isLikelyInsufficientScamContent
+} from '@/lib/analysis/red-flag-overrides'
 import type { RiskAnalysis } from '@/lib/analysis/types'
 
 // ─── URL detection ────────────────────────────────────────────────────────────
@@ -40,7 +44,12 @@ interface SignalResult {
   flags: string[]
   category: CaseCategory
   strongSignalCount: number
+  insufficientInfo?: boolean
+  safetyIssue?: boolean
 }
+
+const profanityOnlyPattern =
+  /^\s*(?:fuck|shit|damn|bitch|asshole|idiot|stupid|wtf|f u|f\*+|s\*+|a\*+|[@#!$%*\s])+\s*$/i
 
 export function runDeterministicSignals(
   text: string,
@@ -52,6 +61,37 @@ export function runDeterministicSignals(
   const flags: string[] = []
   let category: CaseCategory = 'unknown'
   let strongSignalCount = 0
+  let insufficientInfo = false
+  let safetyIssue = false
+
+  const trimmed = text.trim()
+  const hasSafetyEmergency =
+    /\b(kill myself|suicide|self[-\s]?harm|hurt myself|hurt someone|going to kill|immediate danger|emergency)\b/i.test(
+      lower
+    )
+
+  if (hasSafetyEmergency) {
+    return {
+      score: 70,
+      flags: ['Message may involve immediate safety or crisis concerns'],
+      category: 'unknown',
+      strongSignalCount: 2,
+      safetyIssue: true
+    }
+  }
+
+  if (
+    !urls.length &&
+    (profanityOnlyPattern.test(trimmed) || isLikelyInsufficientScamContent(trimmed, urls))
+  ) {
+    return {
+      score: 30,
+      flags: ['Not enough scam-related content to analyze'],
+      category: hint && caseCategories.includes(hint as CaseCategory) ? (hint as CaseCategory) : 'unknown',
+      strongSignalCount: 0,
+      insufficientInfo: true
+    }
+  }
 
   // ── High-risk payment / identity signals (+15 each) ───────────────────────
   const paymentSignals: [RegExp, string][] = [
@@ -65,6 +105,8 @@ export function runDeterministicSignals(
     [/\bcrypto\b|\bbitcoin\b|\bethereum\b|\busdt\b/i, 'Requests cryptocurrency'],
     [/cashier'?s?\s*check/i, "Mentions cashier's check"],
     [/upfront\s*(fee|cost|payment|equipment|deposit)/i, 'Requires upfront payment'],
+    [/equipment.{0,30}(deposit|fee|payment)|\$\s*\d+.{0,30}equipment\s+deposit/i, 'Requests an equipment deposit'],
+    [/send\s+(money|funds|payment)|send\s+\$\s*\d+/i, 'Requests money to be sent'],
     [/advance\s*fee/i, 'Requests advance fee'],
     [/social\s*security\s*number|ssn\b/i, 'Requests Social Security number'],
     [/bank\s*(account|routing)\s*number/i, 'Requests bank account details'],
@@ -85,6 +127,8 @@ export function runDeterministicSignals(
   // ── Job scam signals ──────────────────────────────────────────────────────
   const jobSignals: [RegExp, string][] = [
     [/purchase\s*(your\s*)?(equipment|laptop|computer|supplies)/i, 'Asks you to purchase equipment'],
+    [/remote.{0,30}(job|role|position|work).{0,80}(deposit|equipment fee|send\s+\$)/i, 'Remote job asks for money before verification'],
+    [/reply\s+["']?(yes|interested)["']?|respond\s+["']?(yes|interested)["']?/i, 'Pressures you to reply with a quick confirmation'],
     [/deposit\s*(the\s*)?(check|cheque)/i, 'Asks you to deposit a check'],
     [/send\s*(you\s*)?a\s*check|mail\s*(you\s*)?a\s*check/i, 'Offer to send a check upfront'],
     [/wire\s*(the\s*)?(difference|remainder|rest)\s*back/i, 'Asks you to wire money back'],
@@ -120,6 +164,15 @@ export function runDeterministicSignals(
     /(verify|confirm|update|secure|alert|account|signin|login|password).*\.(com|net|org|io)/i
   const lookalikeUrl =
     /(support|secure|verify|account|pay|billing|toll|delivery|track|package)[-.][a-z0-9-]+\.(com|net|org|info|help)/i
+  const accountLockedOrLogin =
+    /account\s+(locked|suspended|restricted)|verify\s+(your\s+)?(login|account)|confirm\s+(your\s+)?(password|login)|password\s+reset/i
+
+  if (accountLockedOrLogin.test(lower)) {
+    score += 18
+    strongSignalCount += 1
+    flags.push('Uses account-lock or login-verification pressure')
+    if (category === 'unknown') category = 'phishing_url'
+  }
 
   for (const url of urls) {
     if (suspiciousTlds.test(url)) {
@@ -300,7 +353,35 @@ export function runDeterministicSignals(
     flags.push('Urgent off-channel payment request')
   }
 
-  return { score, flags: uniqueStrings(flags), category, strongSignalCount }
+  const hasEquipmentDeposit = /equipment.{0,30}(deposit|fee|payment)|\$\s*\d+.{0,30}equipment\s+deposit|send.{0,40}\$\s*\d+.{0,40}equipment/i.test(lower)
+  const hasRemoteJob = /remote.{0,30}(job|role|position|work)|job\s+offer/i.test(lower)
+  const hasReplyYes = /reply\s+["']?(yes|interested)["']?|respond\s+["']?(yes|interested)["']?/i.test(lower)
+  const beforeInterview = /before\s+(the\s+)?interview|no\s+interview|without\s+interview/i.test(lower)
+  if (hasEquipmentDeposit && (hasRemoteJob || hasReplyYes || beforeInterview)) {
+    score = Math.max(score, 88)
+    category = 'job_scam_or_ghost_job'
+    strongSignalCount += 2
+    flags.push('Equipment deposit requested before verified employment')
+    flags.push('Remote job offer with suspicious payment setup')
+    if (hasReplyYes) flags.push('Pressures you to reply quickly')
+  }
+
+  const override = evaluateRedFlagOverrides(text, urls, hint)
+  if (override) {
+    score = Math.max(score, override.minScore)
+    if (override.category) category = override.category
+    strongSignalCount += override.strongSignalCount
+    flags.push(...override.flags)
+  }
+
+  return {
+    score,
+    flags: uniqueStrings(flags),
+    category,
+    strongSignalCount,
+    insufficientInfo,
+    safetyIssue
+  }
 }
 
 // ─── Fallback response builder ────────────────────────────────────────────────
@@ -384,12 +465,19 @@ export function buildFallbackAnalysis(
   urls: string[],
   hint?: string
 ): RiskAnalysis {
-  const { score, flags, category, strongSignalCount } = runDeterministicSignals(
+  const signalResult = runDeterministicSignals(
     text,
     urls,
     hint
   )
-  const risk_level = getRiskLevel(score)
+  const {
+    flags,
+    category,
+    strongSignalCount,
+    insufficientInfo,
+    safetyIssue
+  } = signalResult
+  const risk_level = getRiskLevel(signalResult.score)
   const missing_information = defaultMissingInformation(category)
   const red_flags = flags.length
     ? flags
@@ -398,20 +486,30 @@ export function buildFallbackAnalysis(
 
   return {
     category,
-    risk_score: score,
+    risk_score: signalResult.score,
     risk_level,
     confidence_level: confidenceFromEvidence({
-      score,
+      score: signalResult.score,
       redFlags: red_flags,
       missingInformation: missing_information,
       strongSignalCount
     }),
-    summary: summaryByLevel[risk_level](flags),
+    summary: safetyIssue
+      ? 'This message may involve immediate safety concerns, so it should not be treated as a normal scam check. If anyone is in immediate danger, contact local emergency services now; in the US, call or text 988 for mental-health crisis support.'
+      : insufficientInfo
+        ? 'Not enough information to verify the risk. Please paste the suspicious message, link, sender details, or payment request so Ray can look for specific red flags.'
+        : summaryByLevel[risk_level](flags),
     evidence_found: evidenceFromFlags(red_flags),
     red_flags,
     missing_information,
     recommended_actions: uniqueStrings([
-      ...categoryActions[category],
+      ...(safetyIssue
+        ? [
+            'If anyone is in immediate physical danger, contact local emergency services now.',
+            'If this involves self-harm or mental-health crisis in the US, call or text 988.',
+            'Do not rely on a scam checker for urgent safety situations.'
+          ]
+        : categoryActions[category]),
       ...verification_steps
     ]).slice(0, 6),
     safe_reply: safeReplies[category],

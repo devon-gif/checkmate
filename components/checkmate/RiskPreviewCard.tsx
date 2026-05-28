@@ -36,6 +36,7 @@ function levelBorderColor(level: RiskLevel) {
 }
 
 function humanizeLevel(level: RiskLevel) {
+  if (level === 'very_high') return 'CRITICAL RISK'
   return level.replace('_', ' ').toUpperCase()
 }
 

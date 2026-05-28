@@ -55,7 +55,7 @@ const levelConfig: Record<
     icon: '⚠'
   },
   very_high: {
-    label: 'Very high risk',
+    label: 'Critical risk',
     bar: 'bg-red-500',
     badge: 'bg-red-50 text-red-800 border-red-200',
     border: 'border-red-200',
