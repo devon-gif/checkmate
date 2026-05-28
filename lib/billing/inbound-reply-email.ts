@@ -26,6 +26,7 @@ import 'server-only'
 import { Resend } from 'resend'
 
 import type { RiskLevel } from '@/lib/checkmate-shared'
+import { riskHex, riskLabel as sharedRiskLabel } from '@/lib/risk-colors'
 
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ?? 'CheckRay <noreply@checkray.app>'
@@ -104,19 +105,8 @@ export interface AllowedReplyArgs {
   attachmentNotice?: boolean
 }
 
-function riskLabel(level: RiskLevel) {
-  switch (level) {
-    case 'needs_more_info':
-      return 'Needs more info'
-    case 'very_high':
-      return 'Critical risk'
-    case 'high':
-      return 'High risk'
-    case 'medium':
-      return 'Medium risk'
-    case 'low':
-      return 'Low risk'
-  }
+function riskLabel(level: RiskLevel): string {
+  return sharedRiskLabel(level)
 }
 
 export async function sendInboundAllowedReply(
@@ -164,13 +154,19 @@ export async function sendInboundAllowedReply(
     .filter((line): line is string => line !== null)
     .join('\n')
 
+  const colors = riskHex(args.riskLevel)
+  const isCritical = args.riskLevel === 'very_high'
+  const buttonBg = isCritical ? '#ef4444' : '#7ae2cf'
+  const buttonColor = isCritical ? '#ffffff' : '#0d0d0d'
+  const buttonBorder = isCritical ? 'border:1px solid rgba(239,68,68,0.5);' : ''
+
   const html = `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d0d0d;padding:32px;border-radius:12px;max-width:600px;color:#e5e5e5;line-height:1.55;">
   <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#7ae2cf;">CheckRay</p>
   <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#ffffff;">${escapeHtml(subjectPrefix)}</h1>
 
   <p style="margin:0 0 14px;font-size:15px;color:#ececec;">
-    <strong style="color:#7ae2cf;">${escapeHtml(riskLabel(args.riskLevel))}</strong>
+    <strong style="color:${colors.text};">${escapeHtml(riskLabel(args.riskLevel))}</strong>
     <span style="color:rgba(255,255,255,0.5);">(${args.riskScore}/100)</span>
   </p>
 
@@ -178,7 +174,7 @@ export async function sendInboundAllowedReply(
     ${escapeHtml(args.summary || '(no summary)')}
   </p>
 
-  <p style="margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#7ae2cf;">
+  <p style="margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${colors.text};">
     Top red flags Ray noticed
   </p>
   <ul style="margin:0 0 18px;padding-left:18px;font-size:13px;color:rgba(255,255,255,0.7);">
@@ -189,7 +185,7 @@ export async function sendInboundAllowedReply(
     }
   </ul>
 
-  <p style="margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#7ae2cf;">
+  <p style="margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${colors.text};">
     Safer next step
   </p>
   <p style="margin:0 0 22px;font-size:14px;color:rgba(255,255,255,0.78);">
@@ -203,7 +199,7 @@ export async function sendInboundAllowedReply(
   }
 
   <p style="margin:0 0 22px;">
-    <a href="${dashboardLink}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Open the full report</a>
+    <a href="${dashboardLink}" style="display:inline-block;background:${buttonBg};${buttonBorder}color:${buttonColor};font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Open the full report</a>
   </p>
 
   <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.4);">${escapeHtml(DISCLAIMER)}</p>

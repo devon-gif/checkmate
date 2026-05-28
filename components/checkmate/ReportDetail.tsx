@@ -6,6 +6,8 @@ import { LegalDisclaimer } from '@/components/legal-disclaimer'
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
 import { humanizeCategory, ANALYSIS_DISCLAIMER } from '@/lib/checkmate-shared'
+import { riskTw } from '@/lib/risk-colors'
+import { cn } from '@/lib/utils'
 import type { Database, Json } from '@/lib/db_types'
 import { FeedbackWidget } from '@/components/checkmate/FeedbackWidget'
 
@@ -79,7 +81,7 @@ export function ReportDetail({ caseRow, report }: ReportDetailProps) {
                 {humanizeCategory(caseRow.category)}
               </span>
               <CaseRiskBadge level={caseRow.risk_level} />
-              <span className="font-mono text-sm text-white/60">
+              <span className={cn('font-mono text-sm', riskTw(caseRow.risk_level ?? 'needs_more_info').text)}>
                 Score: {caseRow.risk_score}
               </span>
             </div>
