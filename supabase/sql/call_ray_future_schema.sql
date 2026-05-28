@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.call_ray_sessions (
   -- CheckRay analysis output (mirrors cases table fields)
   category                 text,
   risk_score               integer CHECK (risk_score BETWEEN 0 AND 100),
-  risk_level               text CHECK (risk_level IN ('low', 'medium', 'high', 'very_high')),
+  risk_level               text CHECK (risk_level IN ('needs_more_info', 'low', 'medium', 'high', 'very_high')),
   red_flags                jsonb,      -- string[]
   recommended_actions      jsonb,      -- string[]
   safe_reply               text,       -- Suggested safe response if relevant

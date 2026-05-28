@@ -9,7 +9,7 @@
 
 import { z } from "zod"
 
-export const RiskLevelSchema = z.enum(["low", "medium", "high", "very_high"])
+export const RiskLevelSchema = z.enum(["needs_more_info", "low", "medium", "high", "very_high"])
 
 export const ConfidenceLevelSchema = z.enum(["low", "medium", "high"])
 

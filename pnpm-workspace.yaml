@@ -3,4 +3,5 @@ packages:
 
 allowBuilds:
   '@sentry/cli': true
+  esbuild: set this to true or false
   unrs-resolver: false

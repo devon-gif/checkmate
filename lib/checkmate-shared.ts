@@ -16,7 +16,7 @@ export const caseCategories = [
   'unknown'
 ] as const
 
-export const riskLevels = ['low', 'medium', 'high', 'very_high'] as const
+export const riskLevels = ['needs_more_info', 'low', 'medium', 'high', 'very_high'] as const
 
 export type CaseCategory = (typeof caseCategories)[number]
 export type RiskLevel = (typeof riskLevels)[number]

@@ -14,6 +14,7 @@
     "format:check": "prettier --check \"{app,lib,components}**/*.{ts,tsx,mdx}\" --cache",
     "scam:intel": "node scripts/fetch-scam-intel.mjs",
     "test:analyzer": "node scripts/test-analyzer.mjs",
+    "analyzer:eval": "tsx --tsconfig tsconfig.json scripts/run-analyzer-evals.ts",
     "load:smoke": "k6 run tests/load/smoke-homepage.js",
     "load:public": "k6 run tests/load/public-routes.js",
     "load:analyze:fallback": "CHECKRAY_FORCE_FALLBACK=true k6 run tests/load/analyze-fallback.js",
@@ -85,6 +86,7 @@
     "tailwind-merge": "^1.12.0",
     "tailwindcss": "^3.3.2",
     "tailwindcss-animate": "^1.0.5",
+    "tsx": "^4.22.3",
     "typescript": "^5.1.3"
   }
 }

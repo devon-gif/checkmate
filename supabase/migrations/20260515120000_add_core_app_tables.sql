@@ -60,7 +60,7 @@ create table "public"."cases" (
     "updated_at" timestamp with time zone not null default now(),
     constraint cases_category_check check (category in ('scam_text', 'job_scam_or_ghost_job', 'bill_or_fee', 'phishing_url', 'rental_or_marketplace', 'unknown')),
     constraint cases_status_check check (status in ('open', 'resolved', 'archived')),
-    constraint cases_risk_level_check check (risk_level in ('low', 'medium', 'high', 'very_high')),
+    constraint cases_risk_level_check check (risk_level in ('needs_more_info', 'low', 'medium', 'high', 'very_high')),
     constraint cases_risk_score_check check (risk_score >= 0 and risk_score <= 100)
 );
 
@@ -105,7 +105,7 @@ create table "public"."risk_reports" (
     "sources" jsonb not null default '[]'::jsonb,
     "created_at" timestamp with time zone not null default now(),
     constraint risk_reports_risk_score_check check (risk_score is null or (risk_score >= 0 and risk_score <= 100)),
-    constraint risk_reports_risk_level_check check (risk_level is null or risk_level in ('low', 'medium', 'high', 'very_high'))
+    constraint risk_reports_risk_level_check check (risk_level is null or risk_level in ('needs_more_info', 'low', 'medium', 'high', 'very_high'))
 );
 
 create table "public"."usage_events" (

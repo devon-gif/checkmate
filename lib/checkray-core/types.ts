@@ -8,7 +8,7 @@
  * All consumers should reference this file rather than defining their own.
  */
 
-export type RiskLevel = "low" | "medium" | "high" | "very_high"
+export type RiskLevel = "needs_more_info" | "low" | "medium" | "high" | "very_high"
 
 export type CaseCategory =
   | "scam_text"

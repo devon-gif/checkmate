@@ -9,10 +9,10 @@
 import {
   caseCategories,
   ANALYSIS_DISCLAIMER,
-  getRiskLevel,
   type CaseCategory,
   type RiskLevel
 } from '@/lib/checkmate-shared'
+import { evaluateRiskFloors, isLikelyInsufficientScamContent, riskLevelForFlooredScore } from '@/lib/analyzer/risk-floors'
 import {
   confidenceFromEvidence,
   defaultMissingInformation,
@@ -21,10 +21,6 @@ import {
   safeLowRiskSummary,
   uniqueStrings
 } from '@/lib/analysis/accuracy-policy'
-import {
-  evaluateRedFlagOverrides,
-  isLikelyInsufficientScamContent
-} from '@/lib/analysis/red-flag-overrides'
 import type { RiskAnalysis } from '@/lib/analysis/types'
 
 // ─── URL detection ────────────────────────────────────────────────────────────
@@ -47,9 +43,6 @@ interface SignalResult {
   insufficientInfo?: boolean
   safetyIssue?: boolean
 }
-
-const profanityOnlyPattern =
-  /^\s*(?:fuck|shit|damn|bitch|asshole|idiot|stupid|wtf|f u|f\*+|s\*+|a\*+|[@#!$%*\s])+\s*$/i
 
 export function runDeterministicSignals(
   text: string,
@@ -80,12 +73,9 @@ export function runDeterministicSignals(
     }
   }
 
-  if (
-    !urls.length &&
-    (profanityOnlyPattern.test(trimmed) || isLikelyInsufficientScamContent(trimmed, urls))
-  ) {
+  if (!urls.length && isLikelyInsufficientScamContent(trimmed, urls)) {
     return {
-      score: 30,
+      score: 0,
       flags: ['Not enough scam-related content to analyze'],
       category: hint && caseCategories.includes(hint as CaseCategory) ? (hint as CaseCategory) : 'unknown',
       strongSignalCount: 0,
@@ -366,12 +356,12 @@ export function runDeterministicSignals(
     if (hasReplyYes) flags.push('Pressures you to reply quickly')
   }
 
-  const override = evaluateRedFlagOverrides(text, urls, hint)
-  if (override) {
-    score = Math.max(score, override.minScore)
-    if (override.category) category = override.category
-    strongSignalCount += override.strongSignalCount
-    flags.push(...override.flags)
+  const floor = evaluateRiskFloors(text, urls, hint)
+  if (floor) {
+    score = Math.max(score, floor.minScore)
+    if (floor.category) category = floor.category
+    strongSignalCount += floor.strongSignalCount
+    flags.push(...floor.redFlags)
   }
 
   return {
@@ -451,6 +441,8 @@ const safeReplies: Record<CaseCategory, string> = {
 }
 
 const summaryByLevel: Record<RiskLevel, (flags: string[]) => string> = {
+  needs_more_info: () =>
+    'Not enough information to verify the risk. Please paste the suspicious message, sender, link or domain, amount requested, and what action you were asked to take.',
   low: () => safeLowRiskSummary(),
   medium: flags =>
     `This submission contains possible risk signals${flags.length ? ', including: ' + flags.slice(0, 2).join('; ') : ''}. Review carefully and verify through official sources before responding or sending anything.`,
@@ -477,7 +469,8 @@ export function buildFallbackAnalysis(
     insufficientInfo,
     safetyIssue
   } = signalResult
-  const risk_level = getRiskLevel(signalResult.score)
+  const floor = evaluateRiskFloors(text, urls, hint)
+  const risk_level = riskLevelForFlooredScore(signalResult.score, floor)
   const missing_information = defaultMissingInformation(category)
   const red_flags = flags.length
     ? flags
@@ -497,12 +490,13 @@ export function buildFallbackAnalysis(
     summary: safetyIssue
       ? 'This message may involve immediate safety concerns, so it should not be treated as a normal scam check. If anyone is in immediate danger, contact local emergency services now; in the US, call or text 988 for mental-health crisis support.'
       : insufficientInfo
-        ? 'Not enough information to verify the risk. Please paste the suspicious message, link, sender details, or payment request so Ray can look for specific red flags.'
-        : summaryByLevel[risk_level](flags),
+        ? 'Not enough information to verify the risk. Please paste the suspicious message, sender, link or domain, amount requested, and what action you were asked to take.'
+        : floor?.summary ?? summaryByLevel[risk_level](flags),
     evidence_found: evidenceFromFlags(red_flags),
     red_flags,
     missing_information,
     recommended_actions: uniqueStrings([
+      floor?.safeReply,
       ...(safetyIssue
         ? [
             'If anyone is in immediate physical danger, contact local emergency services now.',
@@ -512,7 +506,7 @@ export function buildFallbackAnalysis(
         : categoryActions[category]),
       ...verification_steps
     ]).slice(0, 6),
-    safe_reply: safeReplies[category],
+    safe_reply: floor?.safeReply ?? safeReplies[category],
     verification_steps,
     disclaimer: ANALYSIS_DISCLAIMER,
     detected_urls: urls,

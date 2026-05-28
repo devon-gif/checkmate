@@ -33,6 +33,13 @@ const levelConfig: Record<
   RiskLevel,
   { label: string; bar: string; badge: string; border: string; icon: string }
 > = {
+  needs_more_info: {
+    label: 'Needs more info',
+    bar: 'bg-slate-500',
+    badge: 'bg-slate-50 text-slate-800 border-slate-200',
+    border: 'border-slate-200',
+    icon: '?'
+  },
   low: {
     label: 'Low risk',
     bar: 'bg-emerald-500',

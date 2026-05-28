@@ -7,9 +7,10 @@
 import type { RiskLevel } from "./types"
 import { RISK_SCORE_THRESHOLDS } from "../checkmate-shared"
 
-export const RISK_LEVELS = ["low", "medium", "high", "very_high"] as const
+export const RISK_LEVELS = ["needs_more_info", "low", "medium", "high", "very_high"] as const
 
 export const RISK_LEVEL_LABELS: Record<RiskLevel, string> = {
+  needs_more_info: "Needs more info",
   low: "Low risk",
   medium: "Medium risk",
   high: "High risk",
@@ -17,6 +18,7 @@ export const RISK_LEVEL_LABELS: Record<RiskLevel, string> = {
 }
 
 export const RISK_LEVEL_COLORS: Record<RiskLevel, string> = {
+  needs_more_info: "#64748b",
   low: "#22c55e",
   medium: "#f59e0b",
   high: "#f97316",

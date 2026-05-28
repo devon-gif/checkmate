@@ -63,7 +63,7 @@ create table if not exists "public"."cases" (
     "updated_at"  timestamptz not null default now(),
     constraint cases_pkey            primary key (id),
     constraint cases_status_check    check (status in ('open', 'resolved', 'archived')),
-    constraint cases_risk_level_check check (risk_level in ('low', 'medium', 'high', 'very_high')),
+    constraint cases_risk_level_check check (risk_level in ('needs_more_info', 'low', 'medium', 'high', 'very_high')),
     constraint cases_risk_score_check check (risk_score >= 0 and risk_score <= 100)
 );
 
@@ -180,7 +180,7 @@ create table if not exists "public"."risk_reports" (
     "created_at"           timestamptz not null default now(),
     constraint risk_reports_pkey             primary key (id),
     constraint risk_reports_risk_score_check check (risk_score is null or (risk_score >= 0 and risk_score <= 100)),
-    constraint risk_reports_risk_level_check check (risk_level is null or risk_level in ('low', 'medium', 'high', 'very_high'))
+    constraint risk_reports_risk_level_check check (risk_level is null or risk_level in ('needs_more_info', 'low', 'medium', 'high', 'very_high'))
 );
 
 -- Columns added in extend_core_tables migration

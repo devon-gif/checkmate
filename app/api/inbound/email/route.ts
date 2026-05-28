@@ -708,6 +708,16 @@ export async function POST(req: Request) {
       text: combinedForAnalyzer,
       categoryHint: pickCategoryHint(combinedForAnalyzer)
     })
+    // Debug-safe log: metadata only, no body content, no PII
+    console.log(
+      `[inbound/email] analysis complete: ` +
+        `text_chars=${combinedForAnalyzer.length} ` +
+        `category=${analysis.category} ` +
+        `risk_score=${analysis.risk_score} ` +
+        `risk_level=${analysis.risk_level} ` +
+        `used_fallback=${analysis.used_fallback ?? false} ` +
+        `red_flag_count=${analysis.red_flags?.length ?? 0}`
+    )
   } catch (err) {
     console.error(
       '[inbound/email] analyzeCase threw:',

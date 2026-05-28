@@ -12,11 +12,11 @@ import { openai } from '@ai-sdk/openai'
 import { generateObject } from 'ai'
 
 import { ANALYSIS_DISCLAIMER } from '@/lib/checkmate-shared'
-import type { CaseCategory } from '@/lib/checkmate-shared'
+import type { CaseCategory, RiskLevel } from '@/lib/checkmate-shared'
 import { raySystemPrompt } from '@/lib/analyzer/ray-guidelines'
+import { evaluateRiskFloors, riskLevelForFlooredScore } from '@/lib/analyzer/risk-floors'
 import { riskAnalysisSchema } from '@/lib/analysis/schema'
 import { detectUrls, buildFallbackAnalysis } from '@/lib/analysis/fallback'
-import { evaluateRedFlagOverrides } from '@/lib/analysis/red-flag-overrides'
 import type { RiskAnalysis } from '@/lib/analysis/types'
 import {
   clampRiskScore,
@@ -50,7 +50,7 @@ export type { RiskAnalysis } from '@/lib/analysis/types'
 // Shared with the fallback path so obvious scam patterns cannot be under-scored.
 type AiObject = {
   risk_score: number
-  risk_level: 'low' | 'medium' | 'high' | 'very_high'
+  risk_level: RiskLevel
   category: CaseCategory
   confidence_level: 'low' | 'medium' | 'high'
   evidence_found: string[]
@@ -64,26 +64,35 @@ type AiObject = {
 }
 
 function applyRedFlagFloors(obj: AiObject, fullText: string, urls: string[], hint?: string): AiObject {
-  const override = evaluateRedFlagOverrides(fullText, urls, hint)
-  if (!override) return obj
+  const floor = evaluateRiskFloors(fullText, urls, hint)
+  if (!floor) return obj
 
   let { risk_score, category, red_flags, safe_reply } = obj
-  risk_score = Math.max(risk_score, override.minScore)
-  if (override.category) category = override.category
-  red_flags = uniqueStrings([...override.flags, ...red_flags])
-  if (override.safeReply) safe_reply = override.safeReply
-  const risk_level = normalizeRiskLevel(risk_score)
+  risk_score = Math.max(risk_score, floor.minScore)
+  if (floor.category) category = floor.category
+  red_flags = uniqueStrings([...floor.redFlags, ...red_flags])
+  if (floor.safeReply) safe_reply = floor.safeReply
+  const risk_level = riskLevelForFlooredScore(risk_score, floor)
+  const summary =
+    floor.redFlags.length && /no major red flags/i.test(obj.summary)
+      ? floor.summary ??
+        `This submission includes hard red flags: ${floor.redFlags.slice(0, 3).join('; ')}. Verify through official channels before taking action.`
+      : floor.summary && floor.minRiskLevel === 'needs_more_info'
+        ? floor.summary
+        : obj.summary
 
-  return { ...obj, risk_score, risk_level, category, red_flags, safe_reply }
+  return { ...obj, risk_score, risk_level, category, red_flags, safe_reply, summary }
 }
 
 function finalizeAnalysis(
   obj: AiObject,
   urls: string[],
-  strongSignalCount = 0
+  strongSignalCount = 0,
+  usedFallback = false
 ): RiskAnalysis {
   const risk_score = clampRiskScore(obj.risk_score)
-  const risk_level = normalizeRiskLevel(risk_score)
+  const risk_level =
+    obj.risk_level === 'needs_more_info' ? 'needs_more_info' : normalizeRiskLevel(risk_score)
   const category = normalizeCategory(obj.category)
   const red_flags = uniqueStrings(obj.red_flags)
   const missing_information = uniqueStrings(
@@ -117,6 +126,8 @@ function finalizeAnalysis(
     summary:
       risk_level === 'low' && /safe|definitely|guarantee/i.test(obj.summary)
         ? 'Low risk based on the information provided. No major red flags were found, but that does not prove it is safe. Verify through official channels before taking action.'
+        : red_flags.length && /no major red flags/i.test(obj.summary)
+          ? `This submission includes hard red flags: ${red_flags.slice(0, 3).join('; ')}. Verify through official channels before taking action.`
         : obj.summary,
     evidence_found,
     red_flags,
@@ -126,8 +137,57 @@ function finalizeAnalysis(
     verification_steps,
     disclaimer: ensureDisclaimer(obj.disclaimer),
     detected_urls: urls,
-    used_fallback: false
+    used_fallback: usedFallback
   }
+}
+
+/**
+ * Single finalization pipeline that runs on BOTH the AI-success path and
+ * the deterministic-fallback path.
+ *
+ * Previously (bug fixed here): `analyzeCase()` returned
+ * `buildFallbackAnalysis()` directly when `OPENAI_API_KEY` was missing or
+ * the AI threw — bypassing `applyRedFlagFloors()` AND `finalizeAnalysis()`.
+ * In production that path produced "Low (20/100) — No major red flags"
+ * for inputs that *should* have hit the deterministic floors (job + Zelle
+ * + equipment deposit, account-locked phishing, sensitive-credential
+ * requests, etc.).
+ *
+ * The fix: every result — AI or fallback — flows through this function so
+ * the centralized floor logic + summary clamp always apply. The
+ * `used_fallback` flag is preserved through finalization so callers still
+ * know which engine produced the raw scores.
+ *
+ * Debug-safe logging (no body, no PII) emits:
+ *   raw_score / raw_level → after engine, before floors
+ *   floor_score / floor_level → after floors, before clamp
+ *   final_score / final_level → what the UI / email sees
+ */
+function finalizeWithFloors(
+  raw: AiObject,
+  fullText: string,
+  urls: string[],
+  hint: string | undefined,
+  usedFallback: boolean,
+  textCharLen: number
+): RiskAnalysis {
+  const rawScore = raw.risk_score
+  const rawLevel = raw.risk_level
+  const boosted = applyRedFlagFloors(raw, fullText, urls, hint)
+  const floorScore = boosted.risk_score
+  const floorLevel = boosted.risk_level
+  const final = finalizeAnalysis(boosted, urls, 0, usedFallback)
+  console.log(
+    '[analyzer] finalized: ' +
+      `used_fallback=${usedFallback} ` +
+      `text_chars=${textCharLen} ` +
+      `category=${final.category} ` +
+      `raw_score=${rawScore} raw_level=${rawLevel} ` +
+      `floor_score=${floorScore} floor_level=${floorLevel} ` +
+      `final_score=${final.risk_score} final_level=${final.risk_level} ` +
+      `red_flag_count=${final.red_flags.length}`
+  )
+  return final
 }
 
 // ─── Public analyzer ──────────────────────────────────────────────────────────
@@ -182,10 +242,43 @@ export async function analyzeCase({
     .filter(Boolean)
     .join('\n')
 
+  const fullText = submittedText + ' ' + submittedUrl
+  const textCharLen = submittedText.length
+
+  // Helper: convert the deterministic-fallback result back into the
+  // AiObject shape so it flows through the SAME floor + finalize pipeline
+  // as the AI result. Without this, `analyzeCase()` returned the fallback
+  // raw — that's the production bug that produced "Low (20/100)" for
+  // obvious job-deposit scams when the AI path was unavailable.
+  const fallbackAsAiObject = (): AiObject => {
+    const fb = buildFallbackAnalysis(fullText, detectedUrls, categoryHint)
+    return {
+      risk_score: fb.risk_score,
+      risk_level: fb.risk_level,
+      category: fb.category,
+      confidence_level: fb.confidence_level,
+      evidence_found: fb.evidence_found,
+      red_flags: fb.red_flags,
+      missing_information: fb.missing_information,
+      recommended_actions: fb.recommended_actions,
+      verification_steps: fb.verification_steps,
+      safe_reply: fb.safe_reply,
+      summary: fb.summary,
+      disclaimer: fb.disclaimer
+    }
+  }
+
   try {
     // Skip AI if force-fallback mode is active (load tests, missing key, etc.)
     if (forceFallback || !process.env.OPENAI_API_KEY) {
-      return buildFallbackAnalysis(submittedText + ' ' + submittedUrl, detectedUrls, categoryHint)
+      return finalizeWithFloors(
+        fallbackAsAiObject(),
+        fullText,
+        detectedUrls,
+        categoryHint,
+        true,
+        textCharLen
+      )
     }
 
     const { object } = await generateObject({
@@ -195,13 +288,23 @@ export async function analyzeCase({
       prompt
     })
 
-    // Post-process: apply combo-pattern hard floors so AI can't under-score
-    // critical scam patterns even if the model hedges.
-    const boosted = applyRedFlagFloors(object, submittedText + ' ' + submittedUrl, detectedUrls, categoryHint)
-
-    return finalizeAnalysis(boosted, detectedUrls)
+    return finalizeWithFloors(
+      object,
+      fullText,
+      detectedUrls,
+      categoryHint,
+      false,
+      textCharLen
+    )
   } catch (err) {
     console.warn('[checkmate] AI analyzer failed, using deterministic fallback:', err)
-    return buildFallbackAnalysis(submittedText + ' ' + submittedUrl, detectedUrls, categoryHint)
+    return finalizeWithFloors(
+      fallbackAsAiObject(),
+      fullText,
+      detectedUrls,
+      categoryHint,
+      true,
+      textCharLen
+    )
   }
 }

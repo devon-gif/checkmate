@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { auth } from '@/auth'
 import { analyzeCase } from '@/lib/checkmate'
 import { caseCategories } from '@/lib/checkmate-shared'
-import { ensureDisclaimer, normalizeRiskScore, normalizeRiskLevel } from '@/lib/checkray-core'
+import { ensureDisclaimer, normalizeRiskScore } from '@/lib/checkray-core'
 import { getCountryFromRequest, buildLocalizedGuidance } from '@/lib/global'
 import { type Database } from '@/lib/db_types'
 import { saveCase } from '@/lib/db/save-case'
@@ -128,7 +128,7 @@ async function handlePost(req: Request) {
     const report = {
       category: analysis.category,
       risk_score: normalizeRiskScore(analysis.risk_score),
-      risk_level: normalizeRiskLevel(analysis.risk_score),
+      risk_level: analysis.risk_level,
       confidence_level: analysis.confidence_level,
       summary: analysis.summary,
       evidence_found: analysis.evidence_found,
@@ -182,7 +182,7 @@ async function handlePost(req: Request) {
   const report = {
     category: analysis.category,
     risk_score: normalizeRiskScore(analysis.risk_score),
-    risk_level: normalizeRiskLevel(analysis.risk_score),
+    risk_level: analysis.risk_level,
     confidence_level: analysis.confidence_level,
     summary: analysis.summary,
     evidence_found: analysis.evidence_found,
