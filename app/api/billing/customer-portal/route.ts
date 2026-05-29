@@ -37,16 +37,31 @@ export async function POST() {
     cookies: () => cookieStore
   })
 
-  // Look up Stripe customer ID
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('provider_customer_id')
+  // Look up Stripe customer ID. Prefer user_billing (the billing source of
+  // truth, always upserted by the webhook), then fall back to the
+  // subscriptions mirror so either source resolves a customer.
+  // user_billing is not in the generated Database types; cast to any (the
+  // webhook handler reads it the same way).
+  const { data: billing } = await (supabase as any)
+    .from('user_billing')
+    .select('stripe_customer_id')
     .eq('user_id', session.user.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
     .maybeSingle()
 
-  const customerId = sub?.provider_customer_id
+  let customerId: string | null | undefined =
+    (billing as { stripe_customer_id?: string | null } | null)?.stripe_customer_id
+
+  if (!customerId) {
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('provider_customer_id')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    customerId = sub?.provider_customer_id
+  }
+
   if (!customerId) {
     return NextResponse.json(
       { error: 'no_customer', message: 'No billing account found. Subscribe first.' },

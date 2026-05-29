@@ -133,11 +133,21 @@ export async function POST(req: Request) {
     })
     customerId = customer.id
 
-    // Persist customer ID immediately so webhooks can match it
+    // Persist customer ID immediately so webhooks can match it.
+    // Upsert (not update) so the row is created if the new-user trigger
+    // never seeded one — otherwise this write silently no-ops and the
+    // customer ID is lost. Keyed on user_id (unique constraint added in
+    // migration 20260529150000).
     await supabase
       .from('subscriptions')
-      .update({ provider_customer_id: customerId } as any)
-      .eq('user_id', userId)
+      .upsert(
+        {
+          user_id: userId,
+          provider: 'stripe',
+          provider_customer_id: customerId
+        } as any,
+        { onConflict: 'user_id' }
+      )
   }
 
   // Create checkout session.

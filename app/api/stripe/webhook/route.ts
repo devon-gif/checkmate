@@ -31,6 +31,34 @@ function serviceClient() {
   )
 }
 
+// ─── Resolve user_id from a Stripe customer id ────────────────────────────────
+// Invoice/deletion events don't always carry our metadata, so we map the
+// Stripe customer id back to a user. We try `user_billing` (the billing
+// source of truth, always upserted) FIRST, then fall back to the
+// `subscriptions` mirror so older rows still resolve. Returns null if neither
+// table knows the customer. Never throws.
+async function userIdForCustomer(
+  sb: ReturnType<typeof serviceClient>,
+  customerId: string | null | undefined
+): Promise<string | null> {
+  if (!customerId) return null
+
+  const { data: billingRow } = await (sb as any)
+    .from('user_billing')
+    .select('user_id')
+    .eq('stripe_customer_id', customerId)
+    .limit(1)
+    .maybeSingle()
+  if (billingRow?.user_id) return billingRow.user_id as string
+
+  const { data: subRows } = await sb
+    .from('subscriptions')
+    .select('user_id')
+    .eq('provider_customer_id', customerId)
+    .limit(1)
+  return subRows?.[0]?.user_id ?? null
+}
+
 // ─── Webhook handler ─────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
@@ -67,6 +95,25 @@ export async function POST(req: Request) {
 
   const sb = serviceClient()
 
+  // ─── Idempotency ledger ─────────────────────────────────────────────────────
+  // Stripe retries deliveries on any non-2xx response, and a given event.id can
+  // arrive more than once. Record each event.id BEFORE processing; a unique
+  // (primary-key) violation means we've already handled it → short-circuit with
+  // a 200 so Stripe stops retrying and we don't re-run side effects.
+  const { error: ledgerError } = await (sb as any)
+    .from('stripe_webhook_events')
+    .insert({ id: event.id, type: event.type })
+  if (ledgerError) {
+    if (ledgerError.code === '23505') {
+      // Duplicate delivery — already processed. Acknowledge and stop.
+      return NextResponse.json({ received: true, duplicate: true })
+    }
+    // Any other ledger error (e.g. table missing in an unmigrated env) is
+    // logged but non-fatal: fall through and process the event so we never
+    // drop a real event just because the ledger write failed.
+    console.error('[stripe/webhook] Idempotency ledger insert failed:', ledgerError.code)
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -85,13 +132,22 @@ export async function POST(req: Request) {
             : session.customer?.id
 
         if (customerId) {
+          // Upsert (not update) so the row is created if the new-user
+          // trigger never seeded one. Keyed on user_id (unique constraint
+          // added in migration 20260529150000). user_billing remains the
+          // source of truth for plan/access; this keeps subscriptions a
+          // reliable customer-id / audit mirror.
           await sb
             .from('subscriptions')
-            .update({
-              provider_customer_id: customerId,
-              provider_subscription_id: subscriptionId ?? null
-            } as any)
-            .eq('user_id', userId)
+            .upsert(
+              {
+                user_id: userId,
+                provider: 'stripe',
+                provider_customer_id: customerId,
+                provider_subscription_id: subscriptionId ?? null
+              } as any,
+              { onConflict: 'user_id' }
+            )
         }
         break
       }
@@ -150,7 +206,14 @@ export async function POST(req: Request) {
         const resolvedPlan =
           planFromPrice ?? planFromCheckoutKey ?? planFromPlanInterval
 
+        // Include user_id so this can upsert (create-if-missing) rather than
+        // silently no-op when the new-user trigger never seeded a row.
+        // Only columns that exist in the subscriptions schema are written —
+        // provider_price_id / interval are intentionally omitted (no such
+        // columns). user_billing stays the source of truth for plan/access.
         const sharedUpdate: Record<string, unknown> = {
+          user_id: userId,
+          provider: 'stripe',
           provider_customer_id: customerId ?? null,
           provider_subscription_id: sub.id,
           status: sub.status,
@@ -166,8 +229,7 @@ export async function POST(req: Request) {
 
         await sb
           .from('subscriptions')
-          .update(sharedUpdate as any)
-          .eq('user_id', userId)
+          .upsert(sharedUpdate as any, { onConflict: 'user_id' })
 
         // Mirror canonical fields into user_billing (preferred source for
         // dashboard reads). `trial_ends_at` is written from Stripe's
@@ -198,19 +260,12 @@ export async function POST(req: Request) {
         // On deletion we look up by metadata first, falling back to the
         // Stripe customer ID — necessary because portal-driven cancellations
         // may not propagate our metadata into the deletion event.
-        let userId =
+        let userId: string | null =
           sub.metadata?.supabase_user_id ?? sub.metadata?.user_id ?? null
         if (!userId) {
           const customerId =
             typeof sub.customer === 'string' ? sub.customer : sub.customer?.id
-          if (customerId) {
-            const { data: rows } = await sb
-              .from('subscriptions')
-              .select('user_id')
-              .eq('provider_customer_id', customerId)
-              .limit(1)
-            userId = rows?.[0]?.user_id ?? null
-          }
+          userId = await userIdForCustomer(sb, customerId)
         }
         if (!userId) break
 
@@ -235,13 +290,8 @@ export async function POST(req: Request) {
           typeof inv.customer === 'string' ? inv.customer : inv.customer?.id
         if (!customerId) break
 
-        // Find the matching local row by stripe customer id.
-        const { data: rows } = await sb
-          .from('subscriptions')
-          .select('user_id')
-          .eq('provider_customer_id', customerId)
-          .limit(1)
-        const userId = rows?.[0]?.user_id
+        // Resolve user via user_billing first, then subscriptions mirror.
+        const userId = await userIdForCustomer(sb, customerId)
         if (!userId) break
 
         const periodEnd = (inv as any).lines?.data?.[0]?.period?.end as
@@ -276,12 +326,8 @@ export async function POST(req: Request) {
           typeof inv.customer === 'string' ? inv.customer : inv.customer?.id
         if (!customerId) break
 
-        const { data: rows } = await sb
-          .from('subscriptions')
-          .select('user_id')
-          .eq('provider_customer_id', customerId)
-          .limit(1)
-        const userId = rows?.[0]?.user_id
+        // Resolve user via user_billing first, then subscriptions mirror.
+        const userId = await userIdForCustomer(sb, customerId)
         if (!userId) break
 
         await sb
