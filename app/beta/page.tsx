@@ -57,7 +57,12 @@ export default function BetaPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setErrorMsg(data.error ?? 'Something went wrong. Please try again.')
+        // Prefer the friendly `message` from the API; fall back to a generic
+        // line. Never show the machine `error` code (e.g. "storage_failed").
+        setErrorMsg(
+          data.message ??
+            'Something went wrong. Please email support@checkray.app.'
+        )
         setStatus('error')
       } else {
         setStatus('success')

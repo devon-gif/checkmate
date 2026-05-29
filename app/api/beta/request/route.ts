@@ -42,7 +42,10 @@ export async function POST(req: Request) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'invalid_body', message: 'Invalid request body.' },
+      { status: 400 }
+    )
   }
 
   const {
@@ -69,7 +72,12 @@ export async function POST(req: Request) {
   if (!understood) errors.push('Please confirm you understand CheckRay is informational only.')
 
   if (errors.length > 0) {
-    return NextResponse.json({ error: errors[0] }, { status: 422 })
+    // Include `message` (not just `error`) so the client — which now renders
+    // `message` — shows the specific validation text to the user.
+    return NextResponse.json(
+      { error: 'validation_failed', message: errors[0] },
+      { status: 422 }
+    )
   }
 
   const cleanName = name!.trim().slice(0, 120)
@@ -98,38 +106,55 @@ export async function POST(req: Request) {
       {
         error: 'storage_unavailable',
         message:
-          "We couldn't save your request right now. Please try again in a minute."
+          "We couldn't save your request. Please email support@checkray.app."
       },
       { status: 503 }
     )
   }
 
+  // Upsert (not insert) on the unique email column so a user who submits the
+  // form twice updates their existing pending row instead of erroring on a
+  // duplicate or creating a messy second row. We do NOT overwrite `status`
+  // here — if the request was already approved/rejected, re-submitting must
+  // not silently flip it back to 'pending'. onConflict matches the
+  // beta_requests_email_key unique constraint (migration 20260529170000).
   const { data: insertedRow, error: insertError } = await sb
     .from('beta_requests' as any)
-    .insert({
-      name: cleanName,
-      email: cleanEmail,
-      use_case: useCase,
-      note: cleanNote || null,
-      status: 'pending'
-    })
+    .upsert(
+      {
+        name: cleanName,
+        email: cleanEmail,
+        use_case: useCase,
+        note: cleanNote || null
+      },
+      { onConflict: 'email' }
+    )
     .select('id, created_at')
     .maybeSingle()
 
   if (insertError) {
+    // Never surface the raw DB error to the user — log it server-side and
+    // return a friendly, actionable message instead.
     console.error(
-      '[beta/request] beta_requests insert failed:',
+      '[beta/request] beta_requests upsert failed:',
       insertError.message
     )
     return NextResponse.json(
       {
         error: 'storage_failed',
         message:
-          "We couldn't save your request right now. Please try again in a minute."
+          "We couldn't save your request. Please email support@checkray.app."
       },
       { status: 500 }
     )
   }
+
+  // Safe, non-PII log: confirm persistence without writing the email/name/note
+  // body to logs. `request_id` is an opaque UUID.
+  console.log('[beta/request] saved beta request', {
+    request_id: (insertedRow as { id?: string } | null)?.id ?? null,
+    use_case: useCase
+  })
 
   const requestId = (insertedRow as { id?: string } | null)?.id ?? null
 
@@ -187,17 +212,19 @@ export async function POST(req: Request) {
       // already saved in beta_requests and visible in /admin. Log and
       // continue. The client receives a `warning` so the support team can
       // surface it if needed.
-      console.error('[beta/request] Resend error:', err)
+      console.warn(
+        '[beta/request] admin notification email failed (request already saved):',
+        err instanceof Error ? err.message : 'unknown error'
+      )
     }
   } else {
-    // No email configured — log the request server-side for manual review
-    console.log('[beta/request] RESEND_API_KEY not set. Request received:', {
-      name: cleanName,
-      email: cleanEmail,
-      useCase: useCaseLabel,
-      note: cleanNote,
-      submittedAt
-    })
+    // No email configured — the request is already saved in beta_requests and
+    // visible in /admin, which is the durable record. Log only non-PII so we
+    // don't write the applicant's name/email/note to server logs.
+    console.warn(
+      '[beta/request] RESEND_API_KEY not set — admin notification skipped. Request is saved in beta_requests.',
+      { request_id: requestId, use_case: useCase }
+    )
   }
 
   return NextResponse.json({
