@@ -61,8 +61,14 @@ export function runDeterministicSignals(
   let safetyIssue = false
 
   const trimmed = text.trim()
+  // Genuine self-harm / physical-danger crisis indicators. NOTE: the bare word
+  // "emergency" is deliberately NOT included here — scammers routinely invent a
+  // fake "emergency" to pressure a money transfer (e.g. romance-scam "I had an
+  // emergency, send cash"), and treating that as a mental-health crisis
+  // short-circuited the scam scoring. Real crisis phrasing ("immediate danger",
+  // "suicide", "self-harm", etc.) still triggers the crisis branch below.
   const hasSafetyEmergency =
-    /\b(kill myself|suicide|self[-\s]?harm|hurt myself|hurt someone|going to kill|immediate danger|emergency)\b/i.test(
+    /\b(kill myself|suicide|self[-\s]?harm|hurt myself|hurt someone|going to kill|immediate danger|medical emergency)\b/i.test(
       lower
     )
 

@@ -361,6 +361,75 @@ export function evaluateRiskFloors(
     })
   }
 
+  // ── Romance / relationship + urgent emergency + payment-app request ───────
+  // Pattern: someone recently "met"/"matched"/an online "partner"/"boyfriend"
+  // claims an emergency and asks for money via a payment app. Classic romance
+  // scam. The payment-app request is the hard signal; romance context + an
+  // emergency/urgency cue qualify it as a high floor.
+  const romanceContextPattern =
+    /\b(matched?\s+with|met\s+(?:someone|him|her|them)\s+online|online\s+(?:date|dating|match|relationship)|dating\s+(?:app|site)|tinder|bumble|hinge|boyfriend|girlfriend|fianc[eé]e?|my\s+(?:partner|lover)|soulmate|love\s+interest|romance)\b/i
+  const emergencyPattern =
+    /\b(emergency|urgent(?:ly)?|right\s*away|immediately|asap|stranded|stuck|hospital|medical\s+bill|customs|detained|in\s+trouble|need\s+(?:help|money|cash)\s+now)\b/i
+  const promiseRepayPattern =
+    /\b(pay\s+(?:me|you)\s+back|pay\s+back|repay|return\s+the\s+money|wire\s+it\s+back)\b/i
+  if (
+    romanceContextPattern.test(stripped) &&
+    paymentAppPattern.test(stripped) &&
+    (emergencyPattern.test(stripped) || promiseRepayPattern.test(stripped))
+  ) {
+    const flags: string[] = ['romance contact requesting money via a payment app']
+    addFlag(flags, emergencyPattern.test(stripped), 'claimed emergency creating urgency')
+    addFlag(flags, promiseRepayPattern.test(stripped), 'promise to pay the money back')
+    floors.push({
+      minScore: 75,
+      minRiskLevel: 'high',
+      category: hintCategory ?? 'unknown',
+      redFlags: flags,
+      strongSignalCount: 2
+    })
+  }
+
+  // ── Advance-fee scam (foreign official / inheritance / "Nigerian prince") ─
+  // Pattern: a large sum of money is offered (inheritance, fund transfer,
+  // beneficiary, lottery) by an official/dignitary/intermediary, but the
+  // recipient must pay an upfront fee or hand over banking details to
+  // "release"/"transfer" the funds. Money is required BEFORE you receive
+  // anything → classic advance-fee fraud.
+  const advanceFeeActorPattern =
+    /\b(government\s+official|foreign\s+official|bank\s+officer|barrister|solicitor|prince|princess|king|minister|diplomat|attorney|next\s+of\s+kin|widow|estate\s+(?:agent|lawyer)|consultant)\b/i
+  const advanceFeeWealthPattern =
+    /\b(inheritance|inherit(?:ed)?|beneficiary|estate|lottery|unclaimed\s+funds?|trunk\s+box|large\s+sum|millions?\s+of\s+dollars?|\$\s?\d[\d,.]*\s*(?:million|billion|m\b)|fund\s+transfer|transfer\s+(?:of\s+)?(?:funds?|money|\$))\b/i
+  const advanceFeeFeePattern =
+    /\b((?:processing|release|transfer|legal|clearance|handling|insurance|upfront|advance|administrative|admin)\s+fee|upfront\s+(?:fee|payment|cost)|advance\s+fee|pay\s+(?:a\s+)?(?:fee|\$?\d)|small\s+fee|bank(?:ing)?\s+(?:account\s+)?details?)\b/i
+  const advanceFeeReleasePattern =
+    /\b(release|transfer|unlock|clear|move|send)\b.{0,40}\b(funds?|money|inheritance|millions?|\$)/i
+  const hasAdvanceFeeActor = advanceFeeActorPattern.test(stripped)
+  const hasAdvanceFeeWealth = advanceFeeWealthPattern.test(stripped)
+  const hasAdvanceFeeFee = advanceFeeFeePattern.test(stripped)
+  // Require a large-sum/wealth context AND a fee/banking-detail demand, plus at
+  // least one of: an official/intermediary actor, or an explicit release/transfer
+  // framing. Two of these three pillars must be present so a benign "transfer of
+  // funds" sentence with no fee never trips the floor.
+  if (
+    hasAdvanceFeeWealth &&
+    hasAdvanceFeeFee &&
+    (hasAdvanceFeeActor || advanceFeeReleasePattern.test(stripped))
+  ) {
+    const flags: string[] = ['advance-fee scam: fee or bank details required to release a large sum']
+    addFlag(flags, hasAdvanceFeeActor, 'foreign official, dignitary, or intermediary as sender')
+    addFlag(flags, /\binheritance|inherit|beneficiary|estate|lottery\b/i.test(stripped), 'inheritance, beneficiary, or lottery windfall claim')
+    addFlag(flags, /\bbank(?:ing)?\s+(?:account\s+)?details?\b/i.test(stripped), 'request for bank account details')
+    floors.push({
+      minScore: 90,
+      minRiskLevel: 'very_high',
+      category: hintCategory ?? 'unknown',
+      redFlags: flags,
+      strongSignalCount: 3,
+      safeReply:
+        'Do not send any money or share bank details. Anyone asking for an upfront fee to "release" a large sum is running an advance-fee scam.'
+    })
+  }
+
   // ── Investment guarantee scam (guaranteed returns, recruit friends) ───────
   const investmentScamPattern =
     /\bguarantee[ds]?\s+(?:\d+%\s+)?(?:returns?|profits?|earnings?|income|monthly)\b|\b\d{2,3}%\s+(?:returns?|per\s+month|monthly)\b|\brecruit\s+(?:friends?|others?|people|members?)\b.{0,40}\b(?:bonus|commission|reward)\b|\bpig\s+butchering\b/i
