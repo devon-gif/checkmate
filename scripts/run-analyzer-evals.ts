@@ -751,6 +751,88 @@ const cases: EvalCase[] = [
     forbiddenLevels: ['low'],
     minScore: 75
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // J — Legit-job false-positive regression (the production failures)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    id: 'J-01',
+    label: '[Legit job] OpenAI official careers listing — must be Low, no invented flags',
+    text: "Source: https://openai.com/careers/ai-success-engineer-us-remote-remote-us/ — This is a job posting I'm considering. It appears on OpenAI's official careers site. It lists responsibilities, qualifications, compensation, and an official apply link. It does not ask for money, crypto, gift cards, Zelle, Venmo, Cash App, banking info, SSN before offer, or WhatsApp/Telegram communication.",
+    allowedLevels: ['low', 'needs_more_info'],
+    forbiddenLevels: ['high', 'very_high'],
+    maxScore: 30,
+    forbiddenPhrases: [
+      'Social Security number',
+      'messaging app',
+      'moved conversation',
+      'banking information requested',
+      'informal payment for rental'
+    ],
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-02',
+    label: '[Legit job] Anthropic Greenhouse listing w/ anti-fraud warning — must be Low',
+    text: 'Source: https://job-boards.greenhouse.io/anthropic/jobs/5097186008 — This is a role on Anthropic\'s official Greenhouse job board. It includes warning language that legitimate recruiters use @anthropic.com and never ask for money, fees, or banking info before day one.',
+    allowedLevels: ['low', 'needs_more_info'],
+    forbiddenLevels: ['high', 'very_high'],
+    maxScore: 30,
+    forbiddenPhrases: [
+      'account or login verification pressure',
+      'login-verification pressure',
+      'banking information requested',
+      'requests money'
+    ],
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-03',
+    label: '[Legit job] Well-paid remote role on official careers page, ATS link',
+    text: 'I found a fully remote senior engineer role paying $210k on the company\'s official careers page. The application goes through their Lever job board. No deposit, no fees, normal multi-step interview process.',
+    allowedLevels: ['low', 'needs_more_info'],
+    forbiddenLevels: ['high', 'very_high'],
+    maxScore: 30,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-04',
+    label: '[Ghost job] Reposted for months, vague boilerplate, not on official careers page',
+    text: 'This listing has been reposted for months and the description is generic boilerplate. The recruiter is unverified and I cannot find the role on the company\'s official careers page. There is no clear hiring timeline. They have not asked for any money or personal information.',
+    allowedLevels: ['medium', 'needs_more_info'],
+    forbiddenLevels: ['low', 'high', 'very_high'],
+    minScore: 35,
+    maxScore: 65,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-05',
+    label: '[Scam] Equipment deposit job scam — must stay Critical',
+    text: 'Congratulations, you are hired for the remote role! Before we ship your equipment, send a $250 equipment deposit via Zelle today. Reply YES to confirm before your interview.',
+    allowedLevels: ['very_high'],
+    forbiddenLevels: ['low', 'medium'],
+    minScore: 88,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-06',
+    label: '[Scam] Fake check job scam — must stay Critical',
+    text: 'We will mail you a check to deposit. Keep your first week pay and wire the remaining balance back to our vendor to buy your work laptop before you start.',
+    allowedLevels: ['very_high'],
+    forbiddenLevels: ['low', 'medium'],
+    minScore: 88,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-07',
+    label: '[Scam] Task scam WhatsApp + USDT activation fee — must stay Critical',
+    text: 'Earn $500/day doing simple app tasks. Message me on WhatsApp to start. You must first send $100 in USDT to activate your task wallet before you can withdraw your earnings.',
+    allowedLevels: ['high', 'very_high'],
+    forbiddenLevels: ['low', 'medium'],
+    minScore: 88,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
 ]
 
 // ─── Runner ───────────────────────────────────────────────────────────────────

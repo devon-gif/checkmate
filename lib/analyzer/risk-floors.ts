@@ -29,6 +29,29 @@ const replyQuicklyPattern =
 const beforeInterviewPattern = /\bbefore\s+(the\s+)?interview\b/i
 const paymentAppPattern = /\b(zelle|cash\s*app|venmo|paypal|payment app)\b/i
 
+// ── Official-listing positive evidence ───────────────────────────────────────
+// Phrases that indicate the post lives on an official company careers page or a
+// reputable applicant-tracking system (ATS) the company links from its own site.
+const officialListingPattern =
+  /\bofficial\s+(?:careers?\s+(?:page|site|website|portal)|company\s+(?:website|careers?\s+(?:page|site))|job\s+board|application\s+(?:form|portal|link)|apply\s+link)\b|\bcompany'?s?\s+official\s+careers?\s+(?:page|site|portal)\b|\bofficial\s+careers?\s+site\b/i
+// Reputable ATS hosts. Matched against text OR a detected URL host.
+const atsListingPattern =
+  /\b(greenhouse|lever|ashby|workday|smartrecruiters|icims|taleo|jobvite)\b/i
+// "not on / can't find … official careers" — a NEGATED reference to the official
+// page is a ghost-job signal, NOT positive official-listing evidence.
+const negatedOfficialPattern =
+  /\b(?:not|isn'?t|is\s+not|are\s+not|aren'?t|cannot|can'?t|could\s*n'?t|won'?t|never|no(?:t)?\s+(?:longer|where))\b(?:\s+\w+){0,5}\s+official\s+careers?/i
+
+// ── Ghost-job (suspicious-but-not-criminal) signals ──────────────────────────
+const ghostJobSignalPatterns: RegExp[] = [
+  /\b(?:re-?post(?:ed|ing)?|reposted)\b|\bbeen\s+(?:up|open|live|listed|posted)\s+for\s+(?:weeks|months)\b|\b(?:open|listed|posted)\s+for\s+months\b/i,
+  /\b(?:not|isn'?t|is\s+not|cannot|can'?t|could\s*n'?t)\b(?:\s+\w+){0,5}\s+official\s+careers?/i,
+  /\bunverified\s+recruiter\b|\brecruiter\s+(?:is\s+)?(?:not\s+verified|unverified)\b|\b(?:can'?t|cannot|could\s*n'?t)\s+verify\s+(?:the\s+)?recruiter\b/i,
+  /\b(?:generic|vague|copy[-\s]?paste[d]?|boilerplate|templated)\b(?:\s+\w+){0,3}\s*(?:description|posting|listing|job\s+ad)\b|\b(?:description|posting|listing)\s+is\s+(?:generic|vague|boilerplate)\b/i,
+  /\bno\s+(?:clear\s+)?(?:hiring\s+)?timeline\b|\bno\s+(?:interview|start)\s+(?:date|timeline)\b|\bno\s+clear\s+next\s+steps?\b/i,
+  /\b(?:many|hundreds\s+of|thousands\s+of|lots\s+of|tons\s+of|countless)\s+applicants\b|\b(?:flooded|swamped)\s+with\s+applicants\b/i
+]
+
 const phishingFloorSignalPattern =
   /\b(account locked|account suspended|account restricted|verify account|verify your account|password|login|2fa|two[-\s]?factor|security alert|bank alert|suspicious link)\b/i
 const criticalPhishingSignalPattern =
@@ -106,10 +129,16 @@ export function buildNegationStrippedText(text: string): string {
 
   let result = text
 
-  // Pass 1 — "not/didn't ask (me/you) for [list until sentence end]"
+  // Pass 1 — "[negation] ask (me/you) for [list until sentence end]"
   // Handles: "not asked me for money, gifts, crypto, or any investment"
+  //          "will never ask for money, fees, or banking information"
+  //          "legitimate recruiters never ask for payment or banking info"
+  //          "they do not request money, gift cards, or SSN before an offer"
+  // The trailing [^.!?\n]+ swallows the WHOLE comma/"or"-separated list so a
+  // later item ("banking information", "SSN") can't survive the negation just
+  // because an intervening word ("fees") isn't a recognised scam term.
   result = result.replace(
-    /\b(?:not|didn?'?t|doesn?'?t|hasn?'?t|haven?'?t|do\s+not|did\s+not|does\s+not)\s+ask(?:ed|ing)?(?:\s+(?:me|you|anyone))?(?:\s+for)?\s+[^.!?\n]+/gi,
+    /\b(?:not|never|no|didn?'?t|doesn?'?t|don?'?t|hasn?'?t|haven?'?t|won'?t|wont|do\s+not|did\s+not|does\s+not|will\s+(?:not|never)|would\s+(?:not|never))\s+(?:ask|asks|asked|asking|request|requests|requested|requesting|require|requires|required|demand|demands)(?:\s+(?:me|you|us|anyone|for|that))*\s+[^.!?\n]+/gi,
     m => ' '.repeat(m.length)
   )
 
@@ -128,6 +157,63 @@ export function buildNegationStrippedText(text: string): string {
   )
 
   return result
+}
+
+/**
+ * True when the submission describes an official company careers page or a
+ * reputable ATS host (Greenhouse, Lever, etc.) — positive evidence the listing
+ * is real. A NEGATED reference ("not on the official careers page", "can't find
+ * it on their careers site") does NOT count as official-listing evidence.
+ */
+export function detectOfficialListing(text: string, urls: string[]): boolean {
+  const lower = text.toLowerCase()
+  if (negatedOfficialPattern.test(lower)) {
+    // A negated official-careers reference disqualifies the text phrasing, but
+    // an ATS host in the URL/text is still hard positive evidence.
+    return atsListingPattern.test(lower) || urls.some(u => atsListingPattern.test(u))
+  }
+  if (officialListingPattern.test(lower)) return true
+  if (atsListingPattern.test(lower)) return true
+  if (urls.some(u => atsListingPattern.test(u))) return true
+  // Company's own domain careers path, e.g. openai.com/careers, anthropic.com/jobs
+  if (urls.some(u => /\/(careers?|jobs?|join|work-with-us|opportunities)\b/i.test(u))) return true
+  return false
+}
+
+/**
+ * True when the sender is ACTUALLY asking for money, payment, sensitive
+ * credentials, or off-platform messaging — i.e. an active scam request, not a
+ * mention of risk words inside a safety disclaimer. Runs on negation-stripped
+ * text so "never asks for banking info" does NOT count as an active request.
+ */
+export function hasActiveScamRequest(text: string, urls: string[]): boolean {
+  const stripped = buildNegationStrippedText(text).toLowerCase()
+  return (
+    jobFloorSignalPattern.test(stripped) ||
+    criticalJobSignalPattern.test(stripped) ||
+    sensitiveRequestPattern.test(stripped) ||
+    highRiskPaymentPattern.test(stripped) ||
+    equipmentDepositPattern.test(stripped) ||
+    (phishingFloorSignalPattern.test(stripped) && criticalPhishingSignalPattern.test(stripped))
+  )
+}
+
+/**
+ * Safe-harbor test: the submission is an official listing, there is NO active
+ * scam request, and no deterministic floor of medium+ severity fired. When true,
+ * callers should CAP the risk score into the Low band — an AI over-score (the
+ * production bug where official OpenAI/Anthropic listings were marked
+ * High/Critical) gets corrected here.
+ */
+export function isOfficialListingSafe(
+  text: string,
+  urls: string[],
+  floor?: RiskFloorResult | null
+): boolean {
+  if (!detectOfficialListing(text, urls)) return false
+  if (hasActiveScamRequest(text, urls)) return false
+  if (floor && floor.minScore >= 25 && floor.minRiskLevel !== 'needs_more_info') return false
+  return true
 }
 
 export function isLikelyInsufficientScamContent(text: string, urls: string[]): boolean {
@@ -267,8 +353,41 @@ export function evaluateRiskFloors(
     })
   }
 
+  // ── Ghost-job / suspicious-but-not-criminal middle lane ──────────────────
+  // A posting that shows ≥2 ghost-job signals (reposted for months, generic
+  // boilerplate, unverified recruiter, no hiring timeline, flooded with
+  // applicants, or "not on the official careers page") but makes NO active
+  // scam request is uncertain, not criminal. Floor it into Medium so it reads
+  // as "verify before investing time" rather than Low or Critical.
+  const ghostSignalCount = ghostJobSignalPatterns.reduce(
+    (n, re) => (re.test(normalized) ? n + 1 : n),
+    0
+  )
+  if (
+    isJob &&
+    ghostSignalCount >= 2 &&
+    !hasJobFloorSignal &&
+    !hasCriticalJobSignal &&
+    !hasActiveScamRequest(text, urls)
+  ) {
+    floors.push({
+      minScore: 45,
+      minRiskLevel: 'medium',
+      category: 'job_scam_or_ghost_job',
+      redFlags: ['ghost-job signals: posting may not be actively hiring — verify before investing time'],
+      strongSignalCount: 1,
+      summary:
+        'This posting shows ghost-job warning signs (such as being reposted for a long time, vague boilerplate, an unverified recruiter, or no clear hiring timeline). It is not necessarily a scam, but verify the role is active through the company’s official careers page before investing time.'
+    })
+  }
+
+  // An official listing with no active credential/payment request must not trip
+  // the weak URL-based phishing branch (this produced the false "account or
+  // login verification pressure" flag on the Anthropic Greenhouse listing).
+  const officialSafe = detectOfficialListing(text, urls) && !hasActiveScamRequest(text, urls)
   const hasPhishingFloorSignal =
-    phishingFloorSignalPattern.test(stripped) || (urls.length > 0 && /\bverify|login|account|password\b/i.test(stripped))
+    phishingFloorSignalPattern.test(stripped) ||
+    (!officialSafe && urls.length > 0 && /\bverify|login|account|password\b/i.test(stripped))
   if (hasPhishingFloorSignal) {
     floors.push({
       minScore: 75,

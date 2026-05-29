@@ -14,7 +14,7 @@ import { generateObject } from 'ai'
 import { ANALYSIS_DISCLAIMER } from '@/lib/checkmate-shared'
 import type { CaseCategory, RiskLevel } from '@/lib/checkmate-shared'
 import { raySystemPrompt } from '@/lib/analyzer/ray-guidelines'
-import { evaluateRiskFloors, riskLevelForFlooredScore } from '@/lib/analyzer/risk-floors'
+import { evaluateRiskFloors, riskLevelForFlooredScore, isOfficialListingSafe } from '@/lib/analyzer/risk-floors'
 import { riskAnalysisSchema } from '@/lib/analysis/schema'
 import { detectUrls, buildFallbackAnalysis } from '@/lib/analysis/fallback'
 import type { RiskAnalysis } from '@/lib/analysis/types'
@@ -82,6 +82,37 @@ function applyRedFlagFloors(obj: AiObject, fullText: string, urls: string[], hin
         : obj.summary
 
   return { ...obj, risk_score, risk_level, category, red_flags, safe_reply, summary }
+}
+
+/**
+ * Official-listing safe-harbor for the AI path. Risk floors only RAISE scores,
+ * so an AI over-score (e.g. gpt-4o-mini marking an official OpenAI/Anthropic
+ * careers listing as High/Critical with invented SSN/banking/messaging-app
+ * flags) cannot be corrected by floors. This caps the score into the Low band
+ * when the submission is an official listing, makes no active scam request, and
+ * no medium+ floor fired — and replaces the invented flags with a safety note.
+ */
+function applyOfficialListingCap(
+  obj: AiObject,
+  fullText: string,
+  urls: string[],
+  hint: string | undefined,
+  floor: ReturnType<typeof evaluateRiskFloors>
+): AiObject {
+  if (!isOfficialListingSafe(fullText, urls, floor)) return obj
+  return {
+    ...obj,
+    risk_score: Math.min(obj.risk_score, 20),
+    risk_level: 'low',
+    confidence_level: obj.confidence_level === 'high' ? 'medium' : obj.confidence_level,
+    evidence_found: [
+      'Listing appears on an official company careers page or reputable ATS',
+      'No request for money, fees, banking details, or sensitive information'
+    ],
+    red_flags: ['No major red flags found in the provided text.'],
+    summary:
+      'This appears to be a legitimate listing on an official company careers page or a reputable applicant-tracking system, and it makes no request for money, payment, banking details, or sensitive personal information. No major red flags were found, but that does not prove it is safe — confirm the role and recruiter through the company’s official careers page before applying or sharing personal data.'
+  }
 }
 
 function finalizeAnalysis(
@@ -176,7 +207,11 @@ function finalizeWithFloors(
   const boosted = applyRedFlagFloors(raw, fullText, urls, hint)
   const floorScore = boosted.risk_score
   const floorLevel = boosted.risk_level
-  const final = finalizeAnalysis(boosted, urls, 0, usedFallback)
+  // Apply the official-listing safe-harbor AFTER floors so an AI over-score on a
+  // legitimate official careers/ATS listing gets capped into the Low band.
+  const floor = evaluateRiskFloors(fullText, urls, hint)
+  const capped = applyOfficialListingCap(boosted, fullText, urls, hint, floor)
+  const final = finalizeAnalysis(capped, urls, 0, usedFallback)
   console.log(
     '[analyzer] finalized: ' +
       `used_fallback=${usedFallback} ` +

@@ -12,7 +12,7 @@ import {
   type CaseCategory,
   type RiskLevel
 } from '@/lib/checkmate-shared'
-import { evaluateRiskFloors, isLikelyInsufficientScamContent, riskLevelForFlooredScore, buildNegationStrippedText } from '@/lib/analyzer/risk-floors'
+import { evaluateRiskFloors, isLikelyInsufficientScamContent, riskLevelForFlooredScore, buildNegationStrippedText, isOfficialListingSafe } from '@/lib/analyzer/risk-floors'
 import {
   confidenceFromEvidence,
   defaultMissingInformation,
@@ -168,7 +168,7 @@ export function runDeterministicSignals(
   const accountLockedOrLogin =
     /account\s+(locked|suspended|restricted)|verify\s+(your\s+)?(login|account)|confirm\s+(your\s+)?(password|login)|password\s+reset/i
 
-  if (accountLockedOrLogin.test(lower)) {
+  if (accountLockedOrLogin.test(lowerStripped)) {
     score += 18
     strongSignalCount += 1
     flags.push('Uses account-lock or login-verification pressure')
@@ -210,7 +210,7 @@ export function runDeterministicSignals(
 
   let billScore = 0
   for (const [pattern, flag] of billSignals) {
-    if (lower.match(pattern)) {
+    if (lowerStripped.match(pattern)) {
       billScore += 10
       flags.push(flag)
     }
@@ -240,7 +240,7 @@ export function runDeterministicSignals(
 
   let rentalScore = 0
   for (const [pattern, flag] of rentalSignals) {
-    if (lower.match(pattern)) {
+    if (lowerStripped.match(pattern)) {
       rentalScore += 12
       flags.push(flag)
     }
@@ -268,7 +268,7 @@ export function runDeterministicSignals(
   ]
 
   for (const [pattern, flag] of urgencySignals) {
-    if (lower.match(pattern)) {
+    if (lowerStripped.match(pattern)) {
       score += 8
       flags.push(flag)
     }
@@ -284,7 +284,7 @@ export function runDeterministicSignals(
 
   let emailScore = 0
   for (const [pattern, flag] of emailSignals) {
-    if (lower.match(pattern)) {
+    if (lowerStripped.match(pattern)) {
       emailScore += 12
       flags.push(flag)
     }
@@ -481,6 +481,52 @@ export function buildFallbackAnalysis(
     safetyIssue
   } = signalResult
   const floor = evaluateRiskFloors(text, urls, hint)
+
+  // ── Official-listing safe-harbor ─────────────────────────────────────────
+  // When the submission is an official company careers page / reputable ATS
+  // listing AND makes no active scam request AND no medium+ floor fired, cap
+  // the score into the Low band and drop spurious red flags. This corrects the
+  // production bug where official OpenAI/Anthropic listings were scored
+  // High/Critical with invented flags (SSN, banking, messaging-app, etc.).
+  if (
+    !insufficientInfo &&
+    !safetyIssue &&
+    isOfficialListingSafe(text, urls, floor)
+  ) {
+    const safeScore = Math.min(signalResult.score, 20)
+    const safeCategory = category === 'unknown' ? 'job_scam_or_ghost_job' : category
+    const safe_reply = safeReplies[safeCategory]
+    const verification_steps = defaultVerificationSteps(safeCategory)
+    return {
+      category: safeCategory,
+      risk_score: safeScore,
+      risk_level: 'low',
+      confidence_level: confidenceFromEvidence({
+        score: safeScore,
+        redFlags: [],
+        missingInformation: defaultMissingInformation(safeCategory),
+        strongSignalCount: 0
+      }),
+      summary:
+        'This appears to be a legitimate listing on an official company careers page or a reputable applicant-tracking system, and it makes no request for money, payment, banking details, or sensitive personal information. No major red flags were found, but that does not prove it is safe — confirm the role and recruiter through the company’s official careers page before applying or sharing personal data.',
+      evidence_found: [
+        'Listing appears on an official company careers page or reputable ATS',
+        'No request for money, fees, banking details, or sensitive information'
+      ],
+      red_flags: ['No major red flags found in the provided text.'],
+      missing_information: defaultMissingInformation(safeCategory),
+      recommended_actions: uniqueStrings([
+        ...categoryActions[safeCategory],
+        ...verification_steps
+      ]).slice(0, 6),
+      safe_reply,
+      verification_steps,
+      disclaimer: ANALYSIS_DISCLAIMER,
+      detected_urls: urls,
+      used_fallback: true
+    }
+  }
+
   const risk_level = riskLevelForFlooredScore(signalResult.score, floor)
   const missing_information = defaultMissingInformation(category)
   const red_flags = flags.length

@@ -49,6 +49,26 @@ export const CORE_PRINCIPLES = [
   '- If the user sounds scared, angry, or urgent, stay calm. Suggest pausing before clicking, paying, replying, or sharing information, and verify through official channels.',
 ].join('\n')
 
+// ─── Negation, context & official-listing rules (read BEFORE scoring) ──────
+
+export const NEGATION_AND_CONTEXT_RULES = [
+  '## Negation and context rules (MANDATORY — read before applying any score floor)',
+  '- A risk word that is NEGATED or appears inside a SAFETY statement is NOT a red flag. It is evidence of safety.',
+  '  Examples that must NOT be flagged: "does not ask for money", "never asks for banking info, fees, or gift cards before day one", "will not request your SSN", "no Zelle/Venmo/crypto", "legitimate recruiters use @company.com and never ask for payment". These describe what the sender does NOT do.',
+  '- Distinguish a MENTIONED risk word from an ACTIVE request. Only flag when the sender is ACTUALLY asking the user to pay, send money, share credentials, or move off-platform — not when the text merely lists or warns about those things.',
+  '- Anti-fraud warning language ("never pay to apply", "we will never ask for banking details") is a POSITIVE signal of legitimacy, not a scam signal. Do not convert it into red flags.',
+  '- Never invent a red flag that is not actually present. If you cannot quote the actual requesting phrase from the submission, do not list it (no fabricated "SSN requested", "moved to WhatsApp", "banking info requested").',
+  '',
+  '## Official listing = Low risk path',
+  '- If the submission is on an official company careers page (e.g. openai.com/careers) or a reputable applicant-tracking system (Greenhouse, Lever, Ashby, Workday, SmartRecruiters, iCIMS, Taleo, Jobvite) AND makes no active money/credential request, score it LOW (0–24), category job_scam_or_ghost_job.',
+  '- A high salary, remote work, an ATS link, or recruiter anti-fraud warning language are NOT red flags on their own. Legitimate, well-paid, remote roles exist.',
+  '- Still add a "confirm the role and recruiter through the company\'s official careers page" verification step — Low does not mean "safe".',
+  '',
+  '## Ghost-job middle lane',
+  '- A posting that is reposted for months, has vague/boilerplate copy, an unverified recruiter, no clear hiring timeline, or is "not found on the official careers page" — but makes NO money/credential request — is uncertain, not criminal. Score it MEDIUM (35–65) or needs_more_info, never High/Critical.',
+  '- Reserve High/Critical for ACTIVE scam requests (payment, fake check, credential harvesting, off-platform + payment, brand impersonation + crypto/Telegram).',
+].join('\n')
+
 // ─── Scoring rubric (existing thresholds) ─────────────────────────────────
 
 export const SCORING_RUBRIC = [
@@ -61,11 +81,12 @@ export const SCORING_RUBRIC = [
   '  very_high 85–100 → "Critical risk" (use `very_high` in the JSON enum)',
   '',
   '## Hard scoring rules',
-  '- Job offer + upfront payment, equipment fee, fake check, or payment app = minimum high.',
-  '- Job offer + Zelle / Cash App / Venmo / wire / crypto / gift card payment = very_high.',
+  'IMPORTANT: every rule below applies ONLY when the signal is an ACTIVE request, not a negated or warned-about mention (see the Negation and context rules above). "We never ask for X" must NOT trigger the X rule.',
+  '- Job offer that ACTIVELY asks for upfront payment, equipment fee, fake check, or payment app = minimum high.',
+  '- Job offer that ACTIVELY requests Zelle / Cash App / Venmo / wire / crypto / gift card payment = very_high.',
   '- Job offer + reply YES / INTERESTED + urgency should be at least medium and usually high.',
-  '- Job offer + WhatsApp / Telegram / Signal should be at least high.',
-  '- Password / 2FA / OTP / SSN / banking / routing / payment-info requests should be very_high.',
+  '- Job offer that ACTIVELY pushes the user to WhatsApp / Telegram / Signal should be at least high.',
+  '- ACTIVE requests for password / 2FA / OTP / SSN / banking / routing / payment-info should be very_high.',
   '- Account locked + login / verify / payment link should be at least high.',
   '- Urgent payment demand + unverifiable sender → usually high.',
   '- Gift card / crypto / wire / Zelle / Cash App / Venmo request from an unknown party → very_high.',
@@ -258,6 +279,8 @@ export function raySystemPrompt(categoryHint?: string): string {
     PROMPT_PREAMBLE,
     '',
     CORE_PRINCIPLES,
+    '',
+    NEGATION_AND_CONTEXT_RULES,
     '',
     SCORING_RUBRIC,
     '',
