@@ -343,7 +343,9 @@ export interface Database {
         Row: {
           id: string
           case_id: string
-          user_id: string
+          user_id: string | null
+          email: string | null
+          token: string | null
           rating: 'accurate' | 'not_right'
           reason:
             | 'too_risky'
@@ -354,6 +356,9 @@ export interface Database {
             | 'other'
             | null
           note: string | null
+          source: 'dashboard' | 'email' | 'sms'
+          ip_hash: string | null
+          user_agent: string | null
           admin_status:
             | 'reviewed'
             | 'false_positive'
@@ -368,7 +373,9 @@ export interface Database {
         Insert: {
           id?: string
           case_id: string
-          user_id?: string
+          user_id?: string | null
+          email?: string | null
+          token?: string | null
           rating: 'accurate' | 'not_right'
           reason?:
             | 'too_risky'
@@ -379,6 +386,9 @@ export interface Database {
             | 'other'
             | null
           note?: string | null
+          source?: 'dashboard' | 'email' | 'sms'
+          ip_hash?: string | null
+          user_agent?: string | null
           admin_status?:
             | 'reviewed'
             | 'false_positive'
@@ -393,7 +403,9 @@ export interface Database {
         Update: {
           id?: string
           case_id?: string
-          user_id?: string
+          user_id?: string | null
+          email?: string | null
+          token?: string | null
           rating?: 'accurate' | 'not_right'
           reason?:
             | 'too_risky'
@@ -404,6 +416,9 @@ export interface Database {
             | 'other'
             | null
           note?: string | null
+          source?: 'dashboard' | 'email' | 'sms'
+          ip_hash?: string | null
+          user_agent?: string | null
           admin_status?:
             | 'reviewed'
             | 'false_positive'

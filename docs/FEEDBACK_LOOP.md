@@ -4,9 +4,60 @@
 
 CheckRay collects structured feedback from beta users on Ray's analysis results. This document describes the full pipeline from a user clicking "Not right" through to a new eval case or a rule change landing in production.
 
+Feedback is collected from two surfaces:
+
+1. **Email replies** — one-click thumbs-up/down links embedded in inbound email results (no login required; token-authenticated).
+2. **Dashboard** — inline widget on the case result page (authenticated, not yet wired to UI — future task).
+
+> **No PostHog yet.** All feedback data stays in Supabase. PostHog integration is explicitly deferred.
+
 ---
 
-## 1. Feedback Collection
+## 1. Email Feedback (inbound email replies)
+
+Every `sendInboundAllowedReply()` call injects two links at the bottom of the
+result email when `FEEDBACK_SIGNING_SECRET` is configured:
+
+```
+👍 Accurate  →  GET /api/feedback/email?caseId=<uuid>&rating=accurate&token=<hex32>
+👎 Not right →  GET /api/feedback/email?caseId=<uuid>&rating=not_right&token=<hex32>
+```
+
+**Token design:**
+- `token = HMAC-SHA256(FEEDBACK_SIGNING_SECRET, caseId).hex[:32]`
+- One token per case; same token for both directions (later click overwrites).
+- `timingSafeEqual` used for constant-time verification.
+- If `FEEDBACK_SIGNING_SECRET` is absent, `signFeedbackToken()` returns `null`
+  and links are silently omitted — emails still send normally.
+
+**Flow:**
+1. User clicks link → `GET /api/feedback/email` verifies token, upserts row.
+2. Accurate → redirect `/feedback/email?r=ok` (thank-you page).
+3. Not right → redirect `/feedback/email?r=form&caseId=…&token=…` (reason form).
+4. Form submit (Server Action) → updates `reason`/`note`, redirect `?r=done`.
+
+**Required env var:**
+
+| Variable | Scope | Notes |
+|---|---|---|
+| `FEEDBACK_SIGNING_SECRET` | Server-only (no `NEXT_PUBLIC_`) | `openssl rand -hex 32`. If absent, feedback links are omitted silently. |
+
+Add to `.env.local`:
+```
+FEEDBACK_SIGNING_SECRET=<64-char hex from openssl rand -hex 32>
+```
+
+---
+
+## 2. Dashboard Feedback (case result page)
+
+The `POST /api/feedback` route handles dashboard feedback (auth required).
+Not yet wired to a UI — future task. It writes `source='dashboard'` rows with
+`user_id` populated.
+
+---
+
+## 3. Feedback Collection (legacy section)
 
 ### User-facing widget
 
@@ -38,16 +89,21 @@ The optional **"What should Ray have noticed?"** note field is where users descr
 
 ---
 
-## 2. Supabase Table
+## 4. Supabase Table
 
 ```sql
 public.case_feedback
   id            uuid pk
-  case_id       uuid → cases.id (cascade delete)
-  user_id       uuid → auth.users.id (cascade delete)
+  case_id       uuid  → cases.id (cascade delete)
+  user_id       uuid? → public.users.id (set null on delete; null for email feedback)
+  email         text? (reserved — not currently populated)
+  token         text? (32-char HMAC hex; unique when not null — email feedback)
   rating        text  ('accurate' | 'not_right')
   reason        text? (one of 6 values, null when accurate)
   note          text? (user's free-text, trimmed)
+  source        text  ('dashboard' | 'email' | 'sms'; default 'dashboard')
+  ip_hash       text? (first 16 hex chars of SHA-256(IP) — not reversible)
+  user_agent    text? (from the feedback link click)
   admin_status  text? (reviewed | false_positive | false_negative |
                        needs_rule_update | needs_prompt_update)
   admin_notes   text? (internal notes)
@@ -55,14 +111,25 @@ public.case_feedback
   updated_at    timestamptz
 ```
 
+**Unique indexes:**
+- `(case_id, user_id)` WHERE `user_id IS NOT NULL` — one dashboard feedback per user per case
+- `(token)` WHERE `token IS NOT NULL` — one email feedback row per HMAC token
+
 **RLS policy:**
 
-- Users can insert/read/update only their own rows.
-- Admin reads/writes go through the Supabase **service role** only (bypasses RLS). Never exposed to public.
+- Authenticated users can insert/read/update only their own rows.
+- Email feedback inserts use the **service role** (no auth session; gated by HMAC token verification in the API route).
+- Admin reads/writes go through the Supabase **service role** only. Never exposed to public.
+
+**Privacy rules:**
+- No scam text stored in feedback rows (case UUID only).
+- IP hash is one-way and truncated — cannot be used to identify users.
+- `email` column intentionally null for now.
+- No data sent to PostHog or third parties.
 
 ---
 
-## 3. Admin Review Queue
+## 5. Admin Review Queue
 
 Navigate to `/admin/reviews` (requires `ENABLE_ADMIN_TOOLS=true` + your email in `ADMIN_EMAILS`).
 
@@ -88,7 +155,7 @@ Navigate to `/admin/reviews` (requires `ENABLE_ADMIN_TOOLS=true` + your email in
 
 ---
 
-## 4. From Feedback to Eval Case
+## 6. From Feedback to Eval Case
 
 ### Step 1: Identify a `false_negative` with reason `not_risky_enough` or `missed_red_flag`
 
@@ -136,7 +203,7 @@ Update admin notes with the commit SHA or a brief description of the fix applied
 
 ---
 
-## 5. From Feedback to Prompt Update
+## 7. From Feedback to Prompt Update
 
 When `admin_status = needs_prompt_update`:
 
@@ -148,7 +215,7 @@ When `admin_status = needs_prompt_update`:
 
 ---
 
-## 6. False Positive Handling
+## 8. False Positive Handling
 
 When `admin_status = false_positive` (user said "too risky"):
 
@@ -159,7 +226,7 @@ When `admin_status = false_positive` (user said "too risky"):
 
 ---
 
-## 7. Frequency Guidance
+## 9. Frequency Guidance
 
 | Trigger | Action |
 |---|---|
@@ -170,7 +237,7 @@ When `admin_status = false_positive` (user said "too risky"):
 
 ---
 
-## 8. Files Modified by This Loop
+## 10. Files Modified by This Loop
 
 | File | Role |
 |---|---|
@@ -178,11 +245,17 @@ When `admin_status = false_positive` (user said "too risky"):
 | `lib/analyzer/risk-floors.ts` | Deterministic floor/signal patterns |
 | `lib/analysis/fallback.ts` | Rule-based fallback engine |
 | `lib/checkmate.ts` | AI prompt + `finalizeWithFloors()` orchestration |
+| `lib/feedback-token.ts` | HMAC sign/verify for email feedback links |
+| `lib/billing/inbound-reply-email.ts` | Email reply builder — injects feedback links |
+| `app/api/feedback/email/route.ts` | Token-gated feedback recording endpoint |
+| `app/api/feedback/route.ts` | Authenticated dashboard feedback endpoint |
+| `app/feedback/email/page.tsx` | Thank-you page + thumbs-down reason form |
+| `app/admin/reviews/page.tsx` | Admin feedback review queue |
 | `supabase/migrations/` | Any schema changes to support new fields |
 
 ---
 
-## 9. What NOT to do from feedback alone
+## 11. What NOT to do from feedback alone
 
 - Do **not** loosen floors based on a single "too risky" rating without manual review of the input.
 - Do **not** tighten floors so much that the benign case K eval starts failing.

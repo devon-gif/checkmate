@@ -27,6 +27,7 @@ import { Resend } from 'resend'
 
 import type { RiskLevel } from '@/lib/checkmate-shared'
 import { riskHex, riskLabel as sharedRiskLabel } from '@/lib/risk-colors'
+import { signFeedbackToken } from '@/lib/feedback-token'
 
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ?? 'CheckRay <noreply@checkray.app>'
@@ -103,6 +104,8 @@ export interface AllowedReplyArgs {
   recommendedActions?: string[]
   caseId?: string | null
   attachmentNotice?: boolean
+  /** Pre-generated HMAC token for email feedback links. Omit to skip feedback section. */
+  feedbackToken?: string | null
 }
 
 function riskLabel(level: RiskLevel): string {
@@ -129,6 +132,17 @@ export async function sendInboundAllowedReply(
     ? 'Note: attachments are not supported in the email beta yet. Ray checked the message text only.'
     : null
 
+  // Feedback links — only included when a caseId + valid signing secret exist.
+  // signFeedbackToken returns null when FEEDBACK_SIGNING_SECRET is not set.
+  const feedbackToken = args.feedbackToken ?? (args.caseId ? signFeedbackToken(args.caseId) : null)
+  const hasFeedback = !!(feedbackToken && args.caseId)
+  const thumbsUpUrl = hasFeedback
+    ? `${APP_URL}/api/feedback/email?caseId=${encodeURIComponent(args.caseId!)}&rating=accurate&token=${encodeURIComponent(feedbackToken!)}`
+    : null
+  const thumbsDownUrl = hasFeedback
+    ? `${APP_URL}/api/feedback/email?caseId=${encodeURIComponent(args.caseId!)}&rating=not_right&token=${encodeURIComponent(feedbackToken!)}`
+    : null
+
   const text = [
     `Ray checked the email you forwarded. ${riskLabel(args.riskLevel)} (${args.riskScore}/100).`,
     '',
@@ -147,6 +161,10 @@ export async function sendInboundAllowedReply(
     attachmentNotice ? '' : null,
     `Open the full report on your dashboard: ${dashboardLink}`,
     '',
+    hasFeedback ? 'Was Ray helpful?' : null,
+    hasFeedback ? `  👍 Accurate: ${thumbsUpUrl}` : null,
+    hasFeedback ? `  👎 Not right: ${thumbsDownUrl}` : null,
+    hasFeedback ? '' : null,
     DISCLAIMER,
     '',
     '— Ray @ CheckRay'
@@ -201,6 +219,16 @@ export async function sendInboundAllowedReply(
   <p style="margin:0 0 22px;">
     <a href="${dashboardLink}" style="display:inline-block;background:${buttonBg};${buttonBorder}color:${buttonColor};font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Open the full report</a>
   </p>
+
+  ${
+    hasFeedback
+      ? `<p style="margin:0 0 8px;font-size:12px;color:rgba(255,255,255,0.4);text-align:center;">Was Ray helpful?</p>
+  <p style="margin:0 0 24px;text-align:center;">
+    <a href="${thumbsUpUrl}" style="display:inline-block;margin:0 5px;background:#1a1a1a;border:1px solid rgba(122,226,207,0.3);color:#7ae2cf;font-size:13px;font-weight:600;padding:7px 16px;border-radius:6px;text-decoration:none;">&#128077; Accurate</a>
+    <a href="${thumbsDownUrl}" style="display:inline-block;margin:0 5px;background:#1a1a1a;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.55);font-size:13px;font-weight:600;padding:7px 16px;border-radius:6px;text-decoration:none;">&#128078; Not right</a>
+  </p>`
+      : ''
+  }
 
   <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.4);">${escapeHtml(DISCLAIMER)}</p>
   <p style="margin:8px 0 0;font-size:11px;color:rgba(255,255,255,0.35);">— Ray @ CheckRay</p>

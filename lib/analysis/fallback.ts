@@ -12,7 +12,7 @@ import {
   type CaseCategory,
   type RiskLevel
 } from '@/lib/checkmate-shared'
-import { evaluateRiskFloors, isLikelyInsufficientScamContent, riskLevelForFlooredScore } from '@/lib/analyzer/risk-floors'
+import { evaluateRiskFloors, isLikelyInsufficientScamContent, riskLevelForFlooredScore, buildNegationStrippedText } from '@/lib/analyzer/risk-floors'
 import {
   confidenceFromEvidence,
   defaultMissingInformation,
@@ -50,6 +50,9 @@ export function runDeterministicSignals(
   hint?: string
 ): SignalResult {
   const lower = text.toLowerCase()
+  // Use negation-stripped text for jobSignals so "no WhatsApp" / "no payment" don't add score.
+  // Payment signals and composite checks keep using `lower` to preserve true-positive detection.
+  const lowerStripped = buildNegationStrippedText(text).toLowerCase()
   let score = 20
   const flags: string[] = []
   let category: CaseCategory = 'unknown'
@@ -106,8 +109,10 @@ export function runDeterministicSignals(
     [/2fa\s*code|\btwo[-\s]?factor\b/i, 'Requests two-factor auth code']
   ]
 
+  // Use negation-stripped text for paymentSignals so "never ask for your password",
+  // "not asked me for crypto", "no gift card request", etc. don't add false score.
   for (const [pattern, flag] of paymentSignals) {
-    if (pattern.test(lower)) {
+    if (pattern.test(lowerStripped)) {
       score += 15
       strongSignalCount += 1
       flags.push(flag)
@@ -135,7 +140,7 @@ export function runDeterministicSignals(
 
   let jobScore = 0
   for (const [pattern, flag] of jobSignals) {
-    if (pattern.test(lower)) {
+    if (pattern.test(lowerStripped)) {
       jobScore += 12
       flags.push(flag)
     }

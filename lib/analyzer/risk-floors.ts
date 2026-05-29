@@ -19,7 +19,7 @@ const jobContextPattern =
   /\b(job|jobs|recruiter|interview|remote assistant|resume|hiring|hire|offer|employment|onboarding|work from home|remote work|remote job|role|position)\b/i
 const impliedJobEquipmentPattern = /\b(laptop|computer|equipment)\b/i
 const jobFloorSignalPattern =
-  /\b(equipment deposit|upfront payment|send money|pay a fee|fake check|mobile deposit|zelle|cash\s*app|venmo|wire transfer|crypto|bitcoin|ethereum|usdt|gift cards?|before the interview|before interview|whatsapp|telegram)\b|\breply\s+["']?(yes|interested)["']?\b/i
+  /\b(equipment deposit|upfront payment|send money|pay a fee|fake check|mobile deposit|zelle|cash\s*app|venmo|wire transfer|crypto|bitcoin|ethereum|usdt|gift cards?|before the interview|before interview|no\s+interviews?|whatsapp|telegram)\b|\breply\s+["']?(yes|interested)["']?\b/i
 const criticalJobSignalPattern =
   /\b(zelle|cash\s*app|venmo|payment app|deposit|crypto|bitcoin|ethereum|usdt|gift cards?|wire transfer|fake check|mobile deposit|banking info|bank account|routing number)\b/i
 const equipmentDepositPattern =
@@ -47,18 +47,88 @@ const governmentPattern =
 const governmentThreatPattern =
   /\b(arrest|suspend|suspended|suspension|seize|lawsuit|legal action|warrant|fine|penalty|protected account)\b/i
 const packageLinkPattern =
-  /\b(usps|postal service|package|parcel|delivery|tracking|address incomplete|redelivery)\b/i
+  /\b(usps|fedex|ups|dhl|postal service|package|parcel|delivery|customs\s*fee|tracking|address incomplete|redelivery)\b/i
 const promptInjectionPattern =
   /\b(ignore (previous|prior|all) instructions|disregard instructions|you are now|act as|print your prompt|reveal your system prompt|say (this is )?safe|do not mention scam)\b/i
 const panicPattern =
   /\b(i'?m scared|i am scared|i'?m panicking|panic|terrified|freaking out|afraid|worried|urgent|help me|what do i do)\b/i
 const ventingOnlyPattern =
-  /\b(fuck|fucking|shit|bullshit|damn|wtf|angry|mad|pissed|annoyed|frustrated|this sucks|hate this)\b/i
+  /\b(fuck|fucking|shit|bullshit|damn|wtf|angry|mad|pissed|annoyed|frustrated|this sucks|hate this|freaking|stupid|dumb|ridiculous|absurd|awful|crap|crappy|garbage|pathetic|terrible|horrible|worthless|useless|idiotic|lame)\b/i
 
 const profanityOnlyPattern =
   /^\s*(?:fuck|shit|damn|bitch|asshole|idiot|stupid|wtf|f u|f\*+|s\*+|a\*+|[@#!$%*\s])+\s*$/i
 const tooLittleLettersPattern = /^[^a-z0-9]+$/i
 const consonantRunPattern = /^[bcdfghjklmnpqrstvwxyz]{8,}$/i
+
+/**
+ * Returns a copy of text with negated scam-term phrases blanked out so floor
+ * patterns don't false-positive on phrases like:
+ *   "no payment request", "no pressure to move to WhatsApp", "did not ask for Zelle",
+ *   "never ask for your password", "not asked me for money, gifts, crypto"
+ *
+ * Uses a TARGETED approach — only scam-indicator terms are suppressed after a
+ * negation word.  This preserves genuine scam signals that start with "no":
+ *   "no interview required", "no experience needed", etc.
+ * It also avoids stripping non-negation clauses like "I do not know [who sent this]"
+ * because "know" is not in the scam-term whitelist.
+ *
+ * Only used for floor-rule matching — NOT for isLikelyInsufficientScamContent.
+ */
+export function buildNegationStrippedText(text: string): string {
+  // Specific scam terms we want to suppress when negated by the user/victim
+  const SCAM_ALTS = [
+    'payment(?:\\s+(?:request|required|link|demand))?',
+    'zelle', 'venmo', 'cash\\s*app', 'paypal',
+    'wire\\s*transfers?',
+    'bitcoin', 'ethereum', 'usdt', 'crypto(?:currency)?',
+    'gift\\s*cards?',
+    'deposits?(?:\\s+(?:fee|requirement))?',
+    'upfront\\s*(?:fee|payment|cost|deposit)',
+    'advance\\s*fee',
+    'whatsapp', 'telegram', 'signal(?:\\s+app)?',
+    'banking\\s*(?:info|information|details)',
+    'bank(?:ing)?\\s*(?:account|info(?:rmation)?|details?)',
+    'routing\\s*numbers?',
+    'passwords?',
+    '2fa(?:\\s*code)?', 'two[-\\s]?factor(?:\\s*(?:auth(?:entication)?|code))?',
+    'verification\\s*codes?', '\\botp\\b',
+    'suspicious\\s*links?',
+    'personal\\s*(?:banking\\s*)?(?:info(?:rmation)?|details?|data)',
+    'ssn', 'social\\s*security(?:\\s*number)?',
+    'money(?:\\s+(?:request|transfer|order))?',
+    'urgency', 'urgent\\s*(?:payment|deadline|demand)',
+  ].join('|')
+
+  const NEG =
+    '(?:no|not|never|without|doesn?\'?t|didn?\'?t|don?\'?t|isn?\'?t|wasn?\'?t|' +
+    'hasn?\'?t|haven?\'?t|do\\s+not|did\\s+not|does\\s+not|is\\s+not|was\\s+not|' +
+    'has\\s+no|have\\s+no|there(?:\'s|\\s+is)\\s+no|there\\s+are\\s+no|without\\s+any)'
+
+  let result = text
+
+  // Pass 1 — "not/didn't ask (me/you) for [list until sentence end]"
+  // Handles: "not asked me for money, gifts, crypto, or any investment"
+  result = result.replace(
+    /\b(?:not|didn?'?t|doesn?'?t|hasn?'?t|haven?'?t|do\s+not|did\s+not|does\s+not)\s+ask(?:ed|ing)?(?:\s+(?:me|you|anyone))?(?:\s+for)?\s+[^.!?\n]+/gi,
+    m => ' '.repeat(m.length)
+  )
+
+  // Pass 2 — "[negation] [0-5 filler words] [SCAM_TERM] [rest until punctuation]"
+  // Handles: "no urgent payment demand", "no pressure to move to WhatsApp",
+  //          "no request for banking info", "never ask for your password"
+  // Does NOT match: "no interview required" (interview not in SCAM_ALTS),
+  //                 "I do not know says I owe..." (know not in SCAM_ALTS → no match),
+  //                 "no experience needed" (experience not in SCAM_ALTS)
+  result = result.replace(
+    new RegExp(
+      `\\b${NEG}\\b(?:\\s+\\w+){0,5}\\s*(?:${SCAM_ALTS})\\b[^,;.!?\\n]*`,
+      'gi'
+    ),
+    m => ' '.repeat(m.length)
+  )
+
+  return result
+}
 
 export function isLikelyInsufficientScamContent(text: string, urls: string[]): boolean {
   const trimmed = text.trim()
@@ -131,6 +201,9 @@ export function evaluateRiskFloors(
   hint?: string
 ): RiskFloorResult | null {
   const normalized = text.toLowerCase()
+  // Use negation-stripped text for floor pattern matching so "no WhatsApp" / "no payment"
+  // phrases don't trigger floors. Original text is preserved for isLikelyInsufficientScamContent.
+  const stripped = buildNegationStrippedText(text).toLowerCase()
   const hintCategory = validHint(hint)
   const floors: RiskFloorResult[] = []
 
@@ -147,22 +220,22 @@ export function evaluateRiskFloors(
   }
 
   const isJob =
-    jobContextPattern.test(normalized) ||
+    jobContextPattern.test(stripped) ||
     hintCategory === 'job_scam_or_ghost_job' ||
-    (impliedJobEquipmentPattern.test(normalized) &&
-      (criticalJobSignalPattern.test(normalized) || beforeInterviewPattern.test(normalized)))
-  const hasJobFloorSignal = jobFloorSignalPattern.test(normalized)
-  const hasCriticalJobSignal = criticalJobSignalPattern.test(normalized)
+    (impliedJobEquipmentPattern.test(stripped) &&
+      (criticalJobSignalPattern.test(stripped) || beforeInterviewPattern.test(stripped)))
+  const hasJobFloorSignal = jobFloorSignalPattern.test(stripped)
+  const hasCriticalJobSignal = criticalJobSignalPattern.test(stripped)
 
   if (isJob && hasJobFloorSignal) {
     const flags: string[] = []
-    addFlag(flags, equipmentDepositPattern.test(normalized), 'upfront equipment deposit')
-    addFlag(flags, replyQuicklyPattern.test(normalized), 'pressure to reply quickly')
-    addFlag(flags, beforeInterviewPattern.test(normalized), 'payment requested before interview')
-    addFlag(flags, paymentAppPattern.test(normalized), 'Zelle/payment app request')
-    addFlag(flags, /\bfake check|mobile deposit\b/i.test(normalized), 'fake check or mobile deposit request')
-    addFlag(flags, /\bwire transfer|crypto|gift cards?\b/i.test(normalized), 'high-risk payment method requested')
-    addFlag(flags, /\bwhatsapp|telegram\b/i.test(normalized), 'recruiter moved conversation to messaging app')
+    addFlag(flags, equipmentDepositPattern.test(stripped), 'upfront equipment deposit')
+    addFlag(flags, replyQuicklyPattern.test(stripped), 'pressure to reply quickly')
+    addFlag(flags, beforeInterviewPattern.test(stripped), 'payment requested before interview')
+    addFlag(flags, paymentAppPattern.test(stripped), 'Zelle/payment app request')
+    addFlag(flags, /\bfake check|mobile deposit\b/i.test(stripped), 'fake check or mobile deposit request')
+    addFlag(flags, /\bwire transfer|crypto|gift cards?\b/i.test(stripped), 'high-risk payment method requested')
+    addFlag(flags, /\bwhatsapp|telegram\b/i.test(stripped), 'recruiter moved conversation to messaging app')
 
     floors.push({
       minScore: 75,
@@ -175,13 +248,13 @@ export function evaluateRiskFloors(
 
   if (isJob && hasCriticalJobSignal) {
     const flags: string[] = []
-    addFlag(flags, equipmentDepositPattern.test(normalized) || /\bdeposit\b/i.test(normalized), 'upfront equipment deposit')
-    addFlag(flags, replyQuicklyPattern.test(normalized), 'pressure to reply quickly')
-    addFlag(flags, beforeInterviewPattern.test(normalized), 'payment requested before interview')
-    addFlag(flags, paymentAppPattern.test(normalized), 'Zelle/payment app request')
-    addFlag(flags, /\bbank(ing)? info|bank account|routing number\b/i.test(normalized), 'banking information requested during hiring')
-    addFlag(flags, /\bfake check|mobile deposit\b/i.test(normalized), 'fake check or mobile deposit request')
-    addFlag(flags, /\bwire transfer|crypto|gift cards?\b/i.test(normalized), 'high-risk payment method requested')
+    addFlag(flags, equipmentDepositPattern.test(stripped) || /\bdeposit\b/i.test(stripped), 'upfront equipment deposit')
+    addFlag(flags, replyQuicklyPattern.test(stripped), 'pressure to reply quickly')
+    addFlag(flags, beforeInterviewPattern.test(stripped), 'payment requested before interview')
+    addFlag(flags, paymentAppPattern.test(stripped), 'Zelle/payment app request')
+    addFlag(flags, /\bbank(ing)? info|bank account|routing number\b/i.test(stripped), 'banking information requested during hiring')
+    addFlag(flags, /\bfake check|mobile deposit\b/i.test(stripped), 'fake check or mobile deposit request')
+    addFlag(flags, /\bwire transfer|crypto|gift cards?\b/i.test(stripped), 'high-risk payment method requested')
 
     floors.push({
       minScore: 90,
@@ -195,7 +268,7 @@ export function evaluateRiskFloors(
   }
 
   const hasPhishingFloorSignal =
-    phishingFloorSignalPattern.test(normalized) || (urls.length > 0 && /\bverify|login|account|password\b/i.test(normalized))
+    phishingFloorSignalPattern.test(stripped) || (urls.length > 0 && /\bverify|login|account|password\b/i.test(stripped))
   if (hasPhishingFloorSignal) {
     floors.push({
       minScore: 75,
@@ -206,7 +279,7 @@ export function evaluateRiskFloors(
     })
   }
 
-  if (panicPattern.test(normalized) && urls.length > 0) {
+  if (panicPattern.test(stripped) && urls.length > 0) {
     floors.push({
       minScore: 75,
       minRiskLevel: 'high',
@@ -218,7 +291,7 @@ export function evaluateRiskFloors(
     })
   }
 
-  if (hasPhishingFloorSignal && criticalPhishingSignalPattern.test(normalized)) {
+  if (hasPhishingFloorSignal && criticalPhishingSignalPattern.test(stripped)) {
     floors.push({
       minScore: 90,
       minRiskLevel: 'very_high',
@@ -228,7 +301,7 @@ export function evaluateRiskFloors(
     })
   }
 
-  if (sensitiveRequestPattern.test(normalized)) {
+  if (sensitiveRequestPattern.test(stripped)) {
     floors.push({
       minScore: 90,
       minRiskLevel: 'very_high',
@@ -238,9 +311,13 @@ export function evaluateRiskFloors(
     })
   }
 
-  const hasBillContext = billContextPattern.test(normalized)
-  const unknownOrUnverified = unknownSenderPattern.test(normalized) || hintCategory === undefined
-  if (hasBillContext && unknownOrUnverified) {
+  const hasBillContext = billContextPattern.test(stripped)
+  const unknownOrUnverified = unknownSenderPattern.test(stripped) || hintCategory === undefined
+  // Require an urgency or threat signal alongside the bill context — "invoice" alone
+  // on a benign message (freelance, subscription) must not trigger a High floor.
+  const hasUrgencyOrThreat =
+    /\b(today|immediately|right\s*now|asap|urgent(?:ly)?|final\s*notice|last\s*(?:warning|chance)|collections?|legal\s*action|lawsuit|warrant|suspend(?:ed|ing)?|terminat(?:e|ed|ing)|cancel(?:l?ed|l?ing)?|garnish|penalty|penalties|arrest|prosecut(?:e|ed|ion))\b/i.test(stripped)
+  if (hasBillContext && unknownOrUnverified && hasUrgencyOrThreat) {
     floors.push({
       minScore: 75,
       minRiskLevel: 'high',
@@ -250,7 +327,7 @@ export function evaluateRiskFloors(
     })
   }
 
-  if ((hasBillContext || unknownOrUnverified) && highRiskPaymentPattern.test(normalized)) {
+  if ((hasBillContext || unknownOrUnverified) && highRiskPaymentPattern.test(stripped)) {
     floors.push({
       minScore: 90,
       minRiskLevel: 'very_high',
@@ -264,7 +341,7 @@ export function evaluateRiskFloors(
     })
   }
 
-  if (governmentPattern.test(normalized) && (highRiskPaymentPattern.test(normalized) || governmentThreatPattern.test(normalized))) {
+  if (governmentPattern.test(stripped) && (highRiskPaymentPattern.test(stripped) || governmentThreatPattern.test(stripped))) {
     floors.push({
       minScore: 90,
       minRiskLevel: 'very_high',
@@ -274,12 +351,55 @@ export function evaluateRiskFloors(
     })
   }
 
-  if (packageLinkPattern.test(normalized) && urls.length > 0 && !/\b(i requested|i signed up|opted in|tracking number i requested)\b/i.test(normalized)) {
+  if (packageLinkPattern.test(stripped) && urls.length > 0 && !/\b(i requested|i signed up|opted in|tracking number i requested)\b/i.test(normalized)) {
     floors.push({
       minScore: 75,
       minRiskLevel: 'high',
       category: 'phishing_url',
       redFlags: ['unsolicited package or delivery link'],
+      strongSignalCount: 2
+    })
+  }
+
+  // ── Investment guarantee scam (guaranteed returns, recruit friends) ───────
+  const investmentScamPattern =
+    /\bguarantee[ds]?\s+(?:\d+%\s+)?(?:returns?|profits?|earnings?|income|monthly)\b|\b\d{2,3}%\s+(?:returns?|per\s+month|monthly)\b|\brecruit\s+(?:friends?|others?|people|members?)\b.{0,40}\b(?:bonus|commission|reward)\b|\bpig\s+butchering\b/i
+  if (investmentScamPattern.test(stripped)) {
+    floors.push({
+      minScore: 40,
+      minRiskLevel: 'medium',
+      category: hintCategory ?? 'unknown',
+      redFlags: ['investment platform promises guaranteed returns or MLM-style recruiting'],
+      strongSignalCount: 1
+    })
+  }
+
+  // ── Withdrawal-fee / deposit-to-unlock trap ──────────────────────────────
+  const withdrawalFeePattern =
+    /\b(?:withdraw|withdrawal|cash\s*out).{0,80}\b(?:deposit|fee|tax|payment|first|before|unlock|pay(?:ing|ment)?)\b|\b(?:deposit|fee|tax).{0,60}\b(?:unlock|release|withdraw|access|cash\s*out)\b/i
+  if (
+    withdrawalFeePattern.test(stripped) &&
+    (/\b(?:balance|earnings?|profits?|funds?|savings?)\b/i.test(stripped) ||
+      highRiskPaymentPattern.test(stripped))
+  ) {
+    floors.push({
+      minScore: 75,
+      minRiskLevel: 'high',
+      category: hintCategory ?? 'unknown',
+      redFlags: ['withdrawal blocked until more deposit paid (advance-fee trap)'],
+      strongSignalCount: 2
+    })
+  }
+
+  // ── Tech-support / fake virus pop-up scam ────────────────────────────────
+  const techSupportScamPattern =
+    /\b(?:pop[-\s]?up|virus\s*(?:alert|detected|found|warning)|malware\s*(?:detected|found)|computer\s*(?:infected|hacked|compromised|virus)).{0,120}\b(?:call|phone|contact|1[-\s]?800)\b|\b(?:remote\s*(?:access|desktop|control)).{0,60}\b(?:payment|pay|fee)\b/i
+  if (techSupportScamPattern.test(stripped)) {
+    floors.push({
+      minScore: 75,
+      minRiskLevel: 'high',
+      category: 'phishing_url',
+      redFlags: ['tech support scam: fake virus warning with call number or remote-access payment demand'],
       strongSignalCount: 2
     })
   }
