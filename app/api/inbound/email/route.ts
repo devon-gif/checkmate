@@ -52,6 +52,7 @@ import {
 import {
   sendInboundAllowedReply,
   sendInboundBlockedReply,
+  sendInboundNeedsSignupReply,
   sendInboundUnableReply,
   sendInboundOverLimitReply
 } from '@/lib/billing/inbound-reply-email'
@@ -692,9 +693,12 @@ export async function POST(req: Request) {
       outcome: 'no_user_record',
       error_message: 'beta or paid but no auth.users row to attach to'
     })
-    // Treat as blocked for now — sending a reply with analysis but no
-    // dashboard link is worse than asking them to sign in first.
-    await sendInboundBlockedReply({ toEmail: fromEmail })
+    // This sender IS approved (active beta or paid) but has not finished
+    // signing up, so there is no account to attach a saved case to. Send the
+    // friendly "you're approved, just finish setup" reply — NOT the generic
+    // blocked reply, which would wrongly tell an approved tester they aren't
+    // approved.
+    await sendInboundNeedsSignupReply({ toEmail: fromEmail })
     return NextResponse.json({
       ok: true,
       received: true,
@@ -913,6 +917,9 @@ export async function POST(req: Request) {
     recommendedActions: analysis.recommended_actions,
     safeReply: ensureDisclaimer(analysis.safe_reply ?? '') || null,
     caseId: savedCaseId,
+    // When persistence failed, tell the user Ray checked it but couldn't
+    // save it, and suppress the "full report" link (there is no report).
+    saveFailed: Boolean(saveError),
     attachmentNotice: parsed.hasAttachments
   })
 

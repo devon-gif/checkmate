@@ -31,15 +31,21 @@ import { type BetaPlan } from './beta-access'
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ?? 'CheckRay <noreply@checkray.app>'
 
-const SIGN_IN_URL = `${
-  (process.env.NEXT_PUBLIC_APP_URL ?? 'https://checkray.app').replace(
-    /\/$/,
-    ''
-  )
-}/sign-in`
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://checkray.app').replace(
+  /\/$/,
+  ''
+)
 
+const SIGN_UP_URL = `${APP_URL}/sign-up`
+const SIGN_IN_URL = `${APP_URL}/sign-in`
+
+// Keep this default in sync with the inbound route
+// (app/api/inbound/email/route.ts), which also defaults to
+// ray@inbound.checkray.app. Production sets INBOUND_EMAIL_ADDRESS, so this
+// fallback only matters when the env var is unset — but a mismatched
+// default would tell approved users the wrong address to email Ray.
 const RAY_INBOUND_ADDRESS =
-  process.env.INBOUND_EMAIL_ADDRESS ?? 'ray@checkray.app'
+  process.env.INBOUND_EMAIL_ADDRESS ?? 'ray@inbound.checkray.app'
 
 function planLabelForEmail(plan: BetaPlan): string {
   switch (plan) {
@@ -113,8 +119,9 @@ export async function sendBetaApprovalEmail(
     `Plan: ${planLabel}`,
     ...(expirationLine ? [expirationLine] : []),
     '',
-    'Sign in here using this same email address:',
-    SIGN_IN_URL,
+    'Sign up (or sign in if you already have an account) using this SAME email address — your beta access is tied to it:',
+    `Sign up: ${SIGN_UP_URL}`,
+    `Sign in: ${SIGN_IN_URL}`,
     '',
     "Once you're in, you can start testing Ray by pasting suspicious texts, job offers, links, bills, emails, or sketchy messages before you click, pay, reply, or apply.",
     '',
@@ -154,10 +161,11 @@ export async function sendBetaApprovalEmail(
   </p>
 
   <p style="margin:0 0 8px;font-size:14px;color:rgba(255,255,255,0.65);">
-    Sign in here using this same email address:
+    Sign up using this <strong style="color:#fff;">same email address</strong> — your beta access is tied to it. (Already have an account? Just sign in.)
   </p>
   <p style="margin:0 0 24px;">
-    <a href="${SIGN_IN_URL}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Sign in to CheckRay</a>
+    <a href="${SIGN_UP_URL}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Sign up for CheckRay</a>
+    <a href="${SIGN_IN_URL}" style="display:inline-block;margin-left:8px;background:transparent;border:1px solid rgba(122,226,207,0.4);color:#7ae2cf;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Sign in</a>
   </p>
 
   <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.75);">

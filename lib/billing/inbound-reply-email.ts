@@ -37,6 +37,7 @@ const APP_URL = (
 ).replace(/\/$/, '')
 
 const SIGN_IN_URL = `${APP_URL}/sign-in`
+const SIGN_UP_URL = `${APP_URL}/sign-up`
 const BETA_REQUEST_URL = `${APP_URL}/beta`
 const DASHBOARD_URL = `${APP_URL}/dashboard`
 
@@ -104,6 +105,13 @@ export interface AllowedReplyArgs {
   recommendedActions?: string[]
   caseId?: string | null
   attachmentNotice?: boolean
+  /**
+   * True when the analysis succeeded but persisting the case/report to the
+   * dashboard failed. The reply still goes out (the readout above is
+   * complete) but we must NOT show a "full report" link to a record that
+   * does not exist, and we tell the user saving failed.
+   */
+  saveFailed?: boolean
   /** Pre-generated HMAC token for email feedback links. Omit to skip feedback section. */
   feedbackToken?: string | null
 }
@@ -115,7 +123,12 @@ function riskLabel(level: RiskLevel): string {
 export async function sendInboundAllowedReply(
   args: AllowedReplyArgs
 ): Promise<ReplyResult> {
-  const dashboardLink = args.caseId
+  // A saved report only exists when we have a caseId AND the save chain
+  // succeeded. Only then do we link to the individual case / call it a
+  // "full report". Otherwise we point at the dashboard and, if saving
+  // actually failed, say so plainly.
+  const hasReport = !!args.caseId && !args.saveFailed
+  const dashboardLink = hasReport
     ? `${APP_URL}/cases/${args.caseId}`
     : `${APP_URL}/dashboard`
 
@@ -134,8 +147,12 @@ export async function sendInboundAllowedReply(
 
   // Feedback links — only included when a caseId + valid signing secret exist.
   // signFeedbackToken returns null when FEEDBACK_SIGNING_SECRET is not set.
-  const feedbackToken = args.feedbackToken ?? (args.caseId ? signFeedbackToken(args.caseId) : null)
-  const hasFeedback = !!(feedbackToken && args.caseId)
+  const feedbackToken =
+    args.feedbackToken ?? (hasReport ? signFeedbackToken(args.caseId!) : null)
+  const hasFeedback = !!(feedbackToken && hasReport)
+  const saveFailedNotice = args.saveFailed
+    ? "Ray checked this, but we couldn't save it to your dashboard this time. Your readout above is complete — just reply and forward it again if you'd like a saved copy."
+    : null
   const thumbsUpUrl = hasFeedback
     ? `${APP_URL}/api/feedback/email?caseId=${encodeURIComponent(args.caseId!)}&rating=accurate&token=${encodeURIComponent(feedbackToken!)}`
     : null
@@ -159,7 +176,11 @@ export async function sendInboundAllowedReply(
     '',
     attachmentNotice,
     attachmentNotice ? '' : null,
-    `Open the full report on your dashboard: ${dashboardLink}`,
+    saveFailedNotice,
+    saveFailedNotice ? '' : null,
+    hasReport
+      ? `Open the full report on your dashboard: ${dashboardLink}`
+      : `Open your dashboard: ${dashboardLink}`,
     '',
     hasFeedback ? 'Was Ray helpful?' : null,
     hasFeedback ? `  👍 Accurate: ${thumbsUpUrl}` : null,
@@ -216,8 +237,14 @@ export async function sendInboundAllowedReply(
       : ''
   }
 
+  ${
+    saveFailedNotice
+      ? `<p style="margin:0 0 22px;font-size:13px;color:#fca5a5;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.22);border-radius:10px;padding:12px 14px;">${escapeHtml(saveFailedNotice)}</p>`
+      : ''
+  }
+
   <p style="margin:0 0 22px;">
-    <a href="${dashboardLink}" style="display:inline-block;background:${buttonBg};${buttonBorder}color:${buttonColor};font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Open the full report</a>
+    <a href="${dashboardLink}" style="display:inline-block;background:${buttonBg};${buttonBorder}color:${buttonColor};font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">${hasReport ? 'Open the full report' : 'Open your dashboard'}</a>
   </p>
 
   ${
@@ -280,6 +307,63 @@ export async function sendInboundBlockedReply(
 </div>`
 
   return sendOrLog(args.toEmail, subject, text, html, 'inbound-reply/blocked')
+}
+
+/* ── Needs-signup reply (approved beta, but no account yet) ────────────── */
+
+export interface NeedsSignupReplyArgs {
+  toEmail: string
+}
+
+/**
+ * Sent when the sender HAS active beta access (or a paid plan) but there is
+ * no account/user record to attach a saved case to yet — i.e. they were
+ * approved but never finished signing up. This is NOT a "you're blocked"
+ * message: it's a friendly "you're approved, just finish setup" nudge so an
+ * approved tester doesn't get a confusing rejection.
+ */
+export async function sendInboundNeedsSignupReply(
+  args: NeedsSignupReplyArgs
+): Promise<ReplyResult> {
+  const subject = "You're approved — finish setting up CheckRay"
+  const text = [
+    'Hey,',
+    '',
+    "Good news: this email address is approved for the CheckRay beta.",
+    'Ray just needs you to finish creating your account before it can check emails and save them to your dashboard.',
+    '',
+    `Sign up using THIS SAME email address: ${SIGN_UP_URL}`,
+    `(Already started? Sign in instead: ${SIGN_IN_URL})`,
+    '',
+    'Once your account exists, forward the suspicious message again and Ray will check it and save the report.',
+    '',
+    DISCLAIMER,
+    '',
+    '— Ray @ CheckRay'
+  ].join('\n')
+
+  const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d0d0d;padding:32px;border-radius:12px;max-width:600px;color:#e5e5e5;line-height:1.55;">
+  <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#7ae2cf;">CheckRay</p>
+  <h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#ffffff;">You&rsquo;re approved &mdash; finish setting up CheckRay</h1>
+  <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.78);">
+    Good news: this email address is approved for the CheckRay beta. Ray just
+    needs you to finish creating your account before it can check emails and
+    save them to your dashboard.
+  </p>
+  <p style="margin:0 0 22px;font-size:14px;color:rgba(255,255,255,0.78);">
+    Sign up using this <strong style="color:#fff;">same email address</strong>,
+    then forward the suspicious message again.
+  </p>
+  <p style="margin:0;">
+    <a href="${SIGN_UP_URL}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Sign up for CheckRay</a>
+    <a href="${SIGN_IN_URL}" style="display:inline-block;margin-left:8px;background:transparent;border:1px solid rgba(122,226,207,0.4);color:#7ae2cf;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Sign in</a>
+  </p>
+  <p style="margin:22px 0 0;font-size:11px;color:rgba(255,255,255,0.4);">${escapeHtml(DISCLAIMER)}</p>
+  <p style="margin:8px 0 0;font-size:11px;color:rgba(255,255,255,0.35);">— Ray @ CheckRay</p>
+</div>`
+
+  return sendOrLog(args.toEmail, subject, text, html, 'inbound-reply/needs-signup')
 }
 
 /* ── Over-limit reply ──────────────────────────────────────────────────── */

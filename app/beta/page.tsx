@@ -186,9 +186,27 @@ export default function BetaPage() {
                 </svg>
               </div>
               <h2 className="mb-3 text-[20px] font-semibold text-white">Request received</h2>
-              <p className="text-description leading-relaxed max-w-[320px] mx-auto">
-                If approved, you&apos;ll get beta access using the email you submitted. We&apos;ll be in touch.
+              <p className="text-description leading-relaxed max-w-[340px] mx-auto">
+                Beta access is approved manually, so it isn&apos;t instant. Here&apos;s what happens next:
               </p>
+              <ol className="mt-5 mx-auto max-w-[360px] space-y-3 text-left">
+                {[
+                  'We review your request manually.',
+                  'If approved, you’ll get an approval email at the address you submitted.',
+                  'Sign up (or sign in) using that same email — your access is tied to it.',
+                  'Then forward suspicious emails to ray@inbound.checkray.app, or paste them into your dashboard.'
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span
+                      className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+                      style={{ background: 'rgba(122,226,207,0.14)', border: '1px solid rgba(122,226,207,0.3)', color: '#7ae2cf' }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="text-[13px] leading-snug text-white/55">{step}</span>
+                  </li>
+                ))}
+              </ol>
               <Link
                 href="/"
                 className="mt-8 inline-flex items-center gap-2 text-[13px] font-medium transition-colors hover:text-white"
@@ -405,13 +423,13 @@ export default function BetaPage() {
             </div>
             <div className="w-px h-4 bg-white/10" aria-hidden="true" />
             <div className="flex flex-col items-center gap-1">
-              <span className="text-[11px] uppercase tracking-wider text-white/25">Want Ray to check something by email?</span>
+              <span className="text-[11px] uppercase tracking-wider text-white/25">Once approved, email Ray at</span>
               <a
-                href="mailto:ray@checkray.app"
+                href="mailto:ray@inbound.checkray.app"
                 className="text-[13px] transition-colors hover:text-white"
                 style={{ color: 'rgba(122,226,207,0.65)' }}
               >
-                ray@checkray.app
+                ray@inbound.checkray.app
               </a>
             </div>
           </motion.div>

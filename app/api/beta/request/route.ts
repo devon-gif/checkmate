@@ -112,32 +112,92 @@ export async function POST(req: Request) {
     )
   }
 
-  // Upsert (not insert) on the unique email column so a user who submits the
-  // form twice updates their existing pending row instead of erroring on a
-  // duplicate or creating a messy second row. We do NOT overwrite `status`
-  // here — if the request was already approved/rejected, re-submitting must
-  // not silently flip it back to 'pending'. onConflict matches the
-  // beta_requests_email_key unique constraint (migration 20260529170000).
-  const { data: insertedRow, error: insertError } = await sb
+  // Persist using an explicit "look up by email, then update or insert"
+  // pattern instead of `.upsert(..., { onConflict: 'email' })`.
+  //
+  // Why not onConflict: a Postgres ON CONFLICT clause requires a matching
+  // UNIQUE constraint on `email`. That constraint is added by migration
+  // 20260529170000_beta_requests_email_unique.sql, which ships in the same
+  // change as this route. If the migration has NOT been applied to a given
+  // database yet (Supabase migrations are applied independently of the app
+  // deploy), every onConflict upsert fails with Postgres 42P10
+  // ("no unique or exclusion constraint matching the ON CONFLICT
+  // specification") and the user sees the generic "couldn't save" error.
+  // The select-then-write below works the same whether or not the unique
+  // constraint exists, so the form is resilient to migration ordering.
+  //
+  // Duplicate handling: a user who submits twice updates their existing
+  // row's mutable fields (name/use_case/note). We deliberately do NOT
+  // overwrite `status` — if the request was already approved/rejected,
+  // re-submitting must not silently flip it back to 'pending'.
+  let requestId: string | null = null
+  let insertError: { message: string; code?: string } | null = null
+
+  const { data: existingRow, error: lookupError } = await sb
     .from('beta_requests' as any)
-    .upsert(
-      {
+    .select('id')
+    .eq('email', cleanEmail)
+    .maybeSingle()
+
+  if (lookupError) {
+    insertError = lookupError
+  } else if (existingRow) {
+    const existingId = (existingRow as { id: string }).id
+    const { error: updateError } = await sb
+      .from('beta_requests' as any)
+      .update({
+        name: cleanName,
+        use_case: useCase,
+        note: cleanNote || null
+      })
+      .eq('id', existingId)
+    insertError = updateError ?? null
+    if (!insertError) requestId = existingId
+  } else {
+    const { data: insertedRow, error: rawInsertError } = await sb
+      .from('beta_requests' as any)
+      .insert({
         name: cleanName,
         email: cleanEmail,
         use_case: useCase,
         note: cleanNote || null
-      },
-      { onConflict: 'email' }
-    )
-    .select('id, created_at')
-    .maybeSingle()
+      })
+      .select('id')
+      .maybeSingle()
+
+    if (
+      rawInsertError &&
+      (rawInsertError as { code?: string }).code === '23505'
+    ) {
+      // Race: another concurrent submission for the same email inserted a
+      // row between our lookup and insert AND a unique constraint exists.
+      // Fall back to updating that row instead of failing the user.
+      const { data: raced, error: racedUpdateError } = await sb
+        .from('beta_requests' as any)
+        .update({
+          name: cleanName,
+          use_case: useCase,
+          note: cleanNote || null
+        })
+        .eq('email', cleanEmail)
+        .select('id')
+        .maybeSingle()
+      insertError = racedUpdateError ?? null
+      if (!insertError) requestId = (raced as { id?: string } | null)?.id ?? null
+    } else {
+      insertError = rawInsertError ?? null
+      if (!insertError) {
+        requestId = (insertedRow as { id?: string } | null)?.id ?? null
+      }
+    }
+  }
 
   if (insertError) {
     // Never surface the raw DB error to the user — log it server-side and
     // return a friendly, actionable message instead.
     console.error(
-      '[beta/request] beta_requests upsert failed:',
-      insertError.message
+      '[beta/request] beta_requests write failed:',
+      insertError.code ? `${insertError.code} ${insertError.message}` : insertError.message
     )
     return NextResponse.json(
       {
@@ -152,11 +212,9 @@ export async function POST(req: Request) {
   // Safe, non-PII log: confirm persistence without writing the email/name/note
   // body to logs. `request_id` is an opaque UUID.
   console.log('[beta/request] saved beta request', {
-    request_id: (insertedRow as { id?: string } | null)?.id ?? null,
+    request_id: requestId,
     use_case: useCase
   })
-
-  const requestId = (insertedRow as { id?: string } | null)?.id ?? null
 
   // ── Send email via Resend ───────────────────────────────────────────────
   let emailSent = false
