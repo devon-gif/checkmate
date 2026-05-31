@@ -833,6 +833,103 @@ const cases: EvalCase[] = [
     minScore: 88,
     categoryHint: 'job_scam_or_ghost_job'
   },
+
+  // ── J-08…J-11: the EXACT live inbound-email format (multi-line / bulleted) ──
+  // These reproduce the production bug that single-line J-01…J-04 missed: the
+  // safety disclaimer is a multi-line bulleted list, so the pre-fix negation
+  // stripper (terminator stopped at '\n') left every list item un-negated and
+  // each one tripped a Critical floor. Subject line is prepended exactly as the
+  // inbound route builds `combinedForAnalyzer = subject + "\n\n" + body`.
+  {
+    id: 'J-08',
+    label: '[Legit job][live format] OpenAI official listing w/ bulleted "does not ask for" list — must be Low',
+    text:
+      'Ray retest 1 - Legit OpenAI official job\n\n' +
+      'Source: https://openai.com/careers/ai-success-engineer-us-remote-remote-us/\n\n' +
+      "This is a job posting I am considering. It appears on OpenAI's official careers site.\n" +
+      'It lists responsibilities, qualifications, compensation, and an official apply link.\n\n' +
+      'It does NOT ask for any of the following:\n' +
+      '- money\n' +
+      '- crypto\n' +
+      '- gift cards\n' +
+      '- Zelle, Venmo, or Cash App\n' +
+      '- banking info\n' +
+      '- SSN before offer\n' +
+      '- WhatsApp or Telegram communication\n\n' +
+      'Expected result: Low.',
+    allowedLevels: ['low', 'needs_more_info'],
+    forbiddenLevels: ['high', 'very_high'],
+    maxScore: 30,
+    forbiddenPhrases: [
+      'Social Security number',
+      'recruiter moved conversation to messaging app',
+      'banking information requested during hiring',
+      'high-risk payment method requested',
+      'Zelle/payment app request',
+      'sensitive credential or financial information requested',
+      'account or login verification pressure'
+    ],
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-09',
+    label: '[Legit job][live format] Anthropic Greenhouse listing w/ bulleted anti-fraud note — must be Low',
+    text:
+      'Ray retest 2 - Legit Anthropic Greenhouse job\n\n' +
+      'Source: https://job-boards.greenhouse.io/anthropic/jobs/5097186008\n\n' +
+      "This is a role on Anthropic's official Greenhouse job board. It uses a normal application form.\n" +
+      'Anti-fraud note from Anthropic:\n' +
+      '- legitimate recruiters use @anthropic.com\n' +
+      '- they never ask for money, fees, or banking information before day one\n' +
+      '- they do not use Zelle, gift cards, crypto, WhatsApp, or Telegram\n\n' +
+      'Expected result: Low.',
+    allowedLevels: ['low', 'needs_more_info'],
+    forbiddenLevels: ['high', 'very_high'],
+    maxScore: 30,
+    forbiddenPhrases: [
+      'account or login verification pressure',
+      'banking information requested during hiring',
+      'high-risk payment method requested',
+      'Zelle/payment app request',
+      'recruiter moved conversation to messaging app',
+      'sensitive credential or financial information requested'
+    ],
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-10',
+    label: '[Ghost job][live format] vague reposted listing, "No one has asked for ..." negated list — must be Medium',
+    text:
+      'Ray retest 4 - Possible ghost job\n\n' +
+      'Remote Operations Associate listing. The description is generic boilerplate.\n' +
+      'It has been reposted for months. The recruiter is not verified. There is no hiring timeline.\n' +
+      'I cannot find this role on the official careers page.\n\n' +
+      'No one has asked for money, payment apps, gift cards, crypto, banking information, SSN, equipment purchases, or WhatsApp/Telegram.',
+    allowedLevels: ['medium', 'needs_more_info'],
+    forbiddenLevels: ['low', 'high', 'very_high'],
+    minScore: 35,
+    maxScore: 65,
+    forbiddenPhrases: [
+      'high-risk payment method requested',
+      'recruiter moved conversation to messaging app',
+      'requests gift card',
+      'requests cryptocurrency',
+      'Social Security number',
+      'banking information requested during hiring'
+    ],
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'J-11',
+    label: '[Scam][adversarial] official-listing CLAIM + real Zelle deposit + SSN demand — must stay Critical',
+    text:
+      "This role is posted on OpenAI's official careers site.\n\n" +
+      'To onboard, send a $300 equipment deposit via Zelle before your interview and provide your SSN today.',
+    allowedLevels: ['very_high'],
+    forbiddenLevels: ['low', 'medium'],
+    minScore: 88,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
 ]
 
 // ─── Runner ───────────────────────────────────────────────────────────────────

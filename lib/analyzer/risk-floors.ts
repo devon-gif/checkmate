@@ -127,7 +127,25 @@ export function buildNegationStrippedText(text: string): string {
     'hasn?\'?t|haven?\'?t|do\\s+not|did\\s+not|does\\s+not|is\\s+not|was\\s+not|' +
     'has\\s+no|have\\s+no|there(?:\'s|\\s+is)\\s+no|there\\s+are\\s+no|without\\s+any)'
 
+  // Pass 0 — flatten multi-line / bulleted list formatting so a negated safety
+  // disclaimer that spans several lines or bullet points reads as ONE inline
+  // sentence. Without this, Pass 1's `[^.!?\n]+` terminator stops at the first
+  // newline, leaving bulleted scam terms ("- Zelle", "- banking info")
+  // un-negated. That was the live production bug: official OpenAI/Anthropic
+  // listings whose "it does not ask for …" disclaimer was a bulleted list
+  // scored Critical because every list item tripped a floor.
   let result = text
+    // Drop leading list bullets / numbering at the start of each line.
+    .replace(/(^|\n)[ \t]*(?:[-*•·–—]|\d+[.)])\s+/g, '$1')
+    // Blank-line paragraph breaks become a sentence stop so a negation pass
+    // cannot bleed across unrelated paragraphs.
+    .replace(/\n[ \t]*\n+/g, ' . ')
+    // Remaining single newlines inside a block become comma separators so a
+    // colon-led list ("does not ask for:\nmoney\ncrypto") joins inline and the
+    // whole list falls inside one negation span.
+    .replace(/\n+/g, ', ')
+    // Tidy the "header:," artifact produced by the join above.
+    .replace(/:\s*,\s*/g, ': ')
 
   // Pass 1 — "[negation] ask (me/you) for [list until sentence end]"
   // Handles: "not asked me for money, gifts, crypto, or any investment"
@@ -137,8 +155,12 @@ export function buildNegationStrippedText(text: string): string {
   // The trailing [^.!?\n]+ swallows the WHOLE comma/"or"-separated list so a
   // later item ("banking information", "SSN") can't survive the negation just
   // because an intervening word ("fees") isn't a recognised scam term.
+  // The `(?:\s+\w+){0,3}` allows a few filler words between the negation and the
+  // ask-verb so phrasings like "No one has asked for …", "they will never
+  // directly ask for …", "the company does not ever request …" are caught and
+  // the WHOLE trailing comma/"or" list is stripped to the sentence end.
   result = result.replace(
-    /\b(?:not|never|no|didn?'?t|doesn?'?t|don?'?t|hasn?'?t|haven?'?t|won'?t|wont|do\s+not|did\s+not|does\s+not|will\s+(?:not|never)|would\s+(?:not|never))\s+(?:ask|asks|asked|asking|request|requests|requested|requesting|require|requires|required|demand|demands)(?:\s+(?:me|you|us|anyone|for|that))*\s+[^.!?\n]+/gi,
+    /\b(?:not|never|no|didn?'?t|doesn?'?t|don?'?t|hasn?'?t|haven?'?t|won'?t|wont|do\s+not|did\s+not|does\s+not|will\s+(?:not|never)|would\s+(?:not|never))(?:\s+\w+){0,3}\s+(?:ask|asks|asked|asking|request|requests|requested|requesting|require|requires|required|demand|demands)(?:\s+(?:me|you|us|anyone|for|that))*\s+[^.!?\n]+/gi,
     m => ' '.repeat(m.length)
   )
 
@@ -211,8 +233,25 @@ export function isOfficialListingSafe(
   floor?: RiskFloorResult | null
 ): boolean {
   if (!detectOfficialListing(text, urls)) return false
+  // The ACTIVE-request check is the real safety gate. A genuine scam that
+  // claims an official listing AND makes an active money/credential request
+  // (e.g. "official OpenAI role — send a $250 Zelle deposit") returns true here
+  // and is NOT capped. Anything else is only mentioning/negating scam terms.
   if (hasActiveScamRequest(text, urls)) return false
-  if (floor && floor.minScore >= 25 && floor.minRiskLevel !== 'needs_more_info') return false
+  // IMPORTANT: do NOT veto on a high payment/credential floor. Those floors are
+  // exactly the false positives we are correcting — they fire on negated
+  // disclaimer mentions, and `hasActiveScamRequest` (run on the same
+  // negation-stripped text) has already confirmed there is no real request.
+  // Only let a genuine ghost-job MEDIUM floor stand, so a flagged ghost job is
+  // not silently capped to Low.
+  if (
+    floor &&
+    floor.category === 'job_scam_or_ghost_job' &&
+    floor.minRiskLevel === 'medium' &&
+    floor.minScore < 60
+  ) {
+    return false
+  }
   return true
 }
 
