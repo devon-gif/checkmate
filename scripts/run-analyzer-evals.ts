@@ -930,6 +930,70 @@ const cases: EvalCase[] = [
     minScore: 88,
     categoryHint: 'job_scam_or_ghost_job'
   },
+
+  // ─── Section K — Scam Intelligence v1 (curated catalog matcher) ──────────────
+  {
+    id: 'K-01',
+    label: '[Scam intel][credential theft] fake interview Calendly link + Google login on non-Google domain — must be Critical',
+    text:
+      'Hi, thanks for your interest in the Operations Analyst role. To confirm your interview, ' +
+      'pick a time on my scheduling link: https://calendly.com/quick-hire-team\n\n' +
+      'You must log in with your Google account on the confirmation page to verify your identity before the call. ' +
+      'Use this confirmation link: https://meet-confirm-portal.com/login',
+    allowedLevels: ['very_high'],
+    forbiddenLevels: ['low', 'medium'],
+    minScore: 85,
+    categoryHint: 'phishing_url'
+  },
+  {
+    id: 'K-02',
+    label: '[Benign][scheduling] normal Calendly interview scheduling from a verifiable company — Low or Medium, never High',
+    text:
+      'Hi Jordan, thanks for applying to the Product Manager role at Acme Corp. ' +
+      'I would love to set up our first interview — here is my scheduling link to pick a time that works: ' +
+      'https://calendly.com/acme-careers/pm-interview. Looking forward to speaking with you.',
+    allowedLevels: ['low', 'medium', 'needs_more_info'],
+    forbiddenLevels: ['high', 'very_high'],
+    maxScore: 59,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'K-03',
+    label: '[Benign][recruiter] recruiter asks for a quick call, no link, no credentials — Low or Medium, never High',
+    text:
+      'Hi, I am a recruiter at Northwind and came across your profile. ' +
+      'I would love to schedule a quick call to discuss an opportunity on our team. ' +
+      'Let me know a couple of times that work for you this week.',
+    allowedLevels: ['low', 'medium', 'needs_more_info'],
+    forbiddenLevels: ['high', 'very_high'],
+    maxScore: 59,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
+  {
+    id: 'K-04',
+    label: '[Scam intel][phishing] fake Google/Microsoft login on a non-provider domain — must be Critical',
+    text:
+      'Microsoft account security alert: we detected an unusual sign-in to your account. ' +
+      'Your account will be suspended within 24 hours unless you verify it. ' +
+      'Log in now to reactivate your Microsoft account: https://account-verify-security-portal.com/login',
+    allowedLevels: ['very_high'],
+    forbiddenLevels: ['low', 'medium'],
+    minScore: 85,
+    categoryHint: 'phishing_url'
+  },
+  {
+    id: 'K-05',
+    label: '[Scam intel][incomplete] suspicious scheduling message, no login/credential evidence — Medium / needs verification, not Critical',
+    text:
+      'A recruiter I do not recognize emailed me a Calendly link to schedule an interview. ' +
+      'They are pushing me to book immediately and I cannot verify the company anywhere. ' +
+      'Something feels off but they have not asked me to log in or pay anything yet.',
+    allowedLevels: ['medium', 'needs_more_info'],
+    forbiddenLevels: ['low', 'high', 'very_high'],
+    minScore: 25,
+    maxScore: 59,
+    categoryHint: 'phishing_url'
+  },
 ]
 
 // ─── Runner ───────────────────────────────────────────────────────────────────

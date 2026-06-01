@@ -14,16 +14,27 @@ import { ANALYSIS_DISCLAIMER } from '@/lib/checkmate-shared'
 
 type Row = Database['public']['Tables']['risk_reports']['Row']
 
+/**
+ * Safe DB error shape surfaced to callers — `code` + `message` only, never
+ * `details`/`hint` (which can echo failing row values / private text).
+ */
+export interface SafeDbError {
+  code: string | null
+  message: string
+}
+
 export interface SaveReportInput {
   caseId: string
   userId: string
   analysis: RiskAnalysis
   submittedText: string
+  /** Optional sink for the safe DB error when the insert fails. */
+  onDbError?: (err: SafeDbError) => void
 }
 
 export async function saveReport(
   supabase: SupabaseClient<Database>,
-  { caseId, userId, analysis, submittedText }: SaveReportInput
+  { caseId, userId, analysis, submittedText, onDbError }: SaveReportInput
 ): Promise<Row | null> {
   const { data: report, error } = await supabase
     .from('risk_reports')
@@ -50,7 +61,15 @@ export async function saveReport(
     .single()
 
   if (error || !report) {
-    console.error('[db/save-report] risk_reports insert error:', error)
+    // code + message only — never details/hint (can echo private row values).
+    const safe: SafeDbError = {
+      code: error?.code ?? null,
+      message: error?.message ?? 'risk_reports insert returned no row'
+    }
+    console.error(
+      `[db/save-report] risk_reports insert failed code=${safe.code ?? 'none'} message=${safe.message}`
+    )
+    onDbError?.(safe)
     return null
   }
 

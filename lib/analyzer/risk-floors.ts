@@ -4,6 +4,7 @@ import {
   type CaseCategory,
   type RiskLevel
 } from '@/lib/checkmate-shared'
+import { matchScamIntel } from '@/lib/analyzer/scam-intel-catalog'
 
 export interface RiskFloorResult {
   minScore: number
@@ -640,6 +641,30 @@ export function evaluateRiskFloors(
       strongSignalCount: 1,
       summary:
         'The submitted text includes an instruction that tries to override Ray. Ray ignored that instruction and analyzed only the risk signals in the content.'
+    })
+  }
+
+  // ── Curated scam-intelligence catalog (raise-only) ───────────────────────────
+  // Matches the submission against the in-code catalog
+  // (lib/analyzer/scam-intel-catalog.ts). Critical is gated to concrete danger
+  // evidence inside the matcher — weak matches arrive here as Medium ("needs
+  // verification"), never very_high. This is a floor: it can only RAISE the
+  // score via mergeFloors, never lower it.
+  const intelMatch = matchScamIntel({
+    strippedText: stripped,
+    normalizedText: normalized,
+    urls
+  })
+  if (intelMatch) {
+    floors.push({
+      minScore: intelMatch.minScore,
+      minRiskLevel: intelMatch.minRiskLevel,
+      category: intelMatch.category,
+      redFlags: [intelMatch.redFlag],
+      strongSignalCount: intelMatch.strongSignalCount,
+      summary: intelMatch.downgraded
+        ? `This resembles a known scam pattern (${intelMatch.pattern.name.replace(/_/g, ' ')}), but the evidence is incomplete. Verify the sender and any links through official channels before acting.`
+        : undefined
     })
   }
 

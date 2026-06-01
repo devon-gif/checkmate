@@ -872,7 +872,12 @@ export async function POST(req: Request) {
       submittedText: combinedForAnalyzer,
       submittedUrl: '',
       source: 'inbound_email',
-      title: `Emailed check: ${parsed.subject || maskEmail(fromEmail)}`.slice(0, 72)
+      title: `Emailed check: ${parsed.subject || maskEmail(fromEmail)}`.slice(0, 72),
+      // Capture the real Postgres error (code + message only — no row values)
+      // so the masked log below names the exact column/constraint that failed.
+      onDbError: e => {
+        saveError = `cases:${e.code ?? 'none'} ${e.message}`
+      }
     })
     if (createdCase) {
       savedCaseId = createdCase.id
@@ -880,21 +885,35 @@ export async function POST(req: Request) {
         caseId: createdCase.id,
         userId: user.id,
         analysis,
-        submittedText: combinedForAnalyzer
+        submittedText: combinedForAnalyzer,
+        onDbError: e => {
+          saveError = `risk_reports:${e.code ?? 'none'} ${e.message}`
+        }
       })
-      if (!savedReport) saveError = 'risk_reports insert returned null'
+      if (!savedReport && !saveError) saveError = 'risk_reports insert returned null'
       await logUsageEvent(sb as any, {
         userId: user.id,
         eventType: 'check_created',
         caseId: createdCase.id
       })
-    } else {
+    } else if (!saveError) {
       saveError = 'cases insert returned null'
     }
   } catch (err) {
     saveError = err instanceof Error ? err.message : String(err)
     console.error('[inbound/email] save chain threw:', saveError)
   }
+
+  // Masked, PII-free save-attempt summary. No body, no full email, no row
+  // values — only booleans, the case id, and the safe error code/message.
+  console.log(
+    `[inbound/email] save summary ` +
+      `sender=${maskEmail(fromEmail)} ` +
+      `userFound=true userIdPresent=${Boolean(user.id)} ` +
+      `saveAttempt=true saveSuccess=${!saveError} ` +
+      `caseId=${savedCaseId ?? 'none'} ` +
+      `error=${saveError ?? 'none'}`
+  )
 
   await logInbound(sb, {
     provider_msg_id: parsed.providerMessageId,

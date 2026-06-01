@@ -8,6 +8,9 @@ node_modules
 # testing
 coverage
 
+# Offline analyzer eval build scratch (do not commit)
+tsconfig.evalbuild.json
+
 # next.js
 .next/
 out/

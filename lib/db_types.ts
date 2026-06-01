@@ -620,6 +620,111 @@ export interface Database {
           }
         ]
       }
+      scam_intel: {
+        Row: {
+          id: string
+          name: string
+          category: string
+          severity: string
+          description: string
+          signals: Json
+          recommended_action: string
+          source_type: string
+          source_url: string | null
+          confidence: string
+          status: string
+          first_seen: string
+          last_seen: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          category: string
+          severity?: string
+          description?: string
+          signals?: Json
+          recommended_action?: string
+          source_type?: string
+          source_url?: string | null
+          confidence?: string
+          status?: string
+          first_seen?: string
+          last_seen?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          category?: string
+          severity?: string
+          description?: string
+          signals?: Json
+          recommended_action?: string
+          source_type?: string
+          source_url?: string | null
+          confidence?: string
+          status?: string
+          first_seen?: string
+          last_seen?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scam_intel_pending: {
+        Row: {
+          id: string
+          name: string | null
+          category: string | null
+          severity: string | null
+          description: string
+          signals: Json
+          recommended_action: string
+          source_type: string
+          source_url: string | null
+          confidence: string
+          review_status: string
+          raw: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name?: string | null
+          category?: string | null
+          severity?: string | null
+          description?: string
+          signals?: Json
+          recommended_action?: string
+          source_type?: string
+          source_url?: string | null
+          confidence?: string
+          review_status?: string
+          raw?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string | null
+          category?: string | null
+          severity?: string | null
+          description?: string
+          signals?: Json
+          recommended_action?: string
+          source_type?: string
+          source_url?: string | null
+          confidence?: string
+          review_status?: string
+          raw?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

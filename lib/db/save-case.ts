@@ -13,6 +13,17 @@ import type { RiskAnalysis } from '@/lib/analysis/types'
 
 type Row = Database['public']['Tables']['cases']['Row']
 
+/**
+ * Safe DB error shape surfaced to callers. We deliberately expose ONLY the
+ * Postgres/PostgREST error `code` and `message` — never `details` or `hint`,
+ * which on a constraint violation can echo the failing row's values (e.g. the
+ * case title / email subject) and would leak private text into logs.
+ */
+export interface SafeDbError {
+  code: string | null
+  message: string
+}
+
 export interface SaveCaseInput {
   userId: string
   analysis: RiskAnalysis
@@ -20,11 +31,13 @@ export interface SaveCaseInput {
   submittedUrl: string
   source?: string
   title?: string
+  /** Optional sink for the safe DB error when the insert fails. */
+  onDbError?: (err: SafeDbError) => void
 }
 
 export async function saveCase(
   supabase: SupabaseClient<Database>,
-  { userId, analysis, submittedText, submittedUrl, source = 'web', title }: SaveCaseInput
+  { userId, analysis, submittedText, submittedUrl, source = 'web', title, onDbError }: SaveCaseInput
 ): Promise<Row | null> {
   const titleSource =
     submittedText || submittedUrl.replace(/^https?:\/\//, '') || 'New risk check'
@@ -49,7 +62,17 @@ export async function saveCase(
     .single()
 
   if (error || !createdCase) {
-    console.error('[db/save-case] cases insert error:', error)
+    // Log code + message ONLY. Never log `error.details`/`error.hint`: on a
+    // check-constraint violation those echo the failing row (incl. the case
+    // title / email subject) and would leak private text.
+    const safe: SafeDbError = {
+      code: error?.code ?? null,
+      message: error?.message ?? 'cases insert returned no row'
+    }
+    console.error(
+      `[db/save-case] cases insert failed code=${safe.code ?? 'none'} message=${safe.message}`
+    )
+    onDbError?.(safe)
     return null
   }
 
