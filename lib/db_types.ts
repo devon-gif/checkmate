@@ -633,6 +633,11 @@ export interface Database {
           source_url: string | null
           confidence: string
           status: string
+          example_text: string | null
+          expected_risk_level: string | null
+          expected_category: string | null
+          last_tested_at: string | null
+          last_test_result: Json | null
           first_seen: string
           last_seen: string
           created_at: string
@@ -650,6 +655,11 @@ export interface Database {
           source_url?: string | null
           confidence?: string
           status?: string
+          example_text?: string | null
+          expected_risk_level?: string | null
+          expected_category?: string | null
+          last_tested_at?: string | null
+          last_test_result?: Json | null
           first_seen?: string
           last_seen?: string
           created_at?: string
@@ -667,6 +677,11 @@ export interface Database {
           source_url?: string | null
           confidence?: string
           status?: string
+          example_text?: string | null
+          expected_risk_level?: string | null
+          expected_category?: string | null
+          last_tested_at?: string | null
+          last_test_result?: Json | null
           first_seen?: string
           last_seen?: string
           created_at?: string
@@ -687,6 +702,8 @@ export interface Database {
           source_url: string | null
           confidence: string
           review_status: string
+          notes: string | null
+          promoted_scam_intel_id: string | null
           raw: Json
           created_at: string
           updated_at: string
@@ -703,6 +720,8 @@ export interface Database {
           source_url?: string | null
           confidence?: string
           review_status?: string
+          notes?: string | null
+          promoted_scam_intel_id?: string | null
           raw?: Json
           created_at?: string
           updated_at?: string
@@ -719,6 +738,8 @@ export interface Database {
           source_url?: string | null
           confidence?: string
           review_status?: string
+          notes?: string | null
+          promoted_scam_intel_id?: string | null
           raw?: Json
           created_at?: string
           updated_at?: string

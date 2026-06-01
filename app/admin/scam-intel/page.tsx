@@ -17,6 +17,7 @@ import { GlassCard } from '@/components/checkmate/GlassCard'
 import { requireAdmin } from '@/lib/admin/access'
 import { type Database } from '@/lib/db_types'
 import { ScamIntelManager, type ScamIntelRow } from './ScamIntelManager'
+import { ScamIntelTabs } from './ScamIntelTabs'
 
 export const metadata = {
   title: 'Scam Intelligence | CheckRay Admin',
@@ -56,6 +57,8 @@ export default async function AdminScamIntelPage() {
           </p>
         </div>
       </div>
+
+      <ScamIntelTabs active="patterns" />
 
       <GlassCard className="px-5 py-4">
         <p className="text-xs text-white/40">
