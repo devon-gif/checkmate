@@ -136,10 +136,22 @@ function finalizeAnalysis(
       ? obj.verification_steps
       : defaultVerificationSteps(category)
   ).slice(0, 5)
-  const recommended_actions = uniqueStrings([
-    ...obj.recommended_actions,
-    ...verification_steps
-  ]).slice(0, 6)
+  // Recommended actions and Verification steps render as two separate sections
+  // in the report, so an action that merely repeats a verification step shows
+  // up twice. Drop those repeats, matching on a normalized key (case- and
+  // trailing-punctuation-insensitive) so near-duplicates like
+  // "Type the official website." collapse too. Only fall back to the
+  // verification steps when no distinct action remains, so the section is
+  // never empty. This is presentation-only — it never changes scoring.
+  const dedupeKey = (s: string) =>
+    s.toLowerCase().replace(/[.,;:!?]+$/, '').replace(/\s+/g, ' ').trim()
+  const verificationKeys = new Set(verification_steps.map(dedupeKey))
+  const distinctActions = uniqueStrings(obj.recommended_actions).filter(
+    action => !verificationKeys.has(dedupeKey(action))
+  )
+  const recommended_actions = (
+    distinctActions.length ? distinctActions : verification_steps
+  ).slice(0, 6)
   const evidence_found = uniqueStrings(
     obj.evidence_found.length ? obj.evidence_found : evidenceFromFlags(red_flags)
   )

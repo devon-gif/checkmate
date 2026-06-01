@@ -22,7 +22,9 @@ import { checkAccess, recordAnonymousCheck, ANON_COOKIE_NAME } from '@/lib/billi
 const requestSchema = z.object({
   // Primary field names
   input_text: z.string().min(1).max(20_000).optional(),
-  input_url: z.string().min(1).max(2_000).optional(),
+  // Empty string is treated as absent — the processing layer trims and
+  // falls back to '' internally, so min(1) here would 422 on blank fields.
+  input_url: z.string().max(2_000).optional(),
   category_hint: z
     .enum([...caseCategories, 'email'] as [string, ...string[]])
     .optional(),
@@ -30,7 +32,7 @@ const requestSchema = z.object({
   country_code: z.string().min(2).max(20).optional(),
   // Legacy aliases for backwards compat
   text: z.string().min(1).max(20_000).optional(),
-  url: z.string().min(1).max(2_000).optional()
+  url: z.string().max(2_000).optional()
 })
 
 // ─── POST /api/analyze-case ───────────────────────────────────────────────────

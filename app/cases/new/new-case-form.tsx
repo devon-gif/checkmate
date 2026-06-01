@@ -151,12 +151,13 @@ export function NewCaseForm() {
     setResult(null)
 
     try {
+      const trimmedUrl = url.trim()
       const response = await fetch('/api/analyze-case', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           input_text: text,
-          input_url: url,
+          ...(trimmedUrl ? { input_url: trimmedUrl } : {}),
           ...(categoryHint ? { category_hint: categoryHint } : {})
         })
       })
