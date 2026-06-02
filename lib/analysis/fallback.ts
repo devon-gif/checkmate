@@ -12,7 +12,7 @@ import {
   type CaseCategory,
   type RiskLevel
 } from '@/lib/checkmate-shared'
-import { evaluateRiskFloors, isLikelyInsufficientScamContent, riskLevelForFlooredScore, buildNegationStrippedText, isOfficialListingSafe } from '@/lib/analyzer/risk-floors'
+import { evaluateRiskFloors, isLikelyInsufficientScamContent, riskLevelForFlooredScore, buildNegationStrippedText, isOfficialListingSafe, isSocialUrlOnlySubmission } from '@/lib/analyzer/risk-floors'
 import {
   confidenceFromEvidence,
   defaultMissingInformation,
@@ -468,6 +468,42 @@ export function buildFallbackAnalysis(
   urls: string[],
   hint?: string
 ): RiskAnalysis {
+  // ── Social-post URL-only submission ──────────────────────────────────────
+  // A bare link to a LinkedIn/Facebook/X/Reddit/… post with no pasted text:
+  // Ray can't read the content behind the link. Don't guess Low (or Critical) —
+  // ask for the post/message text. needs_more_info keeps this out of the
+  // confident-risk bands without weakening scoring for submissions that DO
+  // include text (those skip this branch).
+  if (isSocialUrlOnlySubmission(text, urls)) {
+    return {
+      category: 'unknown',
+      risk_score: 15,
+      risk_level: 'needs_more_info',
+      confidence_level: 'low',
+      summary:
+        "I can’t fully evaluate the scam claim from this link alone. Paste the post text, message body, screenshot text, or the actual suspicious link mentioned in the post.",
+      evidence_found: [],
+      red_flags: [],
+      missing_information: [
+        'The text or content of the social post behind the link',
+        'Any suspicious link, contact, or payment request mentioned inside the post'
+      ],
+      recommended_actions: [
+        'Paste the post or message text so Ray can assess the actual claim.',
+        'If the post points to another site or contact, paste that link or text too.',
+        'Do not act on the post (pay, reply, click, or apply) until the content is verified.'
+      ],
+      safe_reply: '',
+      verification_steps: [
+        'Open the post yourself and copy the wording into Ray.',
+        'Verify any company, recruiter, or sender through their official website.'
+      ],
+      disclaimer: ANALYSIS_DISCLAIMER,
+      detected_urls: urls,
+      used_fallback: true
+    }
+  }
+
   const signalResult = runDeterministicSignals(
     text,
     urls,

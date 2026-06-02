@@ -6,7 +6,6 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { auth } from '@/auth'
 import { analyzeCase } from '@/lib/checkmate'
 import { caseCategories } from '@/lib/checkmate-shared'
 import { ensureDisclaimer, normalizeRiskScore } from '@/lib/checkray-core'
@@ -34,6 +33,33 @@ const requestSchema = z.object({
   text: z.string().min(1).max(20_000).optional(),
   url: z.string().max(2_000).optional()
 })
+
+/** Mask an email for safe logging: jo***@e***.com — never the full address. */
+function maskEmail(email: string | null | undefined): string {
+  if (!email || !email.includes('@')) return 'none'
+  const [local, domain] = email.split('@')
+  const d = domain.split('.')
+  return `${local.slice(0, 2)}***@${(d[0] ?? '').slice(0, 1)}***${d.length > 1 ? '.' + d[d.length - 1] : ''}`
+}
+
+/** PII-safe save-attempt summary. No body, no full email, no row values. */
+function logSaveSummary(args: {
+  userPresent: boolean
+  userIdPresent: boolean
+  email: string | null | undefined
+  saveAttempt: boolean
+  saveSuccess: boolean
+  caseId: string | null
+  error: string | null
+}) {
+  console.log(
+    `[analyze-case] save summary ` +
+      `user=${maskEmail(args.email)} userPresent=${args.userPresent} ` +
+      `userIdPresent=${args.userIdPresent} saveAttempt=${args.saveAttempt} ` +
+      `saveSuccess=${args.saveSuccess} caseId=${args.caseId ?? 'none'} ` +
+      `error=${args.error ?? 'none'}`
+  )
+}
 
 // ─── POST /api/analyze-case ───────────────────────────────────────────────────
 
@@ -94,16 +120,27 @@ async function handlePost(req: Request) {
 
   // 2. Session check — done BEFORE the AI call so rate limits gate compute cost
   const cookieStore = cookies()
-  const session = await auth({ cookieStore })
+
+  // Create the route-handler Supabase client once — shared by the auth read,
+  // the rate-limit check, and DB writes.
+  //
+  // IMPORTANT: read the session from THIS route-handler client, NOT the RSC
+  // `auth()` helper. `auth()` uses `createServerComponentClient`, which is for
+  // Server Components; inside a POST route handler its `getSession()` can throw
+  // and `auth()` swallows that to `null`. That made signed-in users look
+  // anonymous here, so their case was never saved to the dashboard. The
+  // route-handler client reads (and can refresh) the auth cookies correctly.
+  const supabase = createRouteHandlerClient<Database, 'public', any>({
+    cookies: () => cookieStore
+  })
+
+  const {
+    data: { session }
+  } = await supabase.auth.getSession()
   const isAuthenticated = Boolean(session?.user?.id)
 
   // Read anonymous ID cookie (if present)
   const anonymousId: string | null = cookieStore.get(ANON_COOKIE_NAME)?.value ?? null
-
-  // Create the Supabase client once — shared by rate-limit check and DB writes.
-  const supabase = createRouteHandlerClient<Database, 'public', any>({
-    cookies: () => cookieStore
-  })
 
   // Detect country for localized guidance (non-blocking)
   const countryCode = getCountryFromRequest({
@@ -199,6 +236,16 @@ async function handlePost(req: Request) {
 
   // 4. Guest path: return result without persisting ───────────────────────────
   if (!isAuthenticated) {
+    logSaveSummary({
+      userPresent: false,
+      userIdPresent: false,
+      email: null,
+      saveAttempt: false,
+      saveSuccess: false,
+      caseId: null,
+      error: null
+    })
+
     // Generate an anonymous ID if none exists yet
     const anonId = anonymousId ?? crypto.randomUUID()
 
@@ -233,24 +280,50 @@ async function handlePost(req: Request) {
 
   // ── Authenticated path: persist everything to Supabase ────────────────────
   // Wrapped in try/catch so a DB failure never swallows the analysis result.
+  const userId = session!.user.id
+  const userEmail = session!.user.email ?? null
+  // Captures the safe Supabase error (code + message only) from the save
+  // helpers so we can log it without leaking row values / private text.
+  let saveError: string | null = null
+  const onDbError = (e: { code: string | null; message: string }) => {
+    saveError = `${e.code ?? 'none'} ${e.message}`
+  }
+
   try {
-    // a. Upsert user row (handles first-login race condition)
-    await supabase.from('users').upsert({
-      id: session!.user.id,
-      email: session!.user.email ?? null,
+    // a. Upsert user row (repairs a missing public.users row so the case FK
+    //    resolves — handles first-login race + beta users who never web-saved).
+    const { error: userUpsertError } = await supabase.from('users').upsert({
+      id: userId,
+      email: userEmail,
       full_name: session!.user.user_metadata?.full_name ?? null,
       avatar_url: session!.user.user_metadata?.avatar_url ?? null
     })
+    if (userUpsertError) {
+      saveError = `${userUpsertError.code ?? 'none'} ${userUpsertError.message}`
+      console.error(
+        `[analyze-case] public.users upsert failed code=${userUpsertError.code ?? 'none'} message=${userUpsertError.message}`
+      )
+    }
 
     // b. Create case + opening message
     const createdCase = await saveCase(supabase, {
-      userId: session!.user.id,
+      userId,
       analysis,
       submittedText,
-      submittedUrl
+      submittedUrl,
+      onDbError
     })
 
     if (!createdCase) {
+      logSaveSummary({
+        userPresent: true,
+        userIdPresent: true,
+        email: userEmail,
+        saveAttempt: true,
+        saveSuccess: false,
+        caseId: null,
+        error: saveError
+      })
       return NextResponse.json({
         saved: false,
         save_reason: 'supabase_error' as const,
@@ -265,12 +338,22 @@ async function handlePost(req: Request) {
     // c. Save structured risk report
     const savedReport = await saveReport(supabase, {
       caseId: createdCase.id,
-      userId: session!.user.id,
+      userId,
       analysis,
-      submittedText
+      submittedText,
+      onDbError
     })
 
     if (!savedReport) {
+      logSaveSummary({
+        userPresent: true,
+        userIdPresent: true,
+        email: userEmail,
+        saveAttempt: true,
+        saveSuccess: false,
+        caseId: createdCase.id,
+        error: saveError
+      })
       return NextResponse.json({
         saved: false,
         save_reason: 'supabase_error' as const,
@@ -284,9 +367,19 @@ async function handlePost(req: Request) {
 
     // d. Record usage event (non-fatal)
     await logUsageEvent(supabase, {
-      userId: session!.user.id,
+      userId,
       eventType: 'check_created',
       caseId: createdCase.id
+    })
+
+    logSaveSummary({
+      userPresent: true,
+      userIdPresent: true,
+      email: userEmail,
+      saveAttempt: true,
+      saveSuccess: true,
+      caseId: createdCase.id,
+      error: null
     })
 
     // e. Return full response — IDs allow client to link to /cases/[id]
@@ -300,8 +393,18 @@ async function handlePost(req: Request) {
       access
     })
   } catch (err) {
-    // Unexpected DB error — still return the analysis so the user sees results
-    console.error('[analyze-case] unexpected DB error:', err)
+    // Unexpected DB error — still return the analysis so the user sees results.
+    // Log only the error message, never the body/email/row values.
+    console.error('[analyze-case] unexpected DB error:', err instanceof Error ? err.message : 'unknown')
+    logSaveSummary({
+      userPresent: true,
+      userIdPresent: true,
+      email: userEmail,
+      saveAttempt: true,
+      saveSuccess: false,
+      caseId: null,
+      error: saveError ?? 'unexpected_db_error'
+    })
     return NextResponse.json({
       saved: false,
       save_reason: 'supabase_error' as const,

@@ -123,6 +123,8 @@ export async function sendBetaApprovalEmail(
     `Sign up: ${SIGN_UP_URL}`,
     `Sign in: ${SIGN_IN_URL}`,
     '',
+    'Use the same email address you were approved with. If you are already signed in as another account, sign out first or use a private browser window — otherwise you will land on that other account’s dashboard.',
+    '',
     "Once you're in, you can start testing Ray by pasting suspicious texts, job offers, links, bills, emails, or sketchy messages before you click, pay, reply, or apply.",
     '',
     'Your beta access includes:',
@@ -163,9 +165,16 @@ export async function sendBetaApprovalEmail(
   <p style="margin:0 0 8px;font-size:14px;color:rgba(255,255,255,0.65);">
     Sign up using this <strong style="color:#fff;">same email address</strong> — your beta access is tied to it. (Already have an account? Just sign in.)
   </p>
-  <p style="margin:0 0 24px;">
+  <p style="margin:0 0 16px;">
     <a href="${SIGN_UP_URL}" style="display:inline-block;background:#7ae2cf;color:#0d0d0d;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Sign up for CheckRay</a>
     <a href="${SIGN_IN_URL}" style="display:inline-block;margin-left:8px;background:transparent;border:1px solid rgba(122,226,207,0.4);color:#7ae2cf;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">Sign in</a>
+  </p>
+
+  <p style="margin:0 0 24px;padding:12px 14px;background:rgba(255,193,7,0.07);border:1px solid rgba(255,193,7,0.25);border-radius:10px;font-size:13px;color:rgba(255,255,255,0.7);">
+    Use the same email address you were approved with. If you&rsquo;re already
+    signed in as another account, sign out first or open a private browser
+    window &mdash; otherwise you&rsquo;ll land on that other account&rsquo;s
+    dashboard.
   </p>
 
   <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.75);">

@@ -223,6 +223,11 @@ export default async function DashboardPage({
             <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               Welcome back to CheckRay
             </h1>
+            {session.user.email && (
+              <p className="mt-1 text-xs text-white/40">
+                Signed in as <span className="text-white/70">{session.user.email}</span>
+              </p>
+            )}
             <p className="mt-2 max-w-xl text-sm leading-6 text-white/45">
               Ask Ray to check suspicious texts, emails, job offers, bills, links, and rental listings before you click, pay, reply, or apply.
             </p>

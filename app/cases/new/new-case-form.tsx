@@ -118,6 +118,8 @@ const JOB_OPTION_IDS = new Set(['job_offer', 'ghost_job'])
 interface AnalysisResult extends RiskReportData {
   saved: boolean
   case_id?: string
+  /** null when saved; 'not_authenticated' | 'supabase_error' | 'test_mode' otherwise. */
+  save_reason?: string | null
 }
 
 export function NewCaseForm() {
@@ -182,6 +184,7 @@ export function NewCaseForm() {
       const r = payload.report
       setResult({
         saved: Boolean(payload.saved),
+        save_reason: (payload.save_reason ?? null) as string | null,
         category: r.category as CaseCategory,
         risk_score: r.risk_score as number,
         risk_level: r.risk_level as RiskLevel,
@@ -471,8 +474,17 @@ export function NewCaseForm() {
             </p>
           )}
 
-          {/* Guest prompt — shown when analysis ran but wasn't persisted */}
-          {!result.saved && (
+          {/* Signed-in but save failed — do NOT show the "create account"
+              prompt. The analysis succeeded; only persistence failed. */}
+          {!result.saved && result.save_reason === 'supabase_error' && (
+            <div className="rounded-xl border border-yellow-500/25 bg-yellow-500/[0.06] px-4 py-3 text-center text-sm text-yellow-200/80">
+              Ray analyzed this, but we couldn&apos;t save it to your dashboard this
+              time. Your result is shown above — please try again in a moment.
+            </div>
+          )}
+
+          {/* Guest prompt — only when the user is genuinely not signed in. */}
+          {!result.saved && result.save_reason !== 'supabase_error' && (
             <SaveResultPrompt returnPath="/cases/new" />
           )}
         </div>

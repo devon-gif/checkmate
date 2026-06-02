@@ -994,6 +994,35 @@ const cases: EvalCase[] = [
     maxScore: 59,
     categoryHint: 'phishing_url'
   },
+
+  // ─── Section L — social-post URL-only submissions ────────────────────────────
+  {
+    id: 'L-01',
+    label: '[Social URL-only] bare LinkedIn post link, no pasted text — needs_more_info, never confident Low/Critical',
+    text: 'https://www.linkedin.com/posts/some-recruiter_were-hiring-activity-7100000000000000000-abcd',
+    allowedLevels: ['needs_more_info'],
+    forbiddenLevels: ['low', 'medium', 'high', 'very_high'],
+    requiredSignals: ['paste the post text']
+  },
+  {
+    id: 'L-02',
+    label: '[Social URL-only] short question + Facebook post link, no real content — needs_more_info',
+    text: 'Is this legit? https://www.facebook.com/share/p/abcdef123/',
+    allowedLevels: ['needs_more_info'],
+    forbiddenLevels: ['low', 'medium', 'high', 'very_high']
+  },
+  {
+    id: 'L-03',
+    label: '[Social URL + pasted scam text] LinkedIn link WITH full scam message — analyze the text, stay Critical',
+    text:
+      'Saw this on LinkedIn: https://www.linkedin.com/feed/update/urn:li:activity:123\n\n' +
+      'Congratulations, you are hired! Before we ship your equipment, send a $300 refundable ' +
+      'deposit via Zelle today to cover the laptop, then we will start onboarding.',
+    allowedLevels: ['very_high'],
+    forbiddenLevels: ['needs_more_info', 'low'],
+    minScore: 85,
+    categoryHint: 'job_scam_or_ghost_job'
+  },
 ]
 
 // ─── Runner ───────────────────────────────────────────────────────────────────

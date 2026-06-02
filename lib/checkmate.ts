@@ -14,7 +14,7 @@ import { generateObject } from 'ai'
 import { ANALYSIS_DISCLAIMER } from '@/lib/checkmate-shared'
 import type { CaseCategory, RiskLevel } from '@/lib/checkmate-shared'
 import { raySystemPrompt } from '@/lib/analyzer/ray-guidelines'
-import { evaluateRiskFloors, riskLevelForFlooredScore, isOfficialListingSafe } from '@/lib/analyzer/risk-floors'
+import { evaluateRiskFloors, riskLevelForFlooredScore, isOfficialListingSafe, isSocialUrlOnlySubmission } from '@/lib/analyzer/risk-floors'
 import { riskAnalysisSchema } from '@/lib/analysis/schema'
 import { detectUrls, buildFallbackAnalysis } from '@/lib/analysis/fallback'
 import type { RiskAnalysis } from '@/lib/analysis/types'
@@ -214,6 +214,22 @@ function finalizeWithFloors(
   usedFallback: boolean,
   textCharLen: number
 ): RiskAnalysis {
+  // Bare social-post URL with no pasted text: the raw object is already the
+  // deterministic needs_more_info "paste the post text" result. Skip floors AND
+  // the official-listing cap so a social /jobs or /posts link can't be nudged
+  // into Low or any confident band — Ray must keep asking for the content.
+  if (isSocialUrlOnlySubmission(fullText, urls)) {
+    const final = finalizeAnalysis(raw, urls, 0, usedFallback)
+    console.log(
+      '[analyzer] finalized: ' +
+        `used_fallback=${usedFallback} text_chars=${textCharLen} ` +
+        `category=${final.category} social_url_only=true ` +
+        `final_score=${final.risk_score} final_level=${final.risk_level} ` +
+        `red_flag_count=${final.red_flags.length}`
+    )
+    return final
+  }
+
   const rawScore = raw.risk_score
   const rawLevel = raw.risk_level
   const boosted = applyRedFlagFloors(raw, fullText, urls, hint)
@@ -317,7 +333,14 @@ export async function analyzeCase({
 
   try {
     // Skip AI if force-fallback mode is active (load tests, missing key, etc.)
-    if (forceFallback || !process.env.OPENAI_API_KEY) {
+    // OR if this is a bare social-post URL with no pasted text — Ray can't read
+    // the content behind the link, so the deterministic fallback returns a
+    // needs_more_info "paste the post text" result instead of an AI guess.
+    if (
+      forceFallback ||
+      !process.env.OPENAI_API_KEY ||
+      isSocialUrlOnlySubmission(fullText, detectedUrls)
+    ) {
       return finalizeWithFloors(
         fallbackAsAiObject(),
         fullText,

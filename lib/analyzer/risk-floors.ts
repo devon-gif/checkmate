@@ -256,6 +256,61 @@ export function isOfficialListingSafe(
   return true
 }
 
+// ── Social-post URL-only submissions ─────────────────────────────────────────
+// Hosts where the actual scam claim lives BEHIND the link (a post/profile/thread
+// Ray cannot read from the URL alone). A bare link to one of these — with no
+// pasted post text — must NOT be confidently scored Low (the URL itself isn't
+// phishing) and must NOT be scored Critical. Instead Ray asks for the content.
+// Lookalike/typosquat domains are NOT in this list, so real phishing URLs still
+// flow through normal detection.
+export const SOCIAL_POST_HOSTS = [
+  'linkedin.com',
+  'facebook.com',
+  'fb.com',
+  'fb.watch',
+  'x.com',
+  'twitter.com',
+  't.co',
+  'reddit.com',
+  'redd.it',
+  'instagram.com',
+  'tiktok.com',
+  'threads.net',
+  'youtube.com',
+  'youtu.be',
+  'pinterest.com',
+  'snapchat.com',
+  'nextdoor.com'
+]
+
+function hostOf(u: string): string {
+  const m = u.match(/^(?:https?:\/\/)?([^/?#\s]+)/i)
+  return (m?.[1] ?? '').toLowerCase().replace(/^www\./, '')
+}
+
+/**
+ * True when the submission is essentially JUST a link to a social post/profile
+ * (LinkedIn, Facebook, X, Reddit, Instagram, TikTok, …) with no meaningful
+ * pasted text. Ray can't read the content behind the link, so it should ask the
+ * user to paste the post/message text instead of guessing a risk level.
+ */
+export function isSocialUrlOnlySubmission(text: string, urls: string[]): boolean {
+  if (!urls.length) return false
+  const hasSocial = urls.some(u => {
+    const host = hostOf(u)
+    return SOCIAL_POST_HOSTS.some(h => host === h || host.endsWith('.' + h))
+  })
+  if (!hasSocial) return false
+
+  // Strip every detected URL (and any other bare URL) from the text, then see
+  // how much real wording remains. 3 or fewer meaningful words ⇒ URL-only.
+  let remaining = text
+  for (const u of urls) remaining = remaining.split(u).join(' ')
+  remaining = remaining.replace(/https?:\/\/\S+/gi, ' ')
+  const words = (remaining.match(/[a-z0-9]+/gi) ?? []).filter(w => w.length > 1)
+  return words.length <= 3
+}
+
 export function isLikelyInsufficientScamContent(text: string, urls: string[]): boolean {
   const trimmed = text.trim()
   if (urls.length > 0) return false
