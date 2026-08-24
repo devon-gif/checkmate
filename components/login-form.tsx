@@ -1,14 +1,14 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 
-import { IconSpinner } from '@/components/ui/icons'
+import { ConsentCheckbox } from './consent-checkbox'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { ConsentCheckbox } from './consent-checkbox'
-import Link from 'next/link'
-import { toast } from 'react-hot-toast'
-import { useRouter } from 'next/navigation'
+import { IconSpinner } from '@/components/ui/icons'
 
 interface LoginFormProps extends React.ComponentPropsWithoutRef<'div'> {
   action: 'sign-in' | 'sign-up'
@@ -19,6 +19,16 @@ type AuthApiPayload = {
   error?: string
   code?: string
   requiresConfirmation?: boolean
+}
+
+type AuthResult = {
+  error?: string
+  payload?: AuthApiPayload
+}
+
+type SignUpResult = AuthResult & {
+  requiresConfirmation?: boolean
+  email?: string
 }
 
 function isSafeRelativePath(value: string | null | undefined): value is string {
@@ -32,7 +42,6 @@ function isSafeRelativePath(value: string | null | undefined): value is string {
 
 function getDestinationFromLocation() {
   if (typeof window === 'undefined') return '/dashboard'
-
   const params = new URLSearchParams(window.location.search)
   const candidate = params.get('next') ?? params.get('redirectedFrom')
   return isSafeRelativePath(candidate) ? candidate : '/dashboard'
@@ -41,7 +50,7 @@ function getDestinationFromLocation() {
 async function postAuth(
   endpoint: '/api/auth/sign-in' | '/api/auth/sign-up',
   body: Record<string, unknown>
-) {
+): Promise<AuthResult> {
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -51,7 +60,6 @@ async function postAuth(
     })
 
     const payload = (await response.json().catch(() => ({}))) as AuthApiPayload
-
     if (!response.ok) {
       return {
         error:
@@ -74,20 +82,13 @@ export function LoginForm({
   action = 'sign-in',
   ...props
 }: LoginFormProps) {
-  const [isLoading, setIsLoading] = React.useState(false)
   const router = useRouter()
+  const [isLoading, setIsLoading] = React.useState(false)
   const [nextParam, setNextParam] = React.useState('')
-  const [formState, setFormState] = React.useState<{
-    email: string
-    password: string
-  }>({
-    email: '',
-    password: ''
-  })
+  const [email, setEmail] = React.useState('')
+  const [password, setPassword] = React.useState('')
   const [consentChecked, setConsentChecked] = React.useState(false)
-  const [confirmationEmail, setConfirmationEmail] = React.useState<string | null>(
-    null
-  )
+  const [confirmationEmail, setConfirmationEmail] = React.useState<string | null>(null)
   const [alreadyRegistered, setAlreadyRegistered] = React.useState(false)
 
   React.useEffect(() => {
@@ -99,25 +100,16 @@ export function LoginForm({
     )
   }, [])
 
-  const signIn = async () => {
-    const { email, password } = formState
-    return postAuth('/api/auth/sign-in', { email, password })
-  }
-
-  const signUp = async () => {
-    const { email, password } = formState
-    const destination = getDestinationFromLocation()
-
+  async function signUp(): Promise<SignUpResult> {
     const result = await postAuth('/api/auth/sign-up', {
       email,
       password,
-      next: destination
+      next: getDestinationFromLocation()
     })
 
     if (result.error) return result
 
     const requiresConfirmation = !!result.payload?.requiresConfirmation
-
     if (requiresConfirmation) {
       toast.success('Account created — check your inbox to confirm your email.')
     } else {
@@ -127,7 +119,7 @@ export function LoginForm({
           credentials: 'same-origin'
         })
       } catch {
-        // Non-fatal: acceptance will be re-prompted if it was not recorded.
+        // Non-fatal. Legal acceptance can be requested again after sign-in.
       }
     }
 
@@ -138,8 +130,8 @@ export function LoginForm({
     }
   }
 
-  const handleOnSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
-    e.preventDefault()
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async event => {
+    event.preventDefault()
 
     if (action === 'sign-up' && !consentChecked) {
       toast.error(
@@ -149,26 +141,26 @@ export function LoginForm({
     }
 
     setIsLoading(true)
+    setAlreadyRegistered(false)
 
     if (action === 'sign-in') {
-      const result = await signIn()
+      const result = await postAuth('/api/auth/sign-in', { email, password })
+      setIsLoading(false)
 
       if (result.error) {
-        setIsLoading(false)
         toast.error(result.error)
         return
       }
 
-      setIsLoading(false)
       router.push(getDestinationFromLocation())
       router.refresh()
       return
     }
 
     const result = await signUp()
+    setIsLoading(false)
 
     if (result.error) {
-      setIsLoading(false)
       if (result.error.toLowerCase().includes('already registered')) {
         setAlreadyRegistered(true)
       } else {
@@ -177,10 +169,8 @@ export function LoginForm({
       return
     }
 
-    setIsLoading(false)
-
     if (result.requiresConfirmation) {
-      setConfirmationEmail(result.email ?? formState.email)
+      setConfirmationEmail(result.email || email)
       return
     }
 
@@ -196,16 +186,7 @@ export function LoginForm({
         className={`rounded-2xl border border-cm-green/25 bg-cm-green/[0.06] p-5 ${className ?? ''}`}
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cm-green/15 text-cm-green">
-          <svg
-            className="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -213,12 +194,11 @@ export function LoginForm({
         <p className="mt-2 text-sm leading-6 text-white/55">
           We sent a confirmation link to{' '}
           <span className="font-medium text-white/80">{confirmationEmail}</span>.
-          Click that link to finish creating your account. We&apos;ll sign you in
-          and take you to your CheckRay dashboard automatically.
+          Click it to finish creating your account. We&apos;ll sign you in and take
+          you to your CheckRay dashboard automatically.
         </p>
         <p className="mt-3 text-xs leading-5 text-white/35">
-          If you don&apos;t see it, check spam or promotions and give it a minute
-          to arrive.
+          If you don&apos;t see it, check spam or promotions and give it a minute to arrive.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
@@ -241,20 +221,20 @@ export function LoginForm({
 
   return (
     <div className={className} {...props}>
-      <form onSubmit={handleOnSubmit}>
-        <fieldset className="flex flex-col gap-y-4">
+      <form onSubmit={handleSubmit}>
+        <fieldset className="flex flex-col gap-y-4" disabled={isLoading}>
           <div className="flex flex-col gap-y-1.5">
             <Label className="text-sm font-medium text-white/70">Email</Label>
             <Input
               name="email"
               type="email"
-              value={formState.email}
+              value={email}
               placeholder="you@example.com"
               autoComplete="email"
               required
-              onChange={e => {
+              onChange={event => {
                 setAlreadyRegistered(false)
-                setFormState(prev => ({ ...prev, email: e.target.value }))
+                setEmail(event.target.value)
               }}
               className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
             />
@@ -264,17 +244,12 @@ export function LoginForm({
             <Input
               name="password"
               type="password"
-              value={formState.password}
+              value={password}
               placeholder="••••••••"
               autoComplete={action === 'sign-in' ? 'current-password' : 'new-password'}
               required
               minLength={6}
-              onChange={e =>
-                setFormState(prev => ({
-                  ...prev,
-                  password: e.target.value
-                }))
-              }
+              onChange={event => setPassword(event.target.value)}
               className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
             />
           </div>
@@ -292,20 +267,13 @@ export function LoginForm({
         )}
 
         {alreadyRegistered && (
-          <div
-            role="alert"
-            className="mt-5 rounded-xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3.5 text-sm"
-          >
-            <p className="font-medium text-yellow-300">
-              That email already has a CheckRay account.
-            </p>
-            <p className="mt-1 text-white/50">
-              Sign in instead, or reset your password if you&apos;ve forgotten it.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+          <div role="alert" className="mt-5 rounded-xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3.5 text-sm">
+            <p className="font-medium text-yellow-300">That email already has a CheckRay account.</p>
+            <p className="mt-1 text-white/50">Sign in instead if you&apos;ve already registered.</p>
+            <div className="mt-3">
               <Link
                 href={`/sign-in${nextParam}`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-cm-green/30 bg-cm-green/10 px-3 py-1.5 text-xs font-semibold text-cm-green transition hover:bg-cm-green/20"
+                className="inline-flex items-center rounded-lg border border-cm-green/30 bg-cm-green/10 px-3 py-1.5 text-xs font-semibold text-cm-green transition hover:bg-cm-green/20"
               >
                 Sign in
               </Link>
@@ -327,20 +295,14 @@ export function LoginForm({
             {action === 'sign-in' ? (
               <>
                 Don&apos;t have an account?{' '}
-                <Link
-                  href={`/sign-up${nextParam}`}
-                  className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green"
-                >
+                <Link href={`/sign-up${nextParam}`} className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green">
                   Sign Up
                 </Link>
               </>
             ) : (
               <>
                 Already have an account?{' '}
-                <Link
-                  href={`/sign-in${nextParam}`}
-                  className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green"
-                >
+                <Link href={`/sign-in${nextParam}`} className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green">
                   Sign In
                 </Link>
               </>
