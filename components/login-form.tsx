@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 import { IconSpinner } from '@/components/ui/icons'
 import { Input } from './ui/input'
@@ -11,13 +10,15 @@ import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 
-const supabaseConfigured =
-  typeof process !== 'undefined' &&
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
 interface LoginFormProps extends React.ComponentPropsWithoutRef<'div'> {
   action: 'sign-in' | 'sign-up'
+}
+
+type AuthApiPayload = {
+  ok?: boolean
+  error?: string
+  code?: string
+  requiresConfirmation?: boolean
 }
 
 function isSafeRelativePath(value: string | null | undefined): value is string {
@@ -33,10 +34,39 @@ function getDestinationFromLocation() {
   if (typeof window === 'undefined') return '/dashboard'
 
   const params = new URLSearchParams(window.location.search)
-  // `next` is the canonical return-path parameter. `redirectedFrom` is kept
-  // here for backwards compatibility with older middleware deployments.
   const candidate = params.get('next') ?? params.get('redirectedFrom')
   return isSafeRelativePath(candidate) ? candidate : '/dashboard'
+}
+
+async function postAuth(
+  endpoint: '/api/auth/sign-in' | '/api/auth/sign-up',
+  body: Record<string, unknown>
+) {
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    })
+
+    const payload = (await response.json().catch(() => ({}))) as AuthApiPayload
+
+    if (!response.ok) {
+      return {
+        error:
+          payload.error ||
+          'CheckRay could not complete that request. Please try again.'
+      }
+    }
+
+    return { payload }
+  } catch {
+    return {
+      error:
+        'CheckRay could not reach the account service. Please check your connection and try again.'
+    }
+  }
 }
 
 export function LoginForm({
@@ -46,7 +76,6 @@ export function LoginForm({
 }: LoginFormProps) {
   const [isLoading, setIsLoading] = React.useState(false)
   const router = useRouter()
-  // Preserve the intended destination when toggling between sign-in/sign-up.
   const [nextParam, setNextParam] = React.useState('')
   const [formState, setFormState] = React.useState<{
     email: string
@@ -59,8 +88,6 @@ export function LoginForm({
   const [confirmationEmail, setConfirmationEmail] = React.useState<string | null>(
     null
   )
-  // Tracks the specific "already registered" case so we can show an inline
-  // banner with actionable Sign In / Reset Password links instead of a plain toast.
   const [alreadyRegistered, setAlreadyRegistered] = React.useState(false)
 
   React.useEffect(() => {
@@ -72,67 +99,43 @@ export function LoginForm({
     )
   }, [])
 
-  // Guard: if Supabase is not configured, show a friendly message instead of
-  // crashing with "supabaseUrl is required!". All hooks are called above.
-  if (!supabaseConfigured) {
-    return (
-      <div className="rounded-lg border border-white/10 bg-white/5 p-6 text-center text-sm text-white/60">
-        <p className="font-medium text-white/80 mb-1">Auth is not configured</p>
-        <p>NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required.</p>
-      </div>
-    )
-  }
-
-  // Create a Supabase client — only reached when env vars are confirmed present.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const supabase = createClientComponentClient()
-
   const signIn = async () => {
     const { email, password } = formState
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-    return error
+    return postAuth('/api/auth/sign-in', { email, password })
   }
 
   const signUp = async () => {
     const { email, password } = formState
     const destination = getDestinationFromLocation()
 
-    // Prefer the canonical app URL so Supabase confirmation emails consistently
-    // return to the configured CheckRay domain. Fall back to the current origin
-    // for local development / previews where NEXT_PUBLIC_APP_URL may be absent.
-    const appUrl = (
-      process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-    ).replace(/\/$/, '')
-    const callbackUrl = new URL('/api/auth/callback', appUrl)
-    callbackUrl.searchParams.set('next', destination)
-
-    const { error, data } = await supabase.auth.signUp({
+    const result = await postAuth('/api/auth/sign-up', {
       email,
       password,
-      options: { emailRedirectTo: callbackUrl.toString() }
+      next: destination
     })
 
-    // With email confirmation enabled, Supabase creates the user but does not
-    // create a session yet. Do NOT send that user to /dashboard: protected
-    // middleware will correctly reject them until they click the email link.
-    if (!error && !data.session) {
-      toast.success('Account created — check your inbox to confirm your email.')
-    }
+    if (result.error) return result
 
-    // Record legal acceptance after successful sign-up when Supabase returns an
-    // immediate session (for projects where email confirmation is disabled).
-    if (!error && data.session) {
+    const requiresConfirmation = !!result.payload?.requiresConfirmation
+
+    if (requiresConfirmation) {
+      toast.success('Account created — check your inbox to confirm your email.')
+    } else {
       try {
-        await fetch('/api/legal/accept', { method: 'POST' })
+        await fetch('/api/legal/accept', {
+          method: 'POST',
+          credentials: 'same-origin'
+        })
       } catch {
-        // Non-fatal: acceptance will be re-prompted on next login if missing
+        // Non-fatal: acceptance will be re-prompted if it was not recorded.
       }
     }
 
-    return { error, session: data.session, email }
+    return {
+      payload: result.payload,
+      requiresConfirmation,
+      email
+    }
   }
 
   const handleOnSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
@@ -148,11 +151,11 @@ export function LoginForm({
     setIsLoading(true)
 
     if (action === 'sign-in') {
-      const error = await signIn()
+      const result = await signIn()
 
-      if (error) {
+      if (result.error) {
         setIsLoading(false)
-        toast.error(error.message)
+        toast.error(result.error)
         return
       }
 
@@ -162,27 +165,22 @@ export function LoginForm({
       return
     }
 
-    const { error, session, email } = await signUp()
+    const result = await signUp()
 
-    if (error) {
+    if (result.error) {
       setIsLoading(false)
-      // Supabase returns "User already registered" when the email exists.
-      // Show a persistent inline banner with actionable links rather than
-      // a dismissable toast that the user might miss.
-      if (error.message.toLowerCase().includes('user already registered')) {
+      if (result.error.toLowerCase().includes('already registered')) {
         setAlreadyRegistered(true)
       } else {
-        toast.error(error.message)
+        toast.error(result.error)
       }
       return
     }
 
     setIsLoading(false)
 
-    if (!session) {
-      // Email confirmation is required. Stay on this page and give the user a
-      // durable next step instead of bouncing them through dashboard -> sign-in.
-      setConfirmationEmail(email)
+    if (result.requiresConfirmation) {
+      setConfirmationEmail(result.email ?? formState.email)
       return
     }
 
@@ -293,8 +291,6 @@ export function LoginForm({
           </div>
         )}
 
-        {/* TODO: add /reset-password route (Supabase resetPasswordForEmail flow)
-             so the link below can point to a real page. For now it is omitted. */}
         {alreadyRegistered && (
           <div
             role="alert"
@@ -313,14 +309,6 @@ export function LoginForm({
               >
                 Sign in
               </Link>
-              {/* Uncomment once /reset-password is built:
-              <Link
-                href="/reset-password"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/60 transition hover:border-white/20 hover:text-white/80"
-              >
-                Reset password
-              </Link>
-              */}
             </div>
           </div>
         )}
@@ -339,14 +327,20 @@ export function LoginForm({
             {action === 'sign-in' ? (
               <>
                 Don&apos;t have an account?{' '}
-                <Link href={`/sign-up${nextParam}`} className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green">
+                <Link
+                  href={`/sign-up${nextParam}`}
+                  className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green"
+                >
                   Sign Up
                 </Link>
               </>
             ) : (
               <>
                 Already have an account?{' '}
-                <Link href={`/sign-in${nextParam}`} className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green">
+                <Link
+                  href={`/sign-in${nextParam}`}
+                  className="font-medium text-white/70 underline underline-offset-4 hover:text-cm-green"
+                >
                   Sign In
                 </Link>
               </>
