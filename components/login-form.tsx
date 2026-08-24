@@ -20,6 +20,25 @@ interface LoginFormProps extends React.ComponentPropsWithoutRef<'div'> {
   action: 'sign-in' | 'sign-up'
 }
 
+function isSafeRelativePath(value: string | null | undefined): value is string {
+  return (
+    typeof value === 'string' &&
+    value.startsWith('/') &&
+    !value.startsWith('//') &&
+    !value.startsWith('/\\')
+  )
+}
+
+function getDestinationFromLocation() {
+  if (typeof window === 'undefined') return '/dashboard'
+
+  const params = new URLSearchParams(window.location.search)
+  // `next` is the canonical return-path parameter. `redirectedFrom` is kept
+  // here for backwards compatibility with older middleware deployments.
+  const candidate = params.get('next') ?? params.get('redirectedFrom')
+  return isSafeRelativePath(candidate) ? candidate : '/dashboard'
+}
+
 export function LoginForm({
   className,
   action = 'sign-in',
@@ -27,7 +46,7 @@ export function LoginForm({
 }: LoginFormProps) {
   const [isLoading, setIsLoading] = React.useState(false)
   const router = useRouter()
-  // Preserve ?next= when toggling between sign-in and sign-up
+  // Preserve the intended destination when toggling between sign-in/sign-up.
   const [nextParam, setNextParam] = React.useState('')
   const [formState, setFormState] = React.useState<{
     email: string
@@ -37,13 +56,20 @@ export function LoginForm({
     password: ''
   })
   const [consentChecked, setConsentChecked] = React.useState(false)
+  const [confirmationEmail, setConfirmationEmail] = React.useState<string | null>(
+    null
+  )
   // Tracks the specific "already registered" case so we can show an inline
   // banner with actionable Sign In / Reset Password links instead of a plain toast.
   const [alreadyRegistered, setAlreadyRegistered] = React.useState(false)
 
   React.useEffect(() => {
-    const p = new URLSearchParams(window.location.search).get('next')
-    setNextParam(p && p.startsWith('/') ? `?next=${encodeURIComponent(p)}` : '')
+    const destination = getDestinationFromLocation()
+    setNextParam(
+      destination !== '/dashboard'
+        ? `?next=${encodeURIComponent(destination)}`
+        : ''
+    )
   }, [])
 
   // Guard: if Supabase is not configured, show a friendly message instead of
@@ -72,16 +98,32 @@ export function LoginForm({
 
   const signUp = async () => {
     const { email, password } = formState
+    const destination = getDestinationFromLocation()
+
+    // Prefer the canonical app URL so Supabase confirmation emails consistently
+    // return to the configured CheckRay domain. Fall back to the current origin
+    // for local development / previews where NEXT_PUBLIC_APP_URL may be absent.
+    const appUrl = (
+      process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    ).replace(/\/$/, '')
+    const callbackUrl = new URL('/api/auth/callback', appUrl)
+    callbackUrl.searchParams.set('next', destination)
+
     const { error, data } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${location.origin}/api/auth/callback` }
+      options: { emailRedirectTo: callbackUrl.toString() }
     })
 
-    if (!error && !data.session)
-      toast.success('Check your inbox to confirm your email address!')
+    // With email confirmation enabled, Supabase creates the user but does not
+    // create a session yet. Do NOT send that user to /dashboard: protected
+    // middleware will correctly reject them until they click the email link.
+    if (!error && !data.session) {
+      toast.success('Account created — check your inbox to confirm your email.')
+    }
 
-    // Record legal acceptance after successful sign-up (best-effort)
+    // Record legal acceptance after successful sign-up when Supabase returns an
+    // immediate session (for projects where email confirmation is disabled).
     if (!error && data.session) {
       try {
         await fetch('/api/legal/accept', { method: 'POST' })
@@ -90,7 +132,7 @@ export function LoginForm({
       }
     }
 
-    return error
+    return { error, session: data.session, email }
   }
 
   const handleOnSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
@@ -105,17 +147,29 @@ export function LoginForm({
 
     setIsLoading(true)
 
-    const error = action === 'sign-in' ? await signIn() : await signUp()
+    if (action === 'sign-in') {
+      const error = await signIn()
+
+      if (error) {
+        setIsLoading(false)
+        toast.error(error.message)
+        return
+      }
+
+      setIsLoading(false)
+      router.push(getDestinationFromLocation())
+      router.refresh()
+      return
+    }
+
+    const { error, session, email } = await signUp()
 
     if (error) {
       setIsLoading(false)
       // Supabase returns "User already registered" when the email exists.
       // Show a persistent inline banner with actionable links rather than
       // a dismissable toast that the user might miss.
-      if (
-        action === 'sign-up' &&
-        error.message.toLowerCase().includes('user already registered')
-      ) {
+      if (error.message.toLowerCase().includes('user already registered')) {
         setAlreadyRegistered(true)
       } else {
         toast.error(error.message)
@@ -124,14 +178,71 @@ export function LoginForm({
     }
 
     setIsLoading(false)
-    // Redirect to ?next= param if present, otherwise to the dashboard
-    const next = new URLSearchParams(window.location.search).get('next')
-    router.push(next && next.startsWith('/') ? next : '/dashboard')
+
+    if (!session) {
+      // Email confirmation is required. Stay on this page and give the user a
+      // durable next step instead of bouncing them through dashboard -> sign-in.
+      setConfirmationEmail(email)
+      return
+    }
+
+    router.push(getDestinationFromLocation())
     router.refresh()
   }
 
+  if (confirmationEmail) {
+    return (
+      <div
+        {...props}
+        role="status"
+        className={`rounded-2xl border border-cm-green/25 bg-cm-green/[0.06] p-5 ${className ?? ''}`}
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cm-green/15 text-cm-green">
+          <svg
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="mt-4 text-lg font-semibold text-white">Check your email</h2>
+        <p className="mt-2 text-sm leading-6 text-white/55">
+          We sent a confirmation link to{' '}
+          <span className="font-medium text-white/80">{confirmationEmail}</span>.
+          Click that link to finish creating your account. We&apos;ll sign you in
+          and take you to your CheckRay dashboard automatically.
+        </p>
+        <p className="mt-3 text-xs leading-5 text-white/35">
+          If you don&apos;t see it, check spam or promotions and give it a minute
+          to arrive.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link
+            href={`/sign-in${nextParam}`}
+            className="inline-flex items-center justify-center rounded-lg border border-white/12 bg-white/5 px-3 py-2 text-xs font-medium text-white/65 transition hover:border-white/20 hover:text-white"
+          >
+            Go to sign in
+          </Link>
+          <button
+            type="button"
+            onClick={() => setConfirmationEmail(null)}
+            className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-medium text-white/40 transition hover:text-white/65"
+          >
+            Use a different email
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div {...props}>
+    <div className={className} {...props}>
       <form onSubmit={handleOnSubmit}>
         <fieldset className="flex flex-col gap-y-4">
           <div className="flex flex-col gap-y-1.5">
@@ -142,6 +253,7 @@ export function LoginForm({
               value={formState.email}
               placeholder="you@example.com"
               autoComplete="email"
+              required
               onChange={e => {
                 setAlreadyRegistered(false)
                 setFormState(prev => ({ ...prev, email: e.target.value }))
@@ -157,6 +269,8 @@ export function LoginForm({
               value={formState.password}
               placeholder="••••••••"
               autoComplete={action === 'sign-in' ? 'current-password' : 'new-password'}
+              required
+              minLength={6}
               onChange={e =>
                 setFormState(prev => ({
                   ...prev,

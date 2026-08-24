@@ -10,7 +10,11 @@ export const metadata = {
   description: 'Sign in to CheckRay to review saved checks and continue where you left off.'
 }
 
-export default async function SignInPage() {
+export default async function SignInPage({
+  searchParams
+}: {
+  searchParams?: { authError?: string }
+}) {
   // If Supabase public env vars are missing, show a clean notice instead
   // of letting the client-side Supabase client throw on render.
   if (!hasSupabasePublicEnv()) {
@@ -27,6 +31,12 @@ export default async function SignInPage() {
   if (session?.user) {
     redirect('/dashboard')
   }
+
+  const authErrorMessage = searchParams?.authError
+    ? searchParams.authError === 'missing_code'
+      ? 'That confirmation link is incomplete. Please use the newest confirmation email or sign in if you have already confirmed your account.'
+      : 'That confirmation link could not be completed or may have expired. Please sign in if your account is already confirmed.'
+    : null
 
   return (
     <div className="relative flex min-h-[calc(100vh-theme(spacing.16))] flex-col items-center justify-center overflow-hidden bg-deep px-4 py-16">
@@ -52,6 +62,15 @@ export default async function SignInPage() {
           <p className="mt-2 text-sm leading-relaxed text-white/50">
             Sign in to review saved checks and continue where you left off.
           </p>
+
+          {authErrorMessage && (
+            <div
+              role="alert"
+              className="mt-5 rounded-xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3 text-sm leading-5 text-yellow-100/80"
+            >
+              {authErrorMessage}
+            </div>
+          )}
 
           <div className="mt-6">
             <LoginForm action="sign-in" />

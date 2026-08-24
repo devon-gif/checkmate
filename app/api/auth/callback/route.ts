@@ -6,25 +6,56 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-export async function GET(request: Request) {
-  // The `/auth/callback` route is required for the server-side auth flow implemented
-  // by the Auth Helpers package. It exchanges an auth code for the user's session.
-  // https://supabase.com/docs/guides/auth/auth-helpers/nextjs#managing-sign-in-with-code-exchange
-  const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
+function isSafeRelativePath(value: string | null | undefined): value is string {
+  return (
+    typeof value === 'string' &&
+    value.startsWith('/') &&
+    !value.startsWith('//') &&
+    !value.startsWith('/\\')
+  )
+}
 
-  if (code) {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({
-      cookies: () => cookieStore
-    })
-    await supabase.auth.exchangeCodeForSession(code)
+function signInErrorRedirect(requestUrl: URL, reason: string) {
+  const url = new URL('/sign-in', requestUrl.origin)
+  url.searchParams.set('authError', reason)
+  return NextResponse.redirect(url)
+}
+
+export async function GET(request: Request) {
+  // Supabase email-confirmation links return here with a one-time auth code.
+  // We must exchange that code for a cookie-backed session BEFORE sending the
+  // user to a protected route such as /dashboard.
+  const requestUrl = new URL(request.url)
+
+  const providerError =
+    requestUrl.searchParams.get('error_description') ??
+    requestUrl.searchParams.get('error')
+  if (providerError) {
+    console.warn('[auth/callback] provider returned an auth error')
+    return signInErrorRedirect(requestUrl, 'confirmation_failed')
   }
 
-  // Respect the `next` param so sign-in from /try or /cases/new lands correctly.
-  // Default to /dashboard if no next param is provided.
+  const code = requestUrl.searchParams.get('code')
+  if (!code) {
+    console.warn('[auth/callback] missing auth code')
+    return signInErrorRedirect(requestUrl, 'missing_code')
+  }
+
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient({
+    cookies: () => cookieStore
+  })
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  if (error) {
+    console.warn('[auth/callback] code exchange failed:', error.message)
+    return signInErrorRedirect(requestUrl, 'confirmation_failed')
+  }
+
+  // Respect a validated `next` param so a user who began from a protected
+  // page returns there after confirmation. New accounts default to dashboard.
   const next = requestUrl.searchParams.get('next')
-  const redirectTo = next && next.startsWith('/') ? next : '/dashboard'
+  const redirectTo = isSafeRelativePath(next) ? next : '/dashboard'
 
   return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
 }
