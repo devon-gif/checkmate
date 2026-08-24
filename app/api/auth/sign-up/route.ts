@@ -18,6 +18,19 @@ function jsonError(message: string, status = 400, code = 'auth_error') {
   return NextResponse.json({ error: message, code }, { status })
 }
 
+function isTransportFailure(error: { message?: string; status?: number }) {
+  const message = (error.message || '').toLowerCase()
+  return (
+    error.status === 0 ||
+    message.includes('fetch failed') ||
+    message.includes('failed to fetch') ||
+    message.includes('network request failed') ||
+    message.includes('enotfound') ||
+    message.includes('econnrefused') ||
+    message.includes('etimedout')
+  )
+}
+
 export async function POST(req: NextRequest) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -73,6 +86,15 @@ export async function POST(req: NextRequest) {
     })
 
     if (error) {
+      if (isTransportFailure(error)) {
+        console.error('[auth/sign-up] Supabase is unreachable:', error.message)
+        return jsonError(
+          'The account service is temporarily unavailable. Please try again shortly.',
+          503,
+          'auth_unavailable'
+        )
+      }
+
       console.warn('[auth/sign-up] Supabase rejected signup:', error.message)
       const status = error.status && error.status >= 400 && error.status < 500 ? error.status : 400
       return jsonError(error.message, status, error.code ?? 'sign_up_failed')
@@ -88,7 +110,7 @@ export async function POST(req: NextRequest) {
       err instanceof Error ? err.message : String(err)
     )
     return jsonError(
-      'We could not reach the account service. Please try again in a moment.',
+      'The account service is temporarily unavailable. Please try again shortly.',
       503,
       'auth_unavailable'
     )
