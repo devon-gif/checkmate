@@ -61,7 +61,15 @@ export async function middleware(req: NextRequest) {
       redirectUrl.pathname = pathname.startsWith('/admin')
         ? '/admin/login'
         : '/sign-in'
-      redirectUrl.searchParams.set('redirectedFrom', pathname)
+
+      // Use one return-path parameter everywhere. LoginForm validates this as
+      // a safe relative path before navigating, preventing open redirects.
+      if (!pathname.startsWith('/admin')) {
+        const destination = `${pathname}${req.nextUrl.search}`
+        redirectUrl.search = ''
+        redirectUrl.searchParams.set('next', destination)
+      }
+
       return NextResponse.redirect(redirectUrl)
     }
   } catch (err) {
