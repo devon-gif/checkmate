@@ -1,23 +1,34 @@
 'use client'
 
 import * as React from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 
-import { IconSpinner } from '@/components/ui/icons'
+import { ConsentCheckbox } from './consent-checkbox'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { ConsentCheckbox } from './consent-checkbox'
-import Link from 'next/link'
-import { toast } from 'react-hot-toast'
-import { useRouter } from 'next/navigation'
-
-const supabaseConfigured =
-  typeof process !== 'undefined' &&
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+import { IconSpinner } from '@/components/ui/icons'
 
 interface LoginFormProps extends React.ComponentPropsWithoutRef<'div'> {
   action: 'sign-in' | 'sign-up'
+}
+
+type AuthApiPayload = {
+  ok?: boolean
+  error?: string
+  code?: string
+  requiresConfirmation?: boolean
+}
+
+type AuthResult = {
+  error?: string
+  payload?: AuthApiPayload
+}
+
+type SignUpResult = AuthResult & {
+  requiresConfirmation?: boolean
+  email?: string
 }
 
 function isSafeRelativePath(value: string | null | undefined): value is string {
@@ -31,12 +42,39 @@ function isSafeRelativePath(value: string | null | undefined): value is string {
 
 function getDestinationFromLocation() {
   if (typeof window === 'undefined') return '/dashboard'
-
   const params = new URLSearchParams(window.location.search)
-  // `next` is the canonical return-path parameter. `redirectedFrom` is kept
-  // here for backwards compatibility with older middleware deployments.
   const candidate = params.get('next') ?? params.get('redirectedFrom')
   return isSafeRelativePath(candidate) ? candidate : '/dashboard'
+}
+
+async function postAuth(
+  endpoint: '/api/auth/sign-in' | '/api/auth/sign-up',
+  body: Record<string, unknown>
+): Promise<AuthResult> {
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    })
+
+    const payload = (await response.json().catch(() => ({}))) as AuthApiPayload
+    if (!response.ok) {
+      return {
+        error:
+          payload.error ||
+          'CheckRay could not complete that request. Please try again.'
+      }
+    }
+
+    return { payload }
+  } catch {
+    return {
+      error:
+        'CheckRay could not reach the account service. Please check your connection and try again.'
+    }
+  }
 }
 
 export function LoginForm({
@@ -44,23 +82,13 @@ export function LoginForm({
   action = 'sign-in',
   ...props
 }: LoginFormProps) {
-  const [isLoading, setIsLoading] = React.useState(false)
   const router = useRouter()
-  // Preserve the intended destination when toggling between sign-in/sign-up.
+  const [isLoading, setIsLoading] = React.useState(false)
   const [nextParam, setNextParam] = React.useState('')
-  const [formState, setFormState] = React.useState<{
-    email: string
-    password: string
-  }>({
-    email: '',
-    password: ''
-  })
+  const [email, setEmail] = React.useState('')
+  const [password, setPassword] = React.useState('')
   const [consentChecked, setConsentChecked] = React.useState(false)
-  const [confirmationEmail, setConfirmationEmail] = React.useState<string | null>(
-    null
-  )
-  // Tracks the specific "already registered" case so we can show an inline
-  // banner with actionable Sign In / Reset Password links instead of a plain toast.
+  const [confirmationEmail, setConfirmationEmail] = React.useState<string | null>(null)
   const [alreadyRegistered, setAlreadyRegistered] = React.useState(false)
 
   React.useEffect(() => {
@@ -72,71 +100,38 @@ export function LoginForm({
     )
   }, [])
 
-  // Guard: if Supabase is not configured, show a friendly message instead of
-  // crashing with "supabaseUrl is required!". All hooks are called above.
-  if (!supabaseConfigured) {
-    return (
-      <div className="rounded-lg border border-white/10 bg-white/5 p-6 text-center text-sm text-white/60">
-        <p className="font-medium text-white/80 mb-1">Auth is not configured</p>
-        <p>NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required.</p>
-      </div>
-    )
-  }
-
-  // Create a Supabase client — only reached when env vars are confirmed present.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const supabase = createClientComponentClient()
-
-  const signIn = async () => {
-    const { email, password } = formState
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-    return error
-  }
-
-  const signUp = async () => {
-    const { email, password } = formState
-    const destination = getDestinationFromLocation()
-
-    // Prefer the canonical app URL so Supabase confirmation emails consistently
-    // return to the configured CheckRay domain. Fall back to the current origin
-    // for local development / previews where NEXT_PUBLIC_APP_URL may be absent.
-    const appUrl = (
-      process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-    ).replace(/\/$/, '')
-    const callbackUrl = new URL('/api/auth/callback', appUrl)
-    callbackUrl.searchParams.set('next', destination)
-
-    const { error, data } = await supabase.auth.signUp({
+  async function signUp(): Promise<SignUpResult> {
+    const result = await postAuth('/api/auth/sign-up', {
       email,
       password,
-      options: { emailRedirectTo: callbackUrl.toString() }
+      next: getDestinationFromLocation()
     })
 
-    // With email confirmation enabled, Supabase creates the user but does not
-    // create a session yet. Do NOT send that user to /dashboard: protected
-    // middleware will correctly reject them until they click the email link.
-    if (!error && !data.session) {
-      toast.success('Account created — check your inbox to confirm your email.')
-    }
+    if (result.error) return result
 
-    // Record legal acceptance after successful sign-up when Supabase returns an
-    // immediate session (for projects where email confirmation is disabled).
-    if (!error && data.session) {
+    const requiresConfirmation = !!result.payload?.requiresConfirmation
+    if (requiresConfirmation) {
+      toast.success('Account created — check your inbox to confirm your email.')
+    } else {
       try {
-        await fetch('/api/legal/accept', { method: 'POST' })
+        await fetch('/api/legal/accept', {
+          method: 'POST',
+          credentials: 'same-origin'
+        })
       } catch {
-        // Non-fatal: acceptance will be re-prompted on next login if missing
+        // Non-fatal. Legal acceptance can be requested again after sign-in.
       }
     }
 
-    return { error, session: data.session, email }
+    return {
+      payload: result.payload,
+      requiresConfirmation,
+      email
+    }
   }
 
-  const handleOnSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
-    e.preventDefault()
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async event => {
+    event.preventDefault()
 
     if (action === 'sign-up' && !consentChecked) {
       toast.error(
@@ -146,43 +141,36 @@ export function LoginForm({
     }
 
     setIsLoading(true)
+    setAlreadyRegistered(false)
 
     if (action === 'sign-in') {
-      const error = await signIn()
+      const result = await postAuth('/api/auth/sign-in', { email, password })
+      setIsLoading(false)
 
-      if (error) {
-        setIsLoading(false)
-        toast.error(error.message)
+      if (result.error) {
+        toast.error(result.error)
         return
       }
 
-      setIsLoading(false)
       router.push(getDestinationFromLocation())
       router.refresh()
       return
     }
 
-    const { error, session, email } = await signUp()
+    const result = await signUp()
+    setIsLoading(false)
 
-    if (error) {
-      setIsLoading(false)
-      // Supabase returns "User already registered" when the email exists.
-      // Show a persistent inline banner with actionable links rather than
-      // a dismissable toast that the user might miss.
-      if (error.message.toLowerCase().includes('user already registered')) {
+    if (result.error) {
+      if (result.error.toLowerCase().includes('already registered')) {
         setAlreadyRegistered(true)
       } else {
-        toast.error(error.message)
+        toast.error(result.error)
       }
       return
     }
 
-    setIsLoading(false)
-
-    if (!session) {
-      // Email confirmation is required. Stay on this page and give the user a
-      // durable next step instead of bouncing them through dashboard -> sign-in.
-      setConfirmationEmail(email)
+    if (result.requiresConfirmation) {
+      setConfirmationEmail(result.email || email)
       return
     }
 
@@ -198,16 +186,7 @@ export function LoginForm({
         className={`rounded-2xl border border-cm-green/25 bg-cm-green/[0.06] p-5 ${className ?? ''}`}
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cm-green/15 text-cm-green">
-          <svg
-            className="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -215,12 +194,11 @@ export function LoginForm({
         <p className="mt-2 text-sm leading-6 text-white/55">
           We sent a confirmation link to{' '}
           <span className="font-medium text-white/80">{confirmationEmail}</span>.
-          Click that link to finish creating your account. We&apos;ll sign you in
-          and take you to your CheckRay dashboard automatically.
+          Click it to finish creating your account. We&apos;ll sign you in and take
+          you to your CheckRay dashboard automatically.
         </p>
         <p className="mt-3 text-xs leading-5 text-white/35">
-          If you don&apos;t see it, check spam or promotions and give it a minute
-          to arrive.
+          If you don&apos;t see it, check spam or promotions and give it a minute to arrive.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
@@ -243,20 +221,20 @@ export function LoginForm({
 
   return (
     <div className={className} {...props}>
-      <form onSubmit={handleOnSubmit}>
-        <fieldset className="flex flex-col gap-y-4">
+      <form onSubmit={handleSubmit}>
+        <fieldset className="flex flex-col gap-y-4" disabled={isLoading}>
           <div className="flex flex-col gap-y-1.5">
             <Label className="text-sm font-medium text-white/70">Email</Label>
             <Input
               name="email"
               type="email"
-              value={formState.email}
+              value={email}
               placeholder="you@example.com"
               autoComplete="email"
               required
-              onChange={e => {
+              onChange={event => {
                 setAlreadyRegistered(false)
-                setFormState(prev => ({ ...prev, email: e.target.value }))
+                setEmail(event.target.value)
               }}
               className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
             />
@@ -266,17 +244,12 @@ export function LoginForm({
             <Input
               name="password"
               type="password"
-              value={formState.password}
+              value={password}
               placeholder="••••••••"
               autoComplete={action === 'sign-in' ? 'current-password' : 'new-password'}
               required
               minLength={6}
-              onChange={e =>
-                setFormState(prev => ({
-                  ...prev,
-                  password: e.target.value
-                }))
-              }
+              onChange={event => setPassword(event.target.value)}
               className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-cm-green/50 focus:ring-cm-green/20"
             />
           </div>
@@ -293,34 +266,17 @@ export function LoginForm({
           </div>
         )}
 
-        {/* TODO: add /reset-password route (Supabase resetPasswordForEmail flow)
-             so the link below can point to a real page. For now it is omitted. */}
         {alreadyRegistered && (
-          <div
-            role="alert"
-            className="mt-5 rounded-xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3.5 text-sm"
-          >
-            <p className="font-medium text-yellow-300">
-              That email already has a CheckRay account.
-            </p>
-            <p className="mt-1 text-white/50">
-              Sign in instead, or reset your password if you&apos;ve forgotten it.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+          <div role="alert" className="mt-5 rounded-xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3.5 text-sm">
+            <p className="font-medium text-yellow-300">That email already has a CheckRay account.</p>
+            <p className="mt-1 text-white/50">Sign in instead if you&apos;ve already registered.</p>
+            <div className="mt-3">
               <Link
                 href={`/sign-in${nextParam}`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-cm-green/30 bg-cm-green/10 px-3 py-1.5 text-xs font-semibold text-cm-green transition hover:bg-cm-green/20"
+                className="inline-flex items-center rounded-lg border border-cm-green/30 bg-cm-green/10 px-3 py-1.5 text-xs font-semibold text-cm-green transition hover:bg-cm-green/20"
               >
                 Sign in
               </Link>
-              {/* Uncomment once /reset-password is built:
-              <Link
-                href="/reset-password"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/60 transition hover:border-white/20 hover:text-white/80"
-              >
-                Reset password
-              </Link>
-              */}
             </div>
           </div>
         )}
