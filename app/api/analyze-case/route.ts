@@ -2,6 +2,7 @@ import 'server-only'
 import '@/lib/env'
 
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -134,10 +135,19 @@ async function handlePost(req: Request) {
     cookies: () => cookieStore
   })
 
-  const {
-    data: { session }
-  } = await supabase.auth.getSession()
-  const isAuthenticated = Boolean(session?.user?.id)
+  // Verify the user against Supabase Auth before any privileged metering.
+  // getSession() only reads cookies and must not authorize service-role writes.
+  const { data: { user: verifiedUser }, error: verificationError } =
+    await supabase.auth.getUser()
+  if (verificationError && verificationError.name !== 'AuthSessionMissingError') {
+    console.error('[analyze-case] auth verification unavailable:', verificationError.name)
+    return NextResponse.json(
+      { error: 'service_unavailable', message: 'Account verification is temporarily unavailable.' },
+      { status: 503 }
+    )
+  }
+  const session = verifiedUser ? { user: verifiedUser } : null
+  const isAuthenticated = Boolean(verifiedUser?.id)
 
   // Read anonymous ID cookie (if present)
   const anonymousId: string | null = cookieStore.get(ANON_COOKIE_NAME)?.value ?? null
@@ -222,10 +232,23 @@ async function handlePost(req: Request) {
       )
     }
   } else if (isAuthenticated) {
-    // Reserve the authenticated check before spending on an AI request.
-    // A failed case/report save must never create unlimited uncounted usage.
-    const recorded = await logUsageEvent(supabase, {
-      userId: session!.user.id,
+    // Usage is a server-controlled ledger. Authenticated clients can READ it
+    // under RLS, but cannot INSERT, UPDATE or DELETE it themselves.
+    const meteringUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const meteringKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!meteringUrl || !meteringKey) {
+      return NextResponse.json(
+        { error: 'service_unavailable', message: 'Analysis is temporarily unavailable. Please try again shortly.' },
+        { status: 503 }
+      )
+    }
+    // This strictly scoped service-role write uses an identity verified above
+    // via getUser(); never accept a userId from the request body.
+    const usageWriter = createClient<Database>(meteringUrl, meteringKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    })
+    const recorded = await logUsageEvent(usageWriter, {
+      userId: verifiedUser!.id,
       eventType: 'check_created'
     })
     if (!recorded) {
