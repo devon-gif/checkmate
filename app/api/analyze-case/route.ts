@@ -197,13 +197,14 @@ async function handlePost(req: Request) {
   })
 
   if (!access.canAnalyze) {
+    const serviceUnavailable = access.accessStatus === 'service_unavailable'
     return NextResponse.json(
       {
-        error: 'usage_limit_reached',
+        error: serviceUnavailable ? 'service_unavailable' : 'usage_limit_reached',
         message: access.reason ?? 'Analysis limit reached.',
         access
       },
-      { status: 402 }
+      { status: serviceUnavailable ? 503 : 402 }
     )
   }
 
