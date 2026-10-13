@@ -8,6 +8,7 @@
 - Supabase quoted incremental project cost: **$0/month** at creation time.
 - State: `ACTIVE_HEALTHY`.
 - 25 migrations applied: 24 original migration scripts (including corrected fresh-install FK constraint order) plus security hardening.
+- Migration ledger reconciled to the exact version prefixes in the GitHub filenames (25/25 match), so future `supabase db push` should not rerun existing DDL.
 - 27 public tables, each with RLS enabled.
 - Initial seed: 10 curated scam intelligence patterns, 4 legal versions.
 - New project contains **zero** authenticated users, user-owned cases and paid subscriptions.
