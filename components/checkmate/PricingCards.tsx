@@ -65,7 +65,7 @@ export function PricingCards({ stripeConfigured }: Props) {
             ))}
           </ul>
           <GradientButton href="/cases/new" variant="secondary" className="w-full">
-            Try one free check
+            Try a free check
           </GradientButton>
         </GlassCard>
 
@@ -107,9 +107,7 @@ export function PricingCards({ stripeConfigured }: Props) {
               plan="basic_monthly"
             />
           ) : (
-            <GradientButton href="/sign-up" variant="secondary" className="w-full">
-              Start 7-day free trial
-            </GradientButton>
+            <p className="rounded-lg border border-white/10 p-3 text-center text-sm text-white/60">Checkout temporarily unavailable</p>
           )}
           <p className="-mt-2 text-center text-[11px] text-white/35">
             Card required. Cancel anytime before day 7.
@@ -157,9 +155,7 @@ export function PricingCards({ stripeConfigured }: Props) {
               plan="plus_monthly"
             />
           ) : (
-            <GradientButton href="/sign-up" variant="primary" className="w-full">
-              Start 7-day free trial
-            </GradientButton>
+            <p className="rounded-lg border border-white/10 p-3 text-center text-sm text-white/60">Checkout temporarily unavailable</p>
           )}
           <p className="-mt-2 text-center text-[11px] text-white/35">
             Card required. Cancel anytime before day 7.
