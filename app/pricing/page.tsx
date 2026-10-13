@@ -12,7 +12,7 @@ import { hasAnyPlanPriceId } from '@/lib/billing/stripe'
 export const metadata = {
   title: 'Pricing — CheckRay',
   description:
-    'Free check, Basic at $4.99/mo, Plus at $9.99/mo, Family at $19.99/mo. 7-day free trial. No contracts.'
+    'Free checks, Basic at $4.99 per month for 10 checks, Plus at $9.99 per month for 50 checks. Cancel anytime.'
 }
 
 export default function PricingPage({
@@ -48,12 +48,12 @@ export default function PricingPage({
         )}
       </div>
 
-      {/* Pricing cards with monthly/yearly toggle */}
+      {/* Monthly pricing cards */}
       <PricingCards stripeConfigured={stripeConfigured} />
 
       {/* Fair-use note */}
       <p className="mx-auto max-w-xl text-center text-xs text-white/25">
-        Unlimited plans are subject to fair-use limits to prevent abuse.
+        Checks reset monthly. Existing legacy plans remain subject to their original terms.
         Refunds are handled manually — contact us if you need one.{' '}
         <Link
           href="/contact"
