@@ -31,6 +31,15 @@ function serviceClient() {
   )
 }
 
+// Throw on write errors: Stripe must retry instead of silently losing access.
+async function requireDbWrite(
+  operation: PromiseLike<{ error: { code?: string; message?: string } | null }>,
+  context: string
+): Promise<void> {
+  const { error } = await operation
+  if (error) throw new Error(`Stripe billing ${context} failed: ${error.code ?? 'unknown'}`)
+}
+
 // ─── Resolve user_id from a Stripe customer id ────────────────────────────────
 // Invoice/deletion events don't always carry our metadata, so we map the
 // Stripe customer id back to a user. We try `user_billing` (the billing
@@ -43,19 +52,21 @@ async function userIdForCustomer(
 ): Promise<string | null> {
   if (!customerId) return null
 
-  const { data: billingRow } = await (sb as any)
+  const { data: billingRow, error: billingLookupError } = await (sb as any)
     .from('user_billing')
     .select('user_id')
     .eq('stripe_customer_id', customerId)
     .limit(1)
     .maybeSingle()
+  if (billingLookupError) throw new Error('Stripe billing customer lookup failed: ' + (billingLookupError.code ?? 'unknown'))
   if (billingRow?.user_id) return billingRow.user_id as string
 
-  const { data: subRows } = await sb
+  const { data: subRows, error: subscriptionLookupError } = await sb
     .from('subscriptions')
     .select('user_id')
     .eq('provider_customer_id', customerId)
     .limit(1)
+  if (subscriptionLookupError) throw new Error('Stripe subscription customer lookup failed: ' + (subscriptionLookupError.code ?? 'unknown'))
   return subRows?.[0]?.user_id ?? null
 }
 
@@ -108,10 +119,10 @@ export async function POST(req: Request) {
       // Duplicate delivery — already processed. Acknowledge and stop.
       return NextResponse.json({ received: true, duplicate: true })
     }
-    // Any other ledger error (e.g. table missing in an unmigrated env) is
-    // logged but non-fatal: fall through and process the event so we never
-    // drop a real event just because the ledger write failed.
+    // A failed ledger means billing writes cannot be trusted. Return 503 so
+    // Stripe retries rather than acknowledging an event we may have lost.
     console.error('[stripe/webhook] Idempotency ledger insert failed:', ledgerError.code)
+    return NextResponse.json({ error: 'billing_store_unavailable' }, { status: 503 })
   }
 
   try {
@@ -137,9 +148,8 @@ export async function POST(req: Request) {
           // added in migration 20260529150000). user_billing remains the
           // source of truth for plan/access; this keeps subscriptions a
           // reliable customer-id / audit mirror.
-          await sb
-            .from('subscriptions')
-            .upsert(
+          await requireDbWrite(
+            sb.from('subscriptions').upsert(
               {
                 user_id: userId,
                 provider: 'stripe',
@@ -147,7 +157,9 @@ export async function POST(req: Request) {
                 provider_subscription_id: subscriptionId ?? null
               } as any,
               { onConflict: 'user_id' }
-            )
+            ),
+            'checkout mapping'
+          )
         }
         break
       }
@@ -227,9 +239,10 @@ export async function POST(req: Request) {
         }
         if (resolvedPlan) sharedUpdate.plan = resolvedPlan
 
-        await sb
-          .from('subscriptions')
-          .upsert(sharedUpdate as any, { onConflict: 'user_id' })
+        await requireDbWrite(
+          sb.from('subscriptions').upsert(sharedUpdate as any, { onConflict: 'user_id' }),
+          'subscription state'
+        )
 
         // Mirror canonical fields into user_billing (preferred source for
         // dashboard reads). `trial_ends_at` is written from Stripe's
@@ -249,9 +262,10 @@ export async function POST(req: Request) {
         if (trialEnd != null) {
           userBillingPayload.trial_ends_at = new Date(trialEnd * 1000).toISOString()
         }
-        await (sb as any)
-          .from('user_billing')
-          .upsert(userBillingPayload, { onConflict: 'user_id' })
+        await requireDbWrite(
+          (sb as any).from('user_billing').upsert(userBillingPayload, { onConflict: 'user_id' }),
+          'user billing state'
+        )
         break
       }
 
@@ -271,15 +285,15 @@ export async function POST(req: Request) {
 
         // Downgrade — do NOT delete saved cases/reports. The user keeps
         // their history; the Free plan still gives them 1 check / month.
-        await sb
-          .from('subscriptions')
-          .update({ status: 'canceled' } as any)
-          .eq('user_id', userId)
+        await requireDbWrite(
+          sb.from('subscriptions').update({ status: 'canceled' } as any).eq('user_id', userId),
+          'subscription cancellation'
+        )
 
-        await (sb as any)
-          .from('user_billing')
-          .update({ status: 'inactive', plan: 'free' })
-          .eq('user_id', userId)
+        await requireDbWrite(
+          (sb as any).from('user_billing').update({ status: 'inactive', plan: 'free' }).eq('user_id', userId),
+          'user billing cancellation'
+        )
         break
       }
 
@@ -298,25 +312,25 @@ export async function POST(req: Request) {
           | number
           | undefined
 
-        await sb
-          .from('subscriptions')
-          .update({
+        await requireDbWrite(
+          sb.from('subscriptions').update({
             status: 'active',
             current_period_end: periodEnd
               ? new Date(periodEnd * 1000).toISOString()
               : null
-          } as any)
-          .eq('user_id', userId)
+          } as any).eq('user_id', userId),
+          'invoice paid subscription'
+        )
 
-        await (sb as any)
-          .from('user_billing')
-          .update({
+        await requireDbWrite(
+          (sb as any).from('user_billing').update({
             status: 'active',
             current_period_end: periodEnd
               ? new Date(periodEnd * 1000).toISOString()
               : null
-          })
-          .eq('user_id', userId)
+          }).eq('user_id', userId),
+          'invoice paid user billing'
+        )
         break
       }
 
@@ -330,15 +344,15 @@ export async function POST(req: Request) {
         const userId = await userIdForCustomer(sb, customerId)
         if (!userId) break
 
-        await sb
-          .from('subscriptions')
-          .update({ status: 'past_due' } as any)
-          .eq('user_id', userId)
+        await requireDbWrite(
+          sb.from('subscriptions').update({ status: 'past_due' } as any).eq('user_id', userId),
+          'payment failure subscription'
+        )
 
-        await (sb as any)
-          .from('user_billing')
-          .update({ status: 'past_due' })
-          .eq('user_id', userId)
+        await requireDbWrite(
+          (sb as any).from('user_billing').update({ status: 'past_due' }).eq('user_id', userId),
+          'payment failure user billing'
+        )
         break
       }
 
@@ -348,6 +362,13 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     console.error(`[stripe/webhook] Error handling event ${event.type}:`, err)
+    // Release the unprocessed idempotency claim so the next Stripe retry
+    // can process the event. This is best-effort during a DB outage.
+    const { error: rollbackError } = await (sb as any)
+      .from('stripe_webhook_events')
+      .delete()
+      .eq('id', event.id)
+    if (rollbackError) console.error('[stripe/webhook] Could not release event claim:', rollbackError.code)
     return NextResponse.json({ error: 'Internal error processing event.' }, { status: 500 })
   }
 
