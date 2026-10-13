@@ -8,7 +8,7 @@ bundle.
 
 | Plan | Monthly | Yearly | Checks/month |
 |---|---|---|---|
-| Free | $0 | — | 1 |
+| Free | $0 | — | 1 guest check total; 3/month for signed-in free users |
 | Basic | $4.99 | $47.88 ($3.99/mo equivalent) | 10 |
 | Plus | $9.99 | $95.88 ($7.99/mo equivalent) | 50 |
 | Family | $19.99 | $191.88 ($15.99/mo equivalent) | Unlimited (fair-use) |
@@ -16,7 +16,7 @@ bundle.
 Plan IDs (used internally on `user_billing.plan` and `subscriptions.plan`):
 `free`, `trial`, `basic`, `basic_yearly`, `plus`, `plus_yearly`, `family`, `family_yearly`.
 
-Source of truth: `@/lib/billing/plans.ts`.
+Source of truth: `@/lib/billing/plans.ts`. **New customer pricing page exposes monthly Basic and Plus only.** Existing annual and Family subscriptions and prices remain in place for legacy customers; do not cancel or migrate them without customer authorization.
 
 ## Required environment variables
 
@@ -39,9 +39,7 @@ variable, **redeploy with build cache disabled** (see
 
 ### Fail-soft behavior
 
-If **any** of the four `STRIPE_*_PRICE_ID` vars (or the legacy
-`NEXT_PUBLIC_STRIPE_PRICE_ID_PRO`) is set, `hasAnyPlanPriceId()` returns
-true and the pricing page renders Checkout buttons.
+The monthly pricing page checks each configured monthly price separately and also requires Stripe to be initialized. The Checkout server verifies that Basic is $4.99/month and Plus is $9.99/month before opening Stripe. Never expose a checkout price while Supabase cannot persist subscriptions.
 
 If **none** are set:
 
@@ -59,9 +57,11 @@ message in a browser alert. Other plans continue to work.
 ## Stripe dashboard setup (test mode first)
 
 1. Stripe Dashboard → **Test mode** toggle (top-right) → ON.
-2. **Products** → New product → "CheckRay Basic" → add two recurring
-   prices: monthly $9.99 USD and yearly $95.88 USD. Copy each price ID.
-3. Repeat for "CheckRay Plus" with $19.99 / $191.88.
+2. In the existing CheckRay Stripe account, **reuse** the CheckRay Basic
+   monthly price **$4.99 USD** (live ID: `price_1Tb5XaJBYoU6w4SVsHW8Nf6v`).
+3. Reuse the CheckRay Plus monthly price **$9.99 USD** (live ID:
+   `price_1Tb5YcJBYoU6w4SVLorFGKRy`). Do not create duplicate prices.
+   The public Checkout UI no longer offers yearly or Family tiers.
 4. **Developers → API keys** → copy the test secret key (`sk_test_*`)
    into `STRIPE_SECRET_KEY` on Vercel.
 5. **Developers → Webhooks** → Add endpoint → URL
@@ -82,10 +82,10 @@ For local end-to-end testing, see `docs/STRIPE_WEBHOOK_TESTING.md`.
 
 1. Repeat all of the above in **live mode** (top-right toggle OFF).
 2. Replace every test value in Vercel with the live equivalent.
-3. Verify: do one real $9.99 checkout in incognito, confirm the user's
+3. After a successful test-mode rehearsal and restoration of the production Supabase project, verify a real authorized checkout, confirm the user's
    `user_billing.status` flips to `active` and the dashboard shows
    "Manage billing".
-4. Refund that test purchase via the Stripe dashboard.
+4. Refund any authorized live test purchase via the Stripe dashboard as appropriate. Do not run paid tests without permission.
 
 ## Cancellation flow
 
