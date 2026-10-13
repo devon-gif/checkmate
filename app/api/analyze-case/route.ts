@@ -197,14 +197,43 @@ async function handlePost(req: Request) {
   })
 
   if (!access.canAnalyze) {
+    const databaseUnavailable = access.accessStatus === 'blocked' && access.plan === null
     return NextResponse.json(
       {
-        error: 'usage_limit_reached',
+        error: databaseUnavailable ? 'service_unavailable' : 'usage_limit_reached',
         message: access.reason ?? 'Analysis limit reached.',
         access
       },
-      { status: 402 }
+      { status: databaseUnavailable ? 503 : 402 }
     )
+  }
+
+  // Reserve anonymous quota BEFORE the AI call. If Supabase is down or the
+  // usage event cannot be recorded, do not spend on an unmetered analysis.
+  const reservedAnonymousId = !isAuthenticated
+    ? anonymousId ?? crypto.randomUUID()
+    : null
+  if (reservedAnonymousId) {
+    const recorded = await recordAnonymousCheck(reservedAnonymousId)
+    if (!recorded) {
+      return NextResponse.json(
+        { error: 'service_unavailable', message: 'Analysis is temporarily unavailable. Please try again shortly.' },
+        { status: 503 }
+      )
+    }
+  } else if (isAuthenticated) {
+    // Reserve the authenticated check before spending on an AI request.
+    // A failed case/report save must never create unlimited uncounted usage.
+    const recorded = await logUsageEvent(supabase, {
+      userId: session!.user.id,
+      eventType: 'check_created'
+    })
+    if (!recorded) {
+      return NextResponse.json(
+        { error: 'service_unavailable', message: 'Analysis is temporarily unavailable. Please try again shortly.' },
+        { status: 503 }
+      )
+    }
   }
 
   // 3. Run analysis (AI with deterministic fallback) — always, guests included
@@ -246,11 +275,7 @@ async function handlePost(req: Request) {
       error: null
     })
 
-    // Generate an anonymous ID if none exists yet
-    const anonId = anonymousId ?? crypto.randomUUID()
-
-    // Record this check (non-fatal)
-    await recordAnonymousCheck(anonId)
+    const anonId = reservedAnonymousId!
 
     const response = NextResponse.json({
       saved: false,
@@ -365,13 +390,7 @@ async function handlePost(req: Request) {
       })
     }
 
-    // d. Record usage event (non-fatal)
-    await logUsageEvent(supabase, {
-      userId,
-      eventType: 'check_created',
-      caseId: createdCase.id
-    })
-
+    // Usage has already been reserved, before the model call.
     logSaveSummary({
       userPresent: true,
       userIdPresent: true,

@@ -1,18 +1,17 @@
 /**
  * app/pricing/page.tsx
  *
- * CheckRay pricing page — Free, Basic, Plus.
- * Billing period toggle (monthly/yearly) is handled inside PricingCards.
+ * CheckRay pricing page — Free, Basic $4.99/mo, Plus $9.99/mo.
  */
 import Link from 'next/link'
 
 import { PricingCards } from '@/components/checkmate/PricingCards'
-import { hasAnyPlanPriceId } from '@/lib/billing/stripe'
+import { stripe, getPriceIdForPlan } from '@/lib/billing/stripe'
 
 export const metadata = {
   title: 'Pricing — CheckRay',
   description:
-    'Free check, Basic at $4.99/mo, Plus at $9.99/mo, Family at $19.99/mo. 7-day free trial. No contracts.'
+    'Free checks, Basic at $4.99/month for 10 checks, or Plus at $9.99/month for 50 checks. No annual commitment.'
 }
 
 export default function PricingPage({
@@ -23,7 +22,8 @@ export default function PricingPage({
   const wasCancelled =
     searchParams?.checkout === 'cancelled' ||
     searchParams?.billing === 'cancelled'
-  const stripeConfigured = hasAnyPlanPriceId()
+  const basicConfigured = Boolean(stripe && getPriceIdForPlan('basic_monthly'))
+  const plusConfigured = Boolean(stripe && getPriceIdForPlan('plus_monthly'))
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 py-16 sm:px-6">
@@ -48,12 +48,12 @@ export default function PricingPage({
         )}
       </div>
 
-      {/* Pricing cards with monthly/yearly toggle */}
-      <PricingCards stripeConfigured={stripeConfigured} />
+      {/* Monthly-only plans; existing legacy/yearly subscribers retain their plans. */}
+      <PricingCards basicConfigured={basicConfigured} plusConfigured={plusConfigured} />
 
-      {/* Fair-use note */}
+      {/* Support note */}
       <p className="mx-auto max-w-xl text-center text-xs text-white/25">
-        Unlimited plans are subject to fair-use limits to prevent abuse.
+        Monthly limits reset at the start of each calendar month.
         Refunds are handled manually — contact us if you need one.{' '}
         <Link
           href="/contact"

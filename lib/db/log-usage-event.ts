@@ -2,7 +2,7 @@
  * lib/db/log-usage-event.ts
  *
  * Records a usage event in Supabase.
- * Non-fatal — errors are logged but not propagated.
+ * Returns false if the quota ledger could not record the event.
  */
 
 import 'server-only'
@@ -20,7 +20,7 @@ export interface LogUsageEventInput {
 export async function logUsageEvent(
   supabase: SupabaseClient<Database>,
   { userId, eventType, caseId, costEstimate = 0 }: LogUsageEventInput
-): Promise<void> {
+): Promise<boolean> {
   const { error } = await supabase.from('usage_events').insert({
     user_id: userId,
     event_type: eventType,
@@ -29,6 +29,8 @@ export async function logUsageEvent(
   })
 
   if (error) {
-    console.error('[db/log-usage-event] usage_events insert error:', error)
+    console.error('[db/log-usage-event] usage_events insert error:', error.code)
+    return false
   }
+  return true
 }
