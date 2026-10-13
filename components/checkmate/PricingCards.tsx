@@ -3,22 +3,18 @@
 /**
  * components/checkmate/PricingCards.tsx
  *
- * Pricing cards for Free, Basic, and Plus plans.
- * Includes a monthly/yearly billing period toggle.
+ * Simple monthly-only pricing: Free, Basic, and Plus.
  * Reads stripeConfigured from props (passed from server component).
  */
-
-import { useState } from 'react'
 
 import { GlassCard } from '@/components/checkmate/GlassCard'
 import { GradientButton } from '@/components/checkmate/GradientButton'
 import { PLAN_PRICING } from '@/lib/billing/plans'
 
 interface Props {
-  stripeConfigured: boolean
+  basicConfigured: boolean
+  plusConfigured: boolean
 }
-
-type BillingPeriod = 'monthly' | 'yearly'
 
 function CheckIcon() {
   return (
@@ -34,64 +30,14 @@ function CheckIcon() {
   )
 }
 
-export function PricingCards({ stripeConfigured }: Props) {
-  const [period, setPeriod] = useState<BillingPeriod>('monthly')
-
-  const basicPrice = period === 'yearly'
-    ? PLAN_PRICING.basic!.monthlyEquivalent!
-    : PLAN_PRICING.basic!.monthly!
-
-  const plusPrice = period === 'yearly'
-    ? PLAN_PRICING.plus!.monthlyEquivalent!
-    : PLAN_PRICING.plus!.monthly!
-
-  const familyPrice = period === 'yearly'
-    ? PLAN_PRICING.family!.monthlyEquivalent!
-    : PLAN_PRICING.family!.monthly!
-
-  const basicBilled = period === 'yearly'
-    ? `Billed $${PLAN_PRICING.basic!.yearly}/year`
-    : 'Billed monthly'
-
-  const plusBilled = period === 'yearly'
-    ? `Billed $${PLAN_PRICING.plus!.yearly}/year`
-    : 'Billed monthly'
-
-  const familyBilled = period === 'yearly'
-    ? `Billed $${PLAN_PRICING.family!.yearly}/year`
-    : 'Billed monthly'
+export function PricingCards({ basicConfigured, plusConfigured }: Props) {
+  const basicPrice = PLAN_PRICING.basic!.monthly!
+  const plusPrice = PLAN_PRICING.plus!.monthly!
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Billing toggle */}
-      <div className="flex items-center justify-center gap-1 self-center rounded-full border border-white/10 bg-white/5 p-1">
-        <button
-          onClick={() => setPeriod('monthly')}
-          className={`rounded-full px-5 py-1.5 text-sm font-medium transition ${
-            period === 'monthly'
-              ? 'bg-white/10 text-white'
-              : 'text-white/40 hover:text-white/70'
-          }`}
-        >
-          Monthly
-        </button>
-        <button
-          onClick={() => setPeriod('yearly')}
-          className={`flex items-center gap-2 rounded-full px-5 py-1.5 text-sm font-medium transition ${
-            period === 'yearly'
-              ? 'bg-white/10 text-white'
-              : 'text-white/40 hover:text-white/70'
-          }`}
-        >
-          Yearly
-          <span className="rounded-full border border-cm-green/40 bg-cm-green/10 px-2 py-0.5 text-[10px] font-semibold text-cm-green">
-            Save 20%
-          </span>
-        </button>
-      </div>
-
       {/* Cards grid */}
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-3">
         {/* Free */}
         <GlassCard className="flex flex-col gap-6 p-6">
           <div>
@@ -133,7 +79,7 @@ export function PricingCards({ stripeConfigured }: Props) {
               </span>
               <span className="mb-0.5 text-sm text-white/40">/mo</span>
             </div>
-            <p className="mt-1 text-xs text-white/30">{basicBilled}</p>
+            <p className="mt-1 text-xs text-white/30">Billed monthly</p>
             <p className="mt-1.5 text-sm text-white/40">
               For individuals who need regular checks.
             </p>
@@ -154,11 +100,11 @@ export function PricingCards({ stripeConfigured }: Props) {
               </li>
             ))}
           </ul>
-          {stripeConfigured ? (
+          {basicConfigured ? (
             <TrialStartButton
               variant="secondary"
               label="Start 7-day free trial"
-              plan={period === 'yearly' ? 'basic_yearly' : 'basic_monthly'}
+              plan="basic_monthly"
             />
           ) : (
             <GradientButton href="/sign-up" variant="secondary" className="w-full">
@@ -183,7 +129,7 @@ export function PricingCards({ stripeConfigured }: Props) {
               </span>
               <span className="mb-0.5 text-sm text-white/40">/mo</span>
             </div>
-            <p className="mt-1 text-xs text-white/30">{plusBilled}</p>
+            <p className="mt-1 text-xs text-white/30">Billed monthly</p>
             <p className="mt-1.5 text-sm text-white/40">
               For power users who want maximum protection.
             </p>
@@ -204,11 +150,11 @@ export function PricingCards({ stripeConfigured }: Props) {
               </li>
             ))}
           </ul>
-          {stripeConfigured ? (
+          {plusConfigured ? (
             <TrialStartButton
               variant="primary"
               label="Start 7-day free trial"
-              plan={period === 'yearly' ? 'plus_yearly' : 'plus_monthly'}
+              plan="plus_monthly"
             />
           ) : (
             <GradientButton href="/sign-up" variant="primary" className="w-full">
@@ -220,55 +166,7 @@ export function PricingCards({ stripeConfigured }: Props) {
           </p>
         </GlassCard>
 
-        {/* Family Protection / Unlimited */}
-        <GlassCard className="flex flex-col gap-6 p-6">
-          <div>
-            <h2 className="text-base font-semibold text-white">
-              Family Protection
-            </h2>
-            <div className="mt-2 flex min-h-[3rem] items-end gap-1">
-              <span className="text-4xl font-bold leading-none text-white">
-                ${familyPrice.toFixed(2)}
-              </span>
-              <span className="mb-0.5 text-sm text-white/40">/mo</span>
-            </div>
-            <p className="mt-1 text-xs text-white/30">{familyBilled}</p>
-            <p className="mt-1.5 text-sm text-white/40">
-              For households, caregivers, parents, and anyone helping loved
-              ones avoid costly scams.
-            </p>
-          </div>
-          <ul className="flex flex-1 flex-col gap-2">
-            {[
-              'Unlimited fair-use checks',
-              'Everything in Plus',
-              'Family & trusted contact support',
-              'Priority access to new features',
-              'Best for parents, job seekers, heavy use',
-              'Call Ray access (coming soon)',
-              '7-day free trial'
-            ].map(f => (
-              <li key={f} className="flex items-start gap-2 text-sm text-white/60">
-                <CheckIcon />
-                {f}
-              </li>
-            ))}
-          </ul>
-          {stripeConfigured ? (
-            <TrialStartButton
-              variant="secondary"
-              label="Start 7-day free trial"
-              plan={period === 'yearly' ? 'family_yearly' : 'family_monthly'}
-            />
-          ) : (
-            <GradientButton href="/sign-up" variant="secondary" className="w-full">
-              Start 7-day free trial
-            </GradientButton>
-          )}
-          <p className="-mt-2 text-center text-[11px] text-white/35">
-            Card required. Cancel anytime before day 7.
-          </p>
-        </GlassCard>
+
       </div>
     </div>
   )
@@ -276,13 +174,7 @@ export function PricingCards({ stripeConfigured }: Props) {
 
 // ─── Trial start button (Stripe checkout) ─────────────────────────────────────
 
-type CheckoutPlanKey =
-  | 'basic_monthly'
-  | 'basic_yearly'
-  | 'plus_monthly'
-  | 'plus_yearly'
-  | 'family_monthly'
-  | 'family_yearly'
+type CheckoutPlanKey = 'basic_monthly' | 'plus_monthly'
 
 function TrialStartButton({
   variant,
@@ -294,10 +186,8 @@ function TrialStartButton({
   plan: CheckoutPlanKey
 }) {
   async function handleClick() {
-    // Split the combined plan key (e.g. 'basic_monthly') into the new
-    // explicit { plan, interval } body shape the route prefers. The route
-    // still accepts the legacy combined form, but this is the canonical
-    // way going forward.
+    // Use the existing monthly Checkout route without exposing legacy
+    // yearly or Family products to new visitors.
     const idx = plan.lastIndexOf('_')
     const basePlan = plan.slice(0, idx)
     const interval = plan.slice(idx + 1)
