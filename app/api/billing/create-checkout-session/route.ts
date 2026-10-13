@@ -12,7 +12,6 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/auth'
 import { type Database } from '@/lib/db_types'
 import {
   stripe,
@@ -92,11 +91,32 @@ export async function POST(req: Request) {
     )
   }
 
-  // Auth required
+  // Use the route-handler auth client, not an RSC helper, so auth cookies
+  // are read and refreshed correctly during POST requests.
   const cookieStore = cookies()
-  const session = await auth({ cookieStore })
-  if (!session?.user?.id) {
-    // Send the client to /sign-up while preserving the pricing-page intent.
+  const supabase = createRouteHandlerClient<Database, 'public', any>({
+    cookies: () => cookieStore
+  })
+  let user: { id: string; email?: string | null } | null = null
+  try {
+    const result = await supabase.auth.getUser()
+    if (result.error && result.error.name !== 'AuthSessionMissingError') {
+      console.error('[billing/checkout] Supabase auth failed:', result.error.name)
+      return NextResponse.json(
+        { error: 'service_unavailable', message: 'Checkout is temporarily unavailable. Please try again later.' },
+        { status: 503 }
+      )
+    }
+    user = result.data.user
+  } catch (error) {
+    console.error('[billing/checkout] Supabase auth lookup failed:', error instanceof Error ? error.name : 'unknown')
+    return NextResponse.json(
+      { error: 'service_unavailable', message: 'Checkout is temporarily unavailable. Please try again later.' },
+      { status: 503 }
+    )
+  }
+
+  if (!user?.id) {
     return NextResponse.json(
       {
         error: 'Unauthorized.',
@@ -107,21 +127,51 @@ export async function POST(req: Request) {
     )
   }
 
-  const userId = session.user.id
-  const userEmail = session.user.email ?? undefined
-
-  const supabase = createRouteHandlerClient<Database, 'public', any>({
-    cookies: () => cookieStore
-  })
+  const userId = user.id
+  const userEmail = user.email ?? undefined
 
   // Find existing Stripe customer ID if the user has one
-  const { data: sub } = await supabase
+  const { data: sub, error: subscriptionLookupError } = await supabase
     .from('subscriptions')
     .select('provider_customer_id')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+  if (subscriptionLookupError) {
+    console.error('[billing/checkout] Cannot verify billing database:', subscriptionLookupError.code)
+    return NextResponse.json(
+      { error: 'service_unavailable', message: 'Checkout is temporarily unavailable. Please try again later.' },
+      { status: 503 }
+    )
+  }
+
+  // Never checkout an incorrectly mapped live price. A stale legacy price ID
+  // could otherwise charge Basic customers the Plus price.
+  if (combined === 'basic_monthly' || combined === 'plus_monthly') {
+    const expectedCents = combined === 'basic_monthly' ? 499 : 999
+    try {
+      const selectedPrice = await stripe.prices.retrieve(priceId)
+      if (
+        !selectedPrice.active ||
+        selectedPrice.currency !== 'usd' ||
+        selectedPrice.unit_amount !== expectedCents ||
+        selectedPrice.recurring?.interval !== 'month'
+      ) {
+        console.error('[billing/checkout] Configured monthly Stripe price does not match plan:', combined)
+        return NextResponse.json(
+          { error: 'price_mismatch', message: 'This plan is temporarily unavailable. Please contact support.' },
+          { status: 503 }
+        )
+      }
+    } catch (error) {
+      console.error('[billing/checkout] Cannot verify Stripe price:', error instanceof Error ? error.name : 'unknown')
+      return NextResponse.json(
+        { error: 'service_unavailable', message: 'Checkout is temporarily unavailable. Please try again later.' },
+        { status: 503 }
+      )
+    }
+  }
 
   let customerId: string | undefined = sub?.provider_customer_id ?? undefined
 
@@ -138,7 +188,7 @@ export async function POST(req: Request) {
     // never seeded one — otherwise this write silently no-ops and the
     // customer ID is lost. Keyed on user_id (unique constraint added in
     // migration 20260529150000).
-    await supabase
+    const { error: customerSaveError } = await supabase
       .from('subscriptions')
       .upsert(
         {
@@ -148,6 +198,13 @@ export async function POST(req: Request) {
         } as any,
         { onConflict: 'user_id' }
       )
+    if (customerSaveError) {
+      console.error('[billing/checkout] Could not save Stripe customer mapping:', customerSaveError.code)
+      return NextResponse.json(
+        { error: 'service_unavailable', message: 'Checkout is temporarily unavailable. Please try again later.' },
+        { status: 503 }
+      )
+    }
   }
 
   // Create checkout session.
