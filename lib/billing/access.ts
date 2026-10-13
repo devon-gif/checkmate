@@ -17,6 +17,7 @@ import 'server-only'
 
 import { createClient } from '@supabase/supabase-js'
 import { PLAN_MONTHLY_LIMIT, type PlanId } from '@/lib/billing/plans'
+import { resolvePlanLimits } from '@/lib/billing/plan-limits'
 import {
   betaPlanToBasePlan,
   getActiveBetaAccessForEmail
@@ -243,8 +244,9 @@ async function checkAccessInner({
   }
 
   // Resolve the canonical PlanId from the stored plan string
-  const planId = (row.plan ?? 'trial') as PlanId
-  const monthlyLimit = PLAN_MONTHLY_LIMIT[planId] ?? null
+  const planId = (row.plan ?? 'free') as PlanId
+  // Unknown plan IDs must never become unlimited access via a null fallback.
+  const monthlyLimit = resolvePlanLimits(planId).internal
 
   // Active paid subscription — enforce monthly limit for basic plan
   if (row.status === 'active') {
@@ -324,7 +326,7 @@ async function checkAccessInner({
 
     if (trialOpen) {
       const trialingPlanId = (row.plan ?? 'trial') as PlanId
-      const trialMonthlyLimit = PLAN_MONTHLY_LIMIT[trialingPlanId] ?? null
+      const trialMonthlyLimit = resolvePlanLimits(trialingPlanId).internal
 
       // Count this month's usage when a hard cap applies. Unlimited plans
       // (legacy 'trial', Family) skip the count to save a query.
@@ -405,7 +407,7 @@ async function checkAccessInner({
   const beta = await getActiveBetaAccessForEmail(resolvedEmail, sb)
   if (beta) {
     const betaPlan = beta.plan as PlanId
-    const betaLimit = PLAN_MONTHLY_LIMIT[betaPlan] ?? null
+    const betaLimit = resolvePlanLimits(betaPlan).internal
     const basePlan = betaPlanToBasePlan(beta.plan)
     let betaUsedThisMonth = 0
 
