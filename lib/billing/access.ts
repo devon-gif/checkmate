@@ -33,6 +33,7 @@ export type AccessStatus =
   | 'free'              // logged in, free plan, monthly quota remaining
   | 'expired'           // logged in, free/paid plan with no quota left (upgrade prompt)
   | 'blocked'           // catch-all for any other blocked state
+  | 'service_unavailable' // database unavailable; fail closed before AI spend
 
 export interface AccessResult {
   canAnalyze: boolean
@@ -57,15 +58,15 @@ const ANON_LIMIT = 1
 
 /**
  * Returns a service-role Supabase client, or null if envs are missing.
- * Returning null (rather than throwing) lets callers degrade gracefully —
- * a missing env on Vercel must not cause the homepage / new-case page to 500.
+ * Return null on missing env so the caller can fail closed with a friendly
+ * temporary-unavailability message rather than allowing unmetered AI calls.
  */
 function serviceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) {
     console.warn(
-      '[billing/access] Supabase service-role env vars missing; running in permissive fallback mode.'
+      '[billing/access] Supabase service-role env vars missing; blocking metered analysis.'
     )
     return null
   }
@@ -75,16 +76,17 @@ function serviceClient() {
 }
 
 /**
- * Permissive fallback used whenever Supabase is unreachable or misconfigured.
- * Keeps the user moving instead of locking them out of the product.
+ * An unavailable billing database must never silently grant an AI check.
+ * Public marketing pages can still render; metered requests must fail closed.
  */
-function permissiveAnonResult(): AccessResult {
+function unavailableResult(): AccessResult {
   return {
-    canAnalyze: true,
-    accessStatus: 'anonymous_free',
+    canAnalyze: false,
+    accessStatus: 'service_unavailable',
     plan: null,
     checksUsed: 0,
-    checksLimit: ANON_LIMIT
+    checksLimit: null,
+    reason: 'Risk checks are temporarily unavailable while we reconnect secure account storage. Please try again shortly.'
   }
 }
 
@@ -102,8 +104,8 @@ export async function checkAccess({
   try {
     return await checkAccessInner({ userId, anonymousId, userEmail })
   } catch (err) {
-    console.error('[billing/access] checkAccess failed, falling back permissive:', err)
-    return permissiveAnonResult()
+    console.error('[billing/access] checkAccess failed, blocking analysis:', err)
+    return unavailableResult()
   }
 }
 
@@ -117,34 +119,29 @@ async function checkAccessInner({
   userEmail?: string | null
 }): Promise<AccessResult> {
   const sb = serviceClient()
-  if (!sb) return permissiveAnonResult()
+  if (!sb) return unavailableResult()
 
   // ── Anonymous path ──────────────────────────────────────────────────────────
   if (!userId) {
-    if (!anonymousId) {
-      // Brand-new visitor — no cookie yet. Allow and we'll set the cookie after.
-      return {
-        canAnalyze: true,
-        accessStatus: 'anonymous_free',
-        plan: null,
-        checksUsed: 0,
-        checksLimit: ANON_LIMIT
-      }
-    }
-
-    const { count } = await sb
+    // Even first-time visitors need a DB read. Otherwise a brand-new visitor
+    // can invoke OpenAI repeatedly whenever Supabase is down, because no
+    // anonymous cookie exists yet to trigger a quota lookup.
+    const quotaId = anonymousId ?? crypto.randomUUID()
+    const { count, error } = await sb
       .from('anonymous_checks' as any)
       .select('id', { count: 'exact', head: true })
-      .eq('anonymous_id', anonymousId)
+      .eq('anonymous_id', quotaId)
 
-    const used = count ?? 0
+    if (error || count === null) {
+      throw error ?? new Error('Anonymous quota could not be verified.')
+    }
 
-    if (used >= ANON_LIMIT) {
+    if (count >= ANON_LIMIT) {
       return {
         canAnalyze: false,
         accessStatus: 'anonymous_used',
         plan: null,
-        checksUsed: used,
+        checksUsed: count,
         checksLimit: ANON_LIMIT,
         reason:
           "You've used your free check. Create a free account to start your 7-day trial."
@@ -155,18 +152,19 @@ async function checkAccessInner({
       canAnalyze: true,
       accessStatus: 'anonymous_free',
       plan: null,
-      checksUsed: used,
+      checksUsed: count,
       checksLimit: ANON_LIMIT
     }
   }
 
   // ── Authenticated path ──────────────────────────────────────────────────────
-  const { data: billing } = await sb
+  const { data: billing, error: billingError } = await sb
     .from('user_billing' as any)
     .select('*')
     .eq('user_id', userId)
     .maybeSingle()
 
+  if (billingError) throw billingError
   let row: any = billing
 
   // ── First-check / no-billing-row path ──────────────────────────────────
@@ -197,43 +195,24 @@ async function checkAccessInner({
         .select()
         .maybeSingle()
 
-      if (insertError) {
-        console.error(
-          '[billing/access] user_billing insert failed (non-fatal):',
-          insertError.message
-        )
-      } else if (created) {
-        row = created
-      }
+      if (insertError) throw insertError
+      if (created) row = created
     } catch (err) {
-      console.error(
-        '[billing/access] user_billing insert threw (non-fatal):',
-        err instanceof Error ? err.message : String(err)
-      )
+      throw err
     }
 
-    // If persistence failed (or returned nothing), synthesize an in-memory
-    // row so the rest of this function never reads through null. The Free
-    // quota branch below uses `usage_events` as the source of truth, so an
-    // un-persisted row still produces the right answer.
-    if (!row) {
-      row = {
-        user_id: userId,
-        plan: 'free',
-        status: 'inactive',
-        trial_ends_at: null
-      }
-    }
+    if (!row) throw new Error('New-user billing record could not be persisted.')
   }
 
   const now = new Date()
   let resolvedEmail = userEmail ?? null
   if (!resolvedEmail) {
-    const { data: userRow } = await sb
+    const { data: userRow, error: userLookupError } = await sb
       .from('users' as any)
       .select('email')
       .eq('id', userId)
       .maybeSingle()
+    if (userLookupError) throw userLookupError
     resolvedEmail = typeof (userRow as any)?.email === 'string'
       ? (userRow as any).email
       : null
@@ -249,13 +228,14 @@ async function checkAccessInner({
     let checksUsedThisMonth = 0
     if (monthlyLimit !== null) {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-      const { count } = await sb
+      const { count, error: usageError } = await sb
         .from('usage_events' as any)
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('event_type', 'check_created')
         .gte('created_at', monthStart)
-      checksUsedThisMonth = count ?? 0
+      if (usageError || count === null) throw usageError ?? new Error('Usage quota count unavailable.')
+checksUsedThisMonth = count
     }
 
     if (monthlyLimit !== null && checksUsedThisMonth >= monthlyLimit) {
@@ -331,13 +311,14 @@ async function checkAccessInner({
           now.getMonth(),
           1
         ).toISOString()
-        const { count } = await sb
+        const { count, error: usageError } = await sb
           .from('usage_events' as any)
           .select('id', { count: 'exact', head: true })
           .eq('user_id', userId)
           .eq('event_type', 'check_created')
           .gte('created_at', monthStart)
-        trialUsedThisMonth = count ?? 0
+        if (usageError || count === null) throw usageError ?? new Error('Usage quota count unavailable.')
+trialUsedThisMonth = count
       }
 
       if (
@@ -383,10 +364,11 @@ async function checkAccessInner({
     // subscription.updated to either 'active' (charge succeeded) or
     // 'canceled' (deleted); the webhook handles those. This local
     // downgrade is a defence in case our DB cache is stale.
-    await sb
+    const { error: trialDowngradeError } = await sb
       .from('user_billing' as any)
       .update({ status: 'inactive', plan: 'free' })
       .eq('user_id', userId)
+    if (trialDowngradeError) throw trialDowngradeError
     row.status = 'inactive'
     row.plan = 'free'
     // fall through to the Free path
@@ -410,13 +392,14 @@ async function checkAccessInner({
         now.getMonth(),
         1
       ).toISOString()
-      const { count } = await sb
+      const { count, error: usageError } = await sb
         .from('usage_events' as any)
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('event_type', 'check_created')
         .gte('created_at', betaMonthStart)
-      betaUsedThisMonth = count ?? 0
+      if (usageError || count === null) throw usageError ?? new Error('Usage quota count unavailable.')
+betaUsedThisMonth = count
     }
 
     if (betaLimit !== null && betaUsedThisMonth >= betaLimit) {
@@ -456,13 +439,14 @@ async function checkAccessInner({
   // analyze-case route checks canAnalyze before any OpenAI call.
   const freeLimit = PLAN_MONTHLY_LIMIT.free ?? 1
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const { count: freeUsed } = await sb
+  const { count: freeUsed, error: freeUsageError } = await sb
     .from('usage_events' as any)
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('event_type', 'check_created')
     .gte('created_at', monthStart)
-  const used = freeUsed ?? 0
+  if (freeUsageError || freeUsed === null) throw freeUsageError ?? new Error('Free quota count unavailable.')
+  const used = freeUsed
 
   if (used >= freeLimit) {
     return {
