@@ -198,6 +198,7 @@ async function checkAccessInner({
       if (insertError) throw insertError
       if (created) row = created
     } catch (err) {
+      // No in-memory free-tier fallback: entitlement persistence is mandatory.
       throw err
     }
 
@@ -234,8 +235,10 @@ async function checkAccessInner({
         .eq('user_id', userId)
         .eq('event_type', 'check_created')
         .gte('created_at', monthStart)
-      if (usageError || count === null) throw usageError ?? new Error('Usage quota count unavailable.')
-checksUsedThisMonth = count
+      if (usageError || count === null) {
+        throw usageError ?? new Error('Usage quota count unavailable.')
+      }
+      checksUsedThisMonth = count
     }
 
     if (monthlyLimit !== null && checksUsedThisMonth >= monthlyLimit) {
@@ -317,8 +320,10 @@ checksUsedThisMonth = count
           .eq('user_id', userId)
           .eq('event_type', 'check_created')
           .gte('created_at', monthStart)
-        if (usageError || count === null) throw usageError ?? new Error('Usage quota count unavailable.')
-trialUsedThisMonth = count
+        if (usageError || count === null) {
+          throw usageError ?? new Error('Usage quota count unavailable.')
+        }
+        trialUsedThisMonth = count
       }
 
       if (
@@ -398,8 +403,10 @@ trialUsedThisMonth = count
         .eq('user_id', userId)
         .eq('event_type', 'check_created')
         .gte('created_at', betaMonthStart)
-      if (usageError || count === null) throw usageError ?? new Error('Usage quota count unavailable.')
-betaUsedThisMonth = count
+      if (usageError || count === null) {
+        throw usageError ?? new Error('Usage quota count unavailable.')
+      }
+      betaUsedThisMonth = count
     }
 
     if (betaLimit !== null && betaUsedThisMonth >= betaLimit) {
@@ -445,7 +452,9 @@ betaUsedThisMonth = count
     .eq('user_id', userId)
     .eq('event_type', 'check_created')
     .gte('created_at', monthStart)
-  if (freeUsageError || freeUsed === null) throw freeUsageError ?? new Error('Free quota count unavailable.')
+  if (freeUsageError || freeUsed === null) {
+    throw freeUsageError ?? new Error('Free quota count unavailable.')
+  }
   const used = freeUsed
 
   if (used >= freeLimit) {
