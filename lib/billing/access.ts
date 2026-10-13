@@ -8,7 +8,7 @@
  *
  * Anonymous visitors   → 1 free check total (tracked by anonymous_checks table)
  * New signed-up users  → 7-day free trial (user_billing row auto-created)
- * Paying users         → unlimited (status = 'active')
+ * Paying users         → plan-based monthly limits (status = 'active')
  * Expired trials       → blocked until subscribed
  *
  * Cookie: checkray_anonymous_id  — opaque UUID stored for 90 days.
@@ -57,15 +57,15 @@ const ANON_LIMIT = 1
 
 /**
  * Returns a service-role Supabase client, or null if envs are missing.
- * Returning null (rather than throwing) lets callers degrade gracefully —
- * a missing env on Vercel must not cause the homepage / new-case page to 500.
+ * Returning null lets callers give a useful 503 response without spending
+ * on OpenAI when usage cannot be accounted for.
  */
 function serviceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) {
     console.warn(
-      '[billing/access] Supabase service-role env vars missing; running in permissive fallback mode.'
+      '[billing/access] Supabase service-role env vars missing; disabling analysis until restored.'
     )
     return null
   }
@@ -76,15 +76,16 @@ function serviceClient() {
 
 /**
  * Permissive fallback used whenever Supabase is unreachable or misconfigured.
- * Keeps the user moving instead of locking them out of the product.
+ * Never grant free AI usage while the database or quota ledger is unavailable.
  */
-function permissiveAnonResult(): AccessResult {
+function unavailableResult(): AccessResult {
   return {
-    canAnalyze: true,
-    accessStatus: 'anonymous_free',
+    canAnalyze: false,
+    accessStatus: 'blocked',
     plan: null,
     checksUsed: 0,
-    checksLimit: ANON_LIMIT
+    checksLimit: ANON_LIMIT,
+    reason: 'Analysis is temporarily unavailable. Please try again shortly.'
   }
 }
 
@@ -102,8 +103,8 @@ export async function checkAccess({
   try {
     return await checkAccessInner({ userId, anonymousId, userEmail })
   } catch (err) {
-    console.error('[billing/access] checkAccess failed, falling back permissive:', err)
-    return permissiveAnonResult()
+    console.error('[billing/access] checkAccess failed; refusing unmetered analysis:', err)
+    return unavailableResult()
   }
 }
 
@@ -117,7 +118,7 @@ async function checkAccessInner({
   userEmail?: string | null
 }): Promise<AccessResult> {
   const sb = serviceClient()
-  if (!sb) return permissiveAnonResult()
+  if (!sb) return unavailableResult()
 
   // ── Anonymous path ──────────────────────────────────────────────────────────
   if (!userId) {
@@ -132,11 +133,12 @@ async function checkAccessInner({
       }
     }
 
-    const { count } = await sb
+    const { count, error: anonymousCountError } = await sb
       .from('anonymous_checks' as any)
       .select('id', { count: 'exact', head: true })
       .eq('anonymous_id', anonymousId)
 
+    if (anonymousCountError) throw new Error(`Anonymous quota lookup failed: ${anonymousCountError.code ?? 'unknown'}`)
     const used = count ?? 0
 
     if (used >= ANON_LIMIT) {
@@ -161,12 +163,13 @@ async function checkAccessInner({
   }
 
   // ── Authenticated path ──────────────────────────────────────────────────────
-  const { data: billing } = await sb
+  const { data: billing, error: billingError } = await sb
     .from('user_billing' as any)
     .select('*')
     .eq('user_id', userId)
     .maybeSingle()
 
+  if (billingError) throw new Error(`Billing lookup failed: ${billingError.code ?? 'unknown'}`)
   let row: any = billing
 
   // ── First-check / no-billing-row path ──────────────────────────────────
@@ -249,12 +252,13 @@ async function checkAccessInner({
     let checksUsedThisMonth = 0
     if (monthlyLimit !== null) {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-      const { count } = await sb
+      const { count, error: usageError } = await sb
         .from('usage_events' as any)
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('event_type', 'check_created')
         .gte('created_at', monthStart)
+      if (usageError) throw new Error(`Paid quota lookup failed: ${usageError.code ?? 'unknown'}`)
       checksUsedThisMonth = count ?? 0
     }
 
@@ -337,6 +341,7 @@ async function checkAccessInner({
           .eq('user_id', userId)
           .eq('event_type', 'check_created')
           .gte('created_at', monthStart)
+        if (usageError) throw new Error(`Trial quota lookup failed: ${usageError.code ?? 'unknown'}`)
         trialUsedThisMonth = count ?? 0
       }
 
@@ -410,12 +415,13 @@ async function checkAccessInner({
         now.getMonth(),
         1
       ).toISOString()
-      const { count } = await sb
+      const { count, error: betaUsageError } = await sb
         .from('usage_events' as any)
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('event_type', 'check_created')
         .gte('created_at', betaMonthStart)
+      if (betaUsageError) throw new Error(`Beta quota lookup failed: ${betaUsageError.code ?? 'unknown'}`)
       betaUsedThisMonth = count ?? 0
     }
 
@@ -456,12 +462,13 @@ async function checkAccessInner({
   // analyze-case route checks canAnalyze before any OpenAI call.
   const freeLimit = PLAN_MONTHLY_LIMIT.free ?? 1
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const { count: freeUsed } = await sb
+  const { count: freeUsed, error: freeUsageError } = await sb
     .from('usage_events' as any)
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('event_type', 'check_created')
     .gte('created_at', monthStart)
+  if (freeUsageError) throw new Error(`Free quota lookup failed: ${freeUsageError.code ?? 'unknown'}`)
   const used = freeUsed ?? 0
 
   if (used >= freeLimit) {
@@ -496,12 +503,20 @@ async function checkAccessInner({
  * Call this AFTER the analysis completes successfully.
  * Non-fatal — errors are logged but not propagated.
  */
-export async function recordAnonymousCheck(anonymousId: string): Promise<void> {
+export async function recordAnonymousCheck(anonymousId: string): Promise<boolean> {
   try {
     const sb = serviceClient()
-    if (!sb) return
-    await (sb as any).from('anonymous_checks').insert({ anonymous_id: anonymousId })
+    if (!sb) return false
+    const { error } = await (sb as any)
+      .from('anonymous_checks')
+      .insert({ anonymous_id: anonymousId })
+    if (error) {
+      console.error('[billing/access] Failed to record anonymous check:', error.code)
+      return false
+    }
+    return true
   } catch (err) {
     console.error('[billing/access] Failed to record anonymous check:', err)
+    return false
   }
 }
