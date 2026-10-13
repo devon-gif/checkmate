@@ -20,6 +20,8 @@ create table "public"."users" (
     "updated_at" timestamp with time zone not null default now()
 );
 
+alter table "public"."users" add constraint "users_pkey" primary key ("id");
+
 create table "public"."profiles" (
     "id" uuid not null default gen_random_uuid(),
     "user_id" uuid not null default auth.uid() references public.users(id) on delete cascade,
@@ -63,6 +65,8 @@ create table "public"."cases" (
     constraint cases_risk_level_check check (risk_level in ('needs_more_info', 'low', 'medium', 'high', 'very_high')),
     constraint cases_risk_score_check check (risk_score >= 0 and risk_score <= 100)
 );
+
+alter table "public"."cases" add constraint "cases_pkey" primary key ("id");
 
 create table "public"."case_messages" (
     "id" uuid not null default gen_random_uuid(),
@@ -140,10 +144,8 @@ create table "public"."email_aliases" (
     "updated_at" timestamp with time zone not null default now()
 );
 
-alter table "public"."users" add constraint "users_pkey" primary key ("id");
 alter table "public"."profiles" add constraint "profiles_pkey" primary key ("id");
 alter table "public"."subscriptions" add constraint "subscriptions_pkey" primary key ("id");
-alter table "public"."cases" add constraint "cases_pkey" primary key ("id");
 alter table "public"."case_messages" add constraint "case_messages_pkey" primary key ("id");
 alter table "public"."case_messages" add constraint "case_messages_id_case_id_key" unique ("id", "case_id");
 alter table "public"."case_attachments" add constraint "case_attachments_pkey" primary key ("id");
