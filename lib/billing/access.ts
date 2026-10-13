@@ -335,7 +335,7 @@ async function checkAccessInner({
           now.getMonth(),
           1
         ).toISOString()
-        const { count } = await sb
+        const { count, error: usageError } = await sb
           .from('usage_events' as any)
           .select('id', { count: 'exact', head: true })
           .eq('user_id', userId)
