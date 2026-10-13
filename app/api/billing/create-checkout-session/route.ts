@@ -115,13 +115,23 @@ export async function POST(req: Request) {
   })
 
   // Find existing Stripe customer ID if the user has one
-  const { data: sub } = await supabase
+  const { data: sub, error: subscriptionLookupError } = await supabase
     .from('subscriptions')
     .select('provider_customer_id')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  // Never open a paid Checkout when we cannot reliably associate the
+  // customer with a Supabase user and later apply Stripe webhooks.
+  if (subscriptionLookupError) {
+    console.error('[billing/checkout] Supabase subscription lookup failed:', subscriptionLookupError.code)
+    return NextResponse.json(
+      { error: 'service_unavailable', message: 'Checkout is temporarily unavailable. Please try again later.' },
+      { status: 503 }
+    )
+  }
 
   let customerId: string | undefined = sub?.provider_customer_id ?? undefined
 
@@ -138,7 +148,7 @@ export async function POST(req: Request) {
     // never seeded one — otherwise this write silently no-ops and the
     // customer ID is lost. Keyed on user_id (unique constraint added in
     // migration 20260529150000).
-    await supabase
+    const { error: customerSaveError } = await supabase
       .from('subscriptions')
       .upsert(
         {
@@ -148,6 +158,13 @@ export async function POST(req: Request) {
         } as any,
         { onConflict: 'user_id' }
       )
+    if (customerSaveError) {
+      console.error('[billing/checkout] Supabase customer save failed:', customerSaveError.code)
+      return NextResponse.json(
+        { error: 'service_unavailable', message: 'Checkout is temporarily unavailable. Please try again later.' },
+        { status: 503 }
+      )
+    }
   }
 
   // Create checkout session.
