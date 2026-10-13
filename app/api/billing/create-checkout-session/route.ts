@@ -183,28 +183,10 @@ export async function POST(req: Request) {
     })
     customerId = customer.id
 
-    // Persist customer ID immediately so webhooks can match it.
-    // Upsert (not update) so the row is created if the new-user trigger
-    // never seeded one — otherwise this write silently no-ops and the
-    // customer ID is lost. Keyed on user_id (unique constraint added in
-    // migration 20260529150000).
-    const { error: customerSaveError } = await supabase
-      .from('subscriptions')
-      .upsert(
-        {
-          user_id: userId,
-          provider: 'stripe',
-          provider_customer_id: customerId
-        } as any,
-        { onConflict: 'user_id' }
-      )
-    if (customerSaveError) {
-      console.error('[billing/checkout] Could not save Stripe customer mapping:', customerSaveError.code)
-      return NextResponse.json(
-        { error: 'service_unavailable', message: 'Checkout is temporarily unavailable. Please try again later.' },
-        { status: 503 }
-      )
-    }
+    // The Stripe subscription metadata below includes the verified user ID.
+    // The signed Stripe webhook persists customer/subscription mappings using
+    // its server-only client. Do not upsert subscriptions through this user's
+    // RLS-limited client (the table is SELECT-only by design).
   }
 
   // Create checkout session.
