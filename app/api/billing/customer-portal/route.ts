@@ -13,7 +13,6 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/auth'
 import { type Database } from '@/lib/db_types'
 import { stripe, APP_URL } from '@/lib/billing/stripe'
 
@@ -26,39 +25,53 @@ export async function POST() {
     )
   }
 
-  // Auth required
+  // Authenticate using the route-handler client so session cookies refresh.
   const cookieStore = cookies()
-  const session = await auth({ cookieStore })
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
-  }
-
   const supabase = createRouteHandlerClient<Database, 'public', any>({
     cookies: () => cookieStore
   })
+  let userId: string | null = null
+  try {
+    const result = await supabase.auth.getUser()
+    if (result.error && result.error.name !== 'AuthSessionMissingError') {
+      return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+    }
+    userId = result.data.user?.id ?? null
+  } catch {
+    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  }
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
+  }
 
   // Look up Stripe customer ID. Prefer user_billing (the billing source of
   // truth, always upserted by the webhook), then fall back to the
   // subscriptions mirror so either source resolves a customer.
   // user_billing is not in the generated Database types; cast to any (the
   // webhook handler reads it the same way).
-  const { data: billing } = await (supabase as any)
+  const { data: billing, error: billingError } = await (supabase as any)
     .from('user_billing')
     .select('stripe_customer_id')
-    .eq('user_id', session.user.id)
+    .eq('user_id', userId)
     .maybeSingle()
+  if (billingError) {
+    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  }
 
   let customerId: string | null | undefined =
     (billing as { stripe_customer_id?: string | null } | null)?.stripe_customer_id
 
   if (!customerId) {
-    const { data: sub } = await supabase
+    const { data: sub, error: subscriptionError } = await supabase
       .from('subscriptions')
       .select('provider_customer_id')
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+    if (subscriptionError) {
+      return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+    }
     customerId = sub?.provider_customer_id
   }
 
