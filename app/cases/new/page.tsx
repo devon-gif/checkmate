@@ -29,6 +29,7 @@ export default async function NewCasePage() {
 
   // ── Blocked gate ──────────────────────────────────────────────────────────
   if (!access.canAnalyze) {
+    const isUnavailable = access.accessStatus === 'service_unavailable'
     const isAnonBlocked = access.accessStatus === 'anonymous_used'
     // 'expired' now covers two distinct cases:
     //   - Free user who has used their 1 check this month → soft prompt
@@ -110,8 +111,25 @@ export default async function NewCasePage() {
             </>
           )}
 
+          {/* Database outage — do not upsell users when storage is down. */}
+          {isUnavailable && (
+            <>
+              <div>
+                <h2 className="text-xl font-semibold text-white">
+                  Risk checks temporarily unavailable
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-white/50">
+                  {access.reason}
+                </p>
+              </div>
+              <GradientButton href="/" variant="secondary">
+                Back to home
+              </GradientButton>
+            </>
+          )}
+
           {/* Fallback for other blocked states */}
-          {!isAnonBlocked && !isTrialExpired && !isFreeMonthlyUsed && (
+          {!isUnavailable && !isAnonBlocked && !isTrialExpired && !isFreeMonthlyUsed && (
             <>
               <div>
                 <h2 className="text-xl font-semibold text-white">

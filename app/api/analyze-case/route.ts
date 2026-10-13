@@ -134,9 +134,20 @@ async function handlePost(req: Request) {
     cookies: () => cookieStore
   })
 
-  const {
-    data: { session }
-  } = await supabase.auth.getSession()
+  // If authentication storage is unreachable, do not mistake an existing
+  // account for an anonymous visitor or run an unmetered model request.
+  const authResult = await supabase.auth.getSession().catch(error => ({
+    data: { session: null },
+    error
+  }))
+  if (authResult.error) {
+    console.error('[analyze-case] Supabase auth session unavailable')
+    return NextResponse.json(
+      { error: 'service_unavailable', message: 'Risk checks are temporarily unavailable. Please try again shortly.' },
+      { status: 503 }
+    )
+  }
+  const session = authResult.data.session
   const isAuthenticated = Boolean(session?.user?.id)
 
   // Read anonymous ID cookie (if present)
@@ -197,13 +208,14 @@ async function handlePost(req: Request) {
   })
 
   if (!access.canAnalyze) {
+    const serviceUnavailable = access.accessStatus === 'service_unavailable'
     return NextResponse.json(
       {
-        error: 'usage_limit_reached',
+        error: serviceUnavailable ? 'service_unavailable' : 'usage_limit_reached',
         message: access.reason ?? 'Analysis limit reached.',
         access
       },
-      { status: 402 }
+      { status: serviceUnavailable ? 503 : 402 }
     )
   }
 
