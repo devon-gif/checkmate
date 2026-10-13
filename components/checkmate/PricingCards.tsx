@@ -52,7 +52,7 @@ export function PricingCards({ basicConfigured, plusConfigured }: Props) {
           </div>
           <ul className="flex flex-1 flex-col gap-2">
             {[
-              '3 checks per month',
+              '1 guest check; 3/month with a free account',
               'Risk score',
               'Common red flags',
               'Suggested next steps',
